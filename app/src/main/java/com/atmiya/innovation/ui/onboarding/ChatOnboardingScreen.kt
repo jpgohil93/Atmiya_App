@@ -13,7 +13,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.atmiya.innovation.ui.theme.AtmiyaPrimary
-import com.atmiya.innovation.ui.theme.AtmiyaSecondary
+// Ensure AtmiyaSecondary is defined in your theme file, or remove this import if unused
+// import com.atmiya.innovation.ui.theme.AtmiyaSecondary 
 
 data class ChatMessage(
     val text: String,
@@ -32,12 +33,12 @@ fun ChatOnboardingScreen(
     startupType: String? = null,
     onOnboardingComplete: () -> Unit
 ) {
+    // Make sure OnboardingManager exists in this package path
     val manager = remember { com.atmiya.innovation.logic.OnboardingManager(role, startupType) }
     
-    // Initial state with the first question
+    // State variables
     var messages by remember { mutableStateOf(listOf<ChatMessage>()) }
     var inputText by remember { mutableStateOf("") }
-    val isUser = true
     
     // Load first question on start
     LaunchedEffect(Unit) {
@@ -47,7 +48,7 @@ fun ChatOnboardingScreen(
         }
     }
 
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
     val storage = com.google.firebase.storage.FirebaseStorage.getInstance()
     
     // File Picker
@@ -109,8 +110,10 @@ fun ChatOnboardingScreen(
                 .padding(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Check if current question expects a file (Hack for MVP: Check text)
-            val currentQ = messages.lastOrNull { !it.isUser }
+            // Check if current question expects a file
+            // FIX: Changed 'it.isUser' to 'it.isFromUser' to match your data class
+            val currentQ = messages.lastOrNull { !it.isFromUser } 
+            
             if (currentQ?.text?.contains("upload", ignoreCase = true) == true || currentQ?.text?.contains("deck", ignoreCase = true) == true) {
                  Button(
                     onClick = { launcher.launch("*/*") },
@@ -145,7 +148,6 @@ fun ChatOnboardingScreen(
                                 newMessages.add(nextQ)
                                 if (nextQ.text.startsWith("Thanks!")) {
                                     // Delay slightly then complete
-                                    // onOnboardingComplete() // In real app, wait a bit
                                 }
                             } else {
                                 // End of flow

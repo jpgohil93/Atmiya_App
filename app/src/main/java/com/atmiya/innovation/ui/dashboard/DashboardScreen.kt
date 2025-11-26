@@ -1,7 +1,9 @@
 package com.atmiya.innovation.ui.dashboard
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Star
@@ -16,7 +18,6 @@ import androidx.navigation.compose.rememberNavController
 import com.atmiya.innovation.ui.theme.AtmiyaPrimary
 import com.atmiya.innovation.ui.theme.AtmiyaSecondary
 
-@Composable
 @Composable
 fun DashboardScreen(
     role: String,
