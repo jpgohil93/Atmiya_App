@@ -32,4 +32,3 @@ fun MentorsScreen(onViewVideos: (String) -> Unit = {}) {
                 Text("View Videos")
             }
         }
-    }

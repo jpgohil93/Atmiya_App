@@ -15,7 +15,6 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
@@ -58,26 +57,28 @@ dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.0")
     implementation("androidx.activity:activity-compose:1.9.0")
-
-    // Jetpack Compose (The UI Toolkit)
+    
+    // Compose
     implementation(platform("androidx.compose:compose-bom:2024.04.01"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
-    
+    // Fixes 'Search' icon error
+    implementation("androidx.compose.material:material-icons-extended") 
+
     // Navigation
     implementation("androidx.navigation:navigation-compose:2.7.7")
 
-    // Firebase (Auth & Messaging & Firestore & Storage)
+    // Firebase
     implementation(platform("com.google.firebase:firebase-bom:33.0.0"))
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-messaging")
-    implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.firebase:firebase-storage")
+    implementation("com.google.firebase:firebase-analytics")
 
-    // Coil (Image Loading)
+    // Coil (Images)
     implementation("io.coil-kt:coil-compose:2.6.0")
 
     // Testing
