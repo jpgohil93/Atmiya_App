@@ -1,0 +1,29 @@
+{
+    "project_info": {
+        "project_number": "900636654928",
+        "project_id": "atmiya-eacdf",
+        "storage_bucket": "atmiya-eacdf.firebasestorage.app"
+    },
+    "client": [
+        {
+            "client_info": {
+                "mobilesdk_app_id": "1:900636654928:android:8d673a90d221ff7c568055",
+                "android_client_info": {
+                    "package_name": "com.atmiya.innovation"
+                }
+            },
+            "oauth_client": [],
+            "api_key": [
+                {
+                    "current_key": "AIzaSyBJTezTduHIvPLfkQVMb3_7NlWV-YC0xDM"
+                }
+            ],
+            "services": {
+                "appinvite_service": {
+                    "other_platform_oauth_client": []
+                }
+            }
+        }
+    ],
+    "configuration_version": "1"
+}
