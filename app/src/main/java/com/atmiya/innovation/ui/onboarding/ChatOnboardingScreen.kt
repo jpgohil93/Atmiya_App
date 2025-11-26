@@ -36,6 +36,7 @@ fun ChatOnboardingScreen(
     
     // Initial state with the first question
     var messages by remember { mutableStateOf(listOf<ChatMessage>()) }
+    var inputText by remember { mutableStateOf("") }
     
     // Load first question on start
     LaunchedEffect(Unit) {

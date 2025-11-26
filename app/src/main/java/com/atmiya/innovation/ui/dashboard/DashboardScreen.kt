@@ -145,7 +145,4 @@ fun NetworkScreen(role: String) {
     }
 }
 
-@Composable
-fun ProfileScreen() {
-    Text("My Profile")
-}
+
