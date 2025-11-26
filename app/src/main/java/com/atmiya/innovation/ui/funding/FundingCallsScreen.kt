@@ -131,7 +131,7 @@ fun FundingCallsScreen(role: String) {
             )
         }
     }
-}
+
 
 @Composable
 fun FundingCallCard(call: FundingCall, role: String) {

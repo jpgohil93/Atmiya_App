@@ -123,7 +123,7 @@ fun WallScreen() {
             )
         }
     }
-}
+
 
 @Composable
 fun CreatePostDialog(onDismiss: () -> Unit, onPost: (String) -> Unit) {
