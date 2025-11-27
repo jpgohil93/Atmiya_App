@@ -14,11 +14,14 @@ android {
         applicationId = "com.atmiya.innovation"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
+        }
+        ndk {
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
         }
     }
 
@@ -28,6 +31,8 @@ android {
             storePassword = "password123"
             keyAlias = "atmiya-key"
             keyPassword = "password123"
+            enableV1Signing = true
+            enableV2Signing = true
         }
     }
 
@@ -39,6 +44,11 @@ android {
                 "proguard-rules.pro"
             )
             signingConfig = signingConfigs.getByName("release")
+        }
+    }
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
     compileOptions {
