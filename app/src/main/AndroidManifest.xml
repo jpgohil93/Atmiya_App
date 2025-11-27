@@ -23,7 +23,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AtmiyaInnovation"
         android:extractNativeLibs="true"
-        android:extractNativeLibs="true"
+
         tools:replace="android:allowBackup">
         <activity
             android:name=".MainActivity"
