@@ -84,9 +84,7 @@ android {
             excludes += "/META-INF/**"
             excludes += "META-INF/*"
         }
-        jniLibs {
-            useLegacyPackaging = true
-        }
+
     }
 
     compileOptions {
