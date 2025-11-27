@@ -31,18 +31,7 @@ android {
         }
     }
 
-    // Disable all splits to guarantee Universal APK
-    splits {
-        abi {
-            isEnable = false
-            reset()
-            include("armeabi-v7a", "arm64-v8a")
-            isUniversalApk = true
-        }
-        density {
-            isEnable = false
-        }
-    }
+
 
     // Bundle configuration for Universal APK from AAB
     bundle {
