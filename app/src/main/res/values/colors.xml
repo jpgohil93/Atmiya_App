@@ -10,4 +10,7 @@
     <color name="atmiya_primary">#002A5C</color>
     <color name="atmiya_secondary">#B11F2E</color>
     <color name="atmiya_gold">#F2C75C</color>
+    
+    <!-- Soft UI Background -->
+    <color name="soft_bg_light">#F2F6F9</color>
 </resources>

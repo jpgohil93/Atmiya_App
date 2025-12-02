@@ -1,0 +1,136 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Helper Functions ---
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    function hasRole(role) {
+      return isAuthenticated() && getUserData().role == role;
+    }
+    
+    function isAdmin() {
+      return hasRole('admin');
+    }
+    
+    function isInvestor() {
+      return hasRole('investor');
+    }
+
+    function isStartup() {
+      return hasRole('startup');
+    }
+
+    // --- Users Collection ---
+    // Admins can read/write all. Users can read/write their own.
+    // Authenticated users can read basic profiles of others (for networking).
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == userId; // Self-signup
+      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+    }
+    
+    // --- Role Specific Collections ---
+    match /startups/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+    }
+    match /investors/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+    }
+    match /mentors/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+    }
+
+    // --- Wall Posts ---
+    match /wallPosts/{postId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated(); // Anyone can post
+      allow update: if isOwner(resource.data.authorUserId) || isAdmin() || 
+                    (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likesCount', 'commentsCount', 'pollOptions']));
+      allow delete: if isOwner(resource.data.authorUserId) || isAdmin();
+      
+      match /comments/{commentId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+      }
+      
+      match /upvotes/{userId} {
+        allow read: if isAuthenticated();
+        allow write: if isOwner(userId);
+      }
+    }
+    // Funding Calls
+    match /fundingCalls/{callId} {
+      allow read: if isAuthenticated();
+      // Only Investors and Admins can create/update funding calls
+      allow create: if isAuthenticated() && (hasRole('investor') || isAdmin());
+      allow update: if isAuthenticated() && (
+        (hasRole('investor') && resource.data.investorId == request.auth.uid) || 
+        isAdmin()
+      );
+      allow delete: if isAuthenticated() && (resource.data.investorId == request.auth.uid || isAdmin());
+      
+      // Applications Subcollection
+      match /applications/{applicationId} {
+        allow create: if isAuthenticated() && hasRole('startup');
+        allow read: if isAuthenticated() && (
+          resource.data.startupId == request.auth.uid || 
+          // Check if auth user is the investor of the parent call (requires get)
+          // OR simply allow investors/admins to read all applications (simplified for MVP)
+          hasRole('investor') || isAdmin()
+        );
+        allow update: if isAuthenticated() && (
+          // Investor updating status
+          hasRole('investor') || isAdmin()
+        );
+      }
+    }
+
+    // Legacy path (if used) - Block it or redirect
+    match /fundingApplications/{applicationId} {
+      allow read, write: if false;
+    }
+
+    // Mentor Videos
+    match /mentorVideos/{videoId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && (hasRole('mentor') || isAdmin());
+      allow delete: if isAuthenticated() && (resource.data.mentorId == request.auth.uid || isAdmin());
+    }
+
+    // --- Chat System ---
+    match /chats/{channelId} {
+      allow read: if isAuthenticated() && request.auth.uid in resource.data.participants;
+      allow create: if isAuthenticated(); // Check participants in code or via function
+      allow update: if isAuthenticated() && request.auth.uid in resource.data.participants;
+      
+      match /messages/{messageId} {
+        allow read: if isAuthenticated() && request.auth.uid in get(/databases/$(database)/documents/chats/$(channelId)).data.participants;
+        allow create: if isAuthenticated() && request.auth.uid in get(/databases/$(database)/documents/chats/$(channelId)).data.participants;
+      }
+    }
+
+    // --- Collection Group Queries ---
+    match /{path=**}/applications/{applicationId} {
+      allow read: if isAuthenticated() && (
+        resource.data.startupId == request.auth.uid || 
+        hasRole('investor') || isAdmin()
+      );
+    }
+  }
+}

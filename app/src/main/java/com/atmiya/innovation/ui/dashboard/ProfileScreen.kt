@@ -1,5 +1,6 @@
 package com.atmiya.innovation.ui.dashboard
 
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -14,30 +15,53 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.atmiya.innovation.R
+import com.atmiya.innovation.repository.FirestoreRepository
+import com.atmiya.innovation.repository.StorageRepository
 import com.atmiya.innovation.ui.theme.AtmiyaPrimary
+import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.launch
+
+import androidx.compose.material.icons.filled.Brightness4
 
 @Composable
-fun ProfileScreen() {
-    val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
+fun ProfileScreen(
+    onLogout: () -> Unit,
+    onEditProfile: () -> Unit
+) {
+    val auth = FirebaseAuth.getInstance()
     val user = auth.currentUser
-
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val storage = com.google.firebase.storage.FirebaseStorage.getInstance()
-    val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    
+    val firestoreRepository = remember { FirestoreRepository() }
+    val storageRepository = remember { StorageRepository() }
     
     var profileImageUrl by remember { mutableStateOf<String?>(null) }
+    var userName by remember { mutableStateOf("") }
+    var userRole by remember { mutableStateOf("") }
     
-    // Fetch current profile image
+    // Fetch current profile
     LaunchedEffect(user) {
         if (user != null) {
-            db.collection("users").document(user.uid).get()
-                .addOnSuccessListener { document ->
-                    profileImageUrl = document.getString("profileImageUrl")
+            val userProfile = firestoreRepository.getUser(user.uid)
+            if (userProfile != null) {
+                profileImageUrl = userProfile.profilePhotoUrl
+                userName = userProfile.name
+                
+                if (userProfile.role == "startup") {
+                    val startup = firestoreRepository.getStartup(user.uid)
+                    val type = startup?.startupType?.uppercase() ?: ""
+                    userRole = "Startup ($type)"
+                } else {
+                    userRole = userProfile.role.replaceFirstChar { it.uppercase() }
                 }
+            }
         }
     }
 
@@ -45,20 +69,18 @@ fun ProfileScreen() {
         contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
     ) { uri: android.net.Uri? ->
         if (uri != null && user != null) {
-            val ref = storage.reference.child("profile_images/${user.uid}")
-            ref.putFile(uri)
-                .addOnSuccessListener {
-                    ref.downloadUrl.addOnSuccessListener { downloadUri ->
-                        val url = downloadUri.toString()
-                        profileImageUrl = url
-                        // Update Firestore
-                        db.collection("users").document(user.uid)
-                            .update("profileImageUrl", url)
-                    }
+            scope.launch {
+                try {
+                    Toast.makeText(context, "Uploading...", Toast.LENGTH_SHORT).show()
+                    val url = storageRepository.uploadProfilePhoto(context, user.uid, uri)
+                    profileImageUrl = url
+                    // Update Firestore
+                    firestoreRepository.updateUser(user.uid, mapOf("profilePhotoUrl" to url))
+                    Toast.makeText(context, "Profile Photo Updated", Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Upload Failed: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
-                .addOnFailureListener {
-                    android.widget.Toast.makeText(context, "Upload Failed", android.widget.Toast.LENGTH_SHORT).show()
-                }
+            }
         }
     }
 
@@ -78,7 +100,7 @@ fun ProfileScreen() {
                 color = Color.LightGray
             ) {
                 if (profileImageUrl != null) {
-                    coil.compose.AsyncImage(
+                    AsyncImage(
                         model = profileImageUrl,
                         contentDescription = "Profile Picture",
                         contentScale = ContentScale.Crop,
@@ -87,7 +109,7 @@ fun ProfileScreen() {
                 } else {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
-                            text = user?.phoneNumber?.takeLast(2) ?: "U",
+                            text = if (userName.isNotEmpty()) userName.take(1).uppercase() else "U",
                             style = MaterialTheme.typography.headlineLarge,
                             color = Color.White
                         )
@@ -109,13 +131,13 @@ fun ProfileScreen() {
         Spacer(modifier = Modifier.height(16.dp))
         
         Text(
-            text = user?.phoneNumber ?: "User",
+            text = userName.ifEmpty { user?.phoneNumber ?: "User" },
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold
         )
         
         Text(
-            text = "Startup (EDP)", // TODO: Fetch from DB
+            text = userRole.ifEmpty { "User" },
             style = MaterialTheme.typography.bodyLarge,
             color = Color.Gray
         )
@@ -123,10 +145,50 @@ fun ProfileScreen() {
         Spacer(modifier = Modifier.height(32.dp))
 
         // Actions
-        ProfileOptionItem(icon = Icons.Filled.Edit, title = "Edit Profile") { }
+        ProfileOptionItem(icon = Icons.Filled.Edit, title = "Edit Profile") { 
+            onEditProfile()
+        }
+        
+        // Theme Toggle
+        val themeManager = remember { com.atmiya.innovation.ui.theme.ThemeManager(context) }
+        val themePreference by themeManager.themeFlow.collectAsState(initial = "system")
+        
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Brightness4, contentDescription = null, tint = AtmiyaPrimary)
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text(text = "Dark Mode", style = MaterialTheme.typography.bodyLarge)
+                }
+                Switch(
+                    checked = themePreference == "dark",
+                    onCheckedChange = { isChecked ->
+                        scope.launch {
+                            themeManager.setTheme(if (isChecked) "dark" else "light")
+                        }
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = AtmiyaPrimary,
+                        checkedTrackColor = AtmiyaPrimary.copy(alpha = 0.5f)
+                    )
+                )
+            }
+        }
+
         ProfileOptionItem(icon = Icons.Filled.ExitToApp, title = "Logout") {
-            auth.signOut()
-            // TODO: Navigate back to Login (Need to handle in MainActivity)
+            onLogout()
         }
     }
 }

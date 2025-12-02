@@ -1,5 +1,7 @@
 package com.atmiya.innovation.ui.funding
 
+import android.widget.Toast
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,65 +14,47 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.atmiya.innovation.data.FundingApplication
+import com.atmiya.innovation.data.FundingCall
+import com.atmiya.innovation.repository.FirestoreRepository
 import com.atmiya.innovation.ui.theme.AtmiyaPrimary
 import com.atmiya.innovation.ui.theme.AtmiyaSecondary
-
-data class FundingCall(
-    val id: String,
-    val title: String,
-    val investorName: String,
-    val description: String,
-    val sectors: List<String>,
-    val stage: String,
-    val status: String = "Open"
-)
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.Timestamp
+import kotlinx.coroutines.launch
+import java.util.UUID
 
 @Composable
-fun FundingCallsScreen(role: String) {
-    val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-    val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
+fun FundingCallsScreen(role: String, onNavigate: (String) -> Unit) {
+    val repository = remember { FirestoreRepository() }
+    val auth = FirebaseAuth.getInstance()
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     // State for calls
-    var calls by remember { mutableStateOf(listOf<FundingCall>()) }
+    val calls by repository.getFundingCalls().collectAsState(initial = emptyList())
     var searchQuery by remember { mutableStateOf("") }
-
-    // Listen for real-time updates
-    LaunchedEffect(Unit) {
-        db.collection("funding_calls")
-            .whereEqualTo("status", "Open")
-            .addSnapshotListener { snapshot, e ->
-                if (e != null) return@addSnapshotListener
-                
-                if (snapshot != null) {
-                    val newCalls = snapshot.documents.map { doc ->
-                        FundingCall(
-                            id = doc.id,
-                            title = doc.getString("title") ?: "",
-                            investorName = doc.getString("investorName") ?: "Unknown Firm",
-                            description = doc.getString("description") ?: "",
-                            sectors = (doc.get("sectors") as? List<String>) ?: emptyList(),
-                            stage = doc.getString("stage") ?: "",
-                            status = doc.getString("status") ?: "Open"
-                        )
-                    }
-                    calls = newCalls
-                }
-            }
-    }
     
     val filteredCalls = calls.filter { 
         it.title.contains(searchQuery, ignoreCase = true) || 
         it.investorName.contains(searchQuery, ignoreCase = true) ||
-        it.sectors.any { sector -> sector.contains(searchQuery, ignoreCase = true) }
+        (it.sectors ?: emptyList()).any { sector -> sector.contains(searchQuery, ignoreCase = true) }
     }
-
-    var showCreateDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         floatingActionButton = {
-           // ...
+            if (role == "investor") {
+                FloatingActionButton(
+                    onClick = { onNavigate("create_funding_call") },
+                    containerColor = AtmiyaPrimary,
+                    contentColor = Color.White
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Create Call")
+                }
+            }
         }
     ) { innerPadding ->
         LazyColumn(
@@ -103,46 +87,27 @@ fun FundingCallsScreen(role: String) {
                 }
             } else {
                 items(filteredCalls) { call ->
-                    FundingCallCard(call, role)
+                    FundingCallCard(call, role, repository, auth, scope, context, onNavigate)
                 }
             }
         }
-        // ...
     }
-
-        if (showCreateDialog) {
-            CreateFundingCallDialog(
-                onDismiss = { showCreateDialog = false },
-                onCreate = { newCall ->
-                    val user = auth.currentUser
-                    if (user != null) {
-                        val callData = hashMapOf(
-                            "investorId" to user.uid,
-                            "investorName" to "My Firm", // TODO: Fetch from profile
-                            "title" to newCall.title,
-                            "description" to newCall.description,
-                            "sectors" to newCall.sectors, // Currently hardcoded to "General" in dialog
-                            "stage" to newCall.stage,
-                            "status" to "Open",
-                            "timestamp" to com.google.firebase.Timestamp.now()
-                        )
-                        db.collection("funding_calls").add(callData)
-                    }
-                    showCreateDialog = false
-                }
-            )
-        }
-    }
-
+}
 
 @Composable
-fun FundingCallCard(call: FundingCall, role: String) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-    val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
-
+fun FundingCallCard(
+    call: FundingCall, 
+    role: String,
+    repository: FirestoreRepository,
+    auth: FirebaseAuth,
+    scope: kotlinx.coroutines.CoroutineScope,
+    context: android.content.Context,
+    onNavigate: (String) -> Unit
+) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onNavigate("funding_call/${call.id}") },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
@@ -154,14 +119,21 @@ fun FundingCallCard(call: FundingCall, role: String) {
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            Text(text = call.description, style = MaterialTheme.typography.bodyMedium)
+            Text(text = call.description, style = MaterialTheme.typography.bodyMedium, maxLines = 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             
             Spacer(modifier = Modifier.height(12.dp))
             
             Row {
-                SuggestionChip(onClick = {}, label = { Text(call.stage) })
-                Spacer(modifier = Modifier.width(8.dp))
-                call.sectors.forEach { sector ->
+                val stages = call.stages ?: emptyList()
+                stages.take(3).forEach { stage ->
+                    SuggestionChip(onClick = {}, label = { Text(stage) })
+                    Spacer(modifier = Modifier.width(4.dp))
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Row {
+                val sectors = call.sectors ?: emptyList()
+                sectors.take(3).forEach { sector ->
                     SuggestionChip(onClick = {}, label = { Text(sector) })
                     Spacer(modifier = Modifier.width(4.dp))
                 }
@@ -172,18 +144,21 @@ fun FundingCallCard(call: FundingCall, role: String) {
             if (role == "startup") {
                 Button(
                     onClick = {
-                        val user = auth.currentUser
-                        if (user != null) {
-                            val application = hashMapOf(
-                                "callId" to call.id,
-                                "startupId" to user.uid,
-                                "status" to "Pending",
-                                "timestamp" to com.google.firebase.Timestamp.now()
-                            )
-                            db.collection("applications").add(application)
-                                .addOnSuccessListener {
-                                    android.widget.Toast.makeText(context, "Application Sent!", android.widget.Toast.LENGTH_SHORT).show()
-                                }
+                        scope.launch {
+                            val user = auth.currentUser
+                            if (user != null) {
+                                val userProfile = repository.getUser(user.uid)
+                                val application = FundingApplication(
+                                    id = UUID.randomUUID().toString(),
+                                    callId = call.id,
+                                    startupId = user.uid,
+                                    startupName = userProfile?.name ?: "Unknown Startup",
+                                    status = "applied",
+                                    appliedAt = Timestamp.now()
+                                )
+                                repository.applyToFundingCall(application)
+                                Toast.makeText(context, "Application Sent!", Toast.LENGTH_SHORT).show()
+                            }
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -201,37 +176,4 @@ fun FundingCallCard(call: FundingCall, role: String) {
             }
         }
     }
-}
-
-@Composable
-fun CreateFundingCallDialog(onDismiss: () -> Unit, onCreate: (FundingCall) -> Unit) {
-    var title by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var stage by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Create Funding Call") },
-        text = {
-            Column {
-                OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Title") })
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Description") })
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = stage, onValueChange = { stage = it }, label = { Text("Target Stage") })
-            }
-        },
-        confirmButton = {
-            Button(onClick = {
-                onCreate(FundingCall("new", title, "My Firm", description, listOf("General"), stage))
-            }) {
-                Text("Post")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
 }

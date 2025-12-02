@@ -10,52 +10,59 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.atmiya.innovation.data.Investor
+import com.atmiya.innovation.repository.FirestoreRepository
 import com.atmiya.innovation.ui.theme.AtmiyaPrimary
 import com.atmiya.innovation.ui.theme.AtmiyaSecondary
-
-data class Investor(
-    val id: String,
-    val name: String,
-    val firmName: String,
-    val sectors: List<String>,
-    val ticketSize: String
-)
+import com.atmiya.innovation.ui.components.SoftCard
 
 @Composable
-fun InvestorsScreen() {
-    // Mock Data
-    val investors = listOf(
-        Investor("1", "Ravi Patel", "Gujarat Ventures", listOf("Agri-tech", "Food"), "₹10L - ₹50L"),
-        Investor("2", "Sarah Lee", "Global Impact Fund", listOf("Health-tech", "Ed-tech"), "₹50L - ₹2Cr"),
-        Investor("3", "Atmiya Angel Network", "AAN", listOf("All Sectors"), "₹5L - ₹25L")
-    )
+fun InvestorsScreen(onInvestorClick: (String) -> Unit) {
+    val repository = remember { FirestoreRepository() }
+    var investors by remember { mutableStateOf<List<Investor>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        item {
-            Text(
-                text = "Connect with Investors",
-                style = MaterialTheme.typography.headlineMedium,
-                color = AtmiyaPrimary,
-                fontWeight = FontWeight.Bold
-            )
+    LaunchedEffect(Unit) {
+        try {
+            investors = repository.getAllInvestors()
+        } catch (e: Exception) {
+            // Handle error
+        } finally {
+            isLoading = false
         }
-        items(investors) { investor ->
-            InvestorCard(investor)
+    }
+
+    if (isLoading) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = AtmiyaPrimary)
+        }
+    } else {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                Text(
+                    text = "Connect with Investors",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = AtmiyaPrimary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            items(investors) { investor ->
+                InvestorCard(investor, onInvestorClick)
+            }
         }
     }
 }
 
 @Composable
-fun InvestorCard(investor: Investor) {
-    Card(
+fun InvestorCard(investor: Investor, onInvestorClick: (String) -> Unit) {
+    SoftCard(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        elevation = 2.dp
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -72,7 +79,8 @@ fun InvestorCard(investor: Investor) {
                         Text(
                             text = investor.name.take(1),
                             color = Color.White,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleLarge
                         )
                     }
                 }
@@ -84,18 +92,18 @@ fun InvestorCard(investor: Investor) {
             }
             Spacer(modifier = Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(text = "Sectors", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                    Text(text = investor.sectors.joinToString(", "), style = MaterialTheme.typography.bodySmall)
+                    Text(text = investor.sectorsOfInterest.joinToString(", "), style = MaterialTheme.typography.bodySmall)
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text(text = "Ticket Size", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                    Text(text = investor.ticketSize, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                    Text(text = "${investor.ticketSizeMin} - ${investor.ticketSizeMax}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
                 }
             }
             Spacer(modifier = Modifier.height(12.dp))
             Button(
-                onClick = { /* TODO: View Details */ },
+                onClick = { onInvestorClick(investor.uid) },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = AtmiyaPrimary)
             ) {
@@ -104,3 +112,4 @@ fun InvestorCard(investor: Investor) {
         }
     }
 }
+

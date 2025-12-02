@@ -2,7 +2,7 @@ package com.atmiya.innovation.logic
 
 import com.atmiya.innovation.ui.onboarding.ChatMessage
 
-class OnboardingManager(private val role: String, private val startupType: String?) {
+class OnboardingManager(private val role: String, private val startupType: String?, private val isTestMode: Boolean = false) {
 
     private var currentStep = 0
     private val answers = mutableMapOf<String, String>()
@@ -41,6 +41,8 @@ class OnboardingManager(private val role: String, private val startupType: Strin
     }
 
     private fun saveDataToFirestore() {
+        if (isTestMode) return // Skip for unit tests
+
         // TODO: Save 'answers' map to Firestore 'users' or specific collection
         val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
         val auth = com.google.firebase.auth.FirebaseAuth.getInstance()

@@ -1,5 +1,8 @@
 package com.atmiya.innovation.ui.video
 
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -13,47 +16,38 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.atmiya.innovation.data.MentorVideo
+import com.atmiya.innovation.repository.FirestoreRepository
 import com.atmiya.innovation.ui.theme.AtmiyaPrimary
 import com.atmiya.innovation.ui.theme.AtmiyaSecondary
-
-data class MentorVideo(
-    val id: String,
-    val title: String,
-    val mentorName: String,
-    val duration: String,
-    val videoUrl: String // In real app, this would be a URL
-)
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.Timestamp
+import kotlinx.coroutines.launch
+import java.util.UUID
 
 @Composable
 fun MentorVideoScreen(role: String) {
-    val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-    val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
+    val repository = remember { FirestoreRepository() }
+    val auth = FirebaseAuth.getInstance()
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     // State for videos
     var videos by remember { mutableStateOf(listOf<MentorVideo>()) }
+    var isLoading by remember { mutableStateOf(true) }
 
-    // Listen for real-time updates
+    // Fetch videos
     LaunchedEffect(Unit) {
-        db.collection("mentor_videos")
-            .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
-            .addSnapshotListener { snapshot, e ->
-                if (e != null) return@addSnapshotListener
-                
-                if (snapshot != null) {
-                    val newVideos = snapshot.documents.map { doc ->
-                        MentorVideo(
-                            id = doc.id,
-                            title = doc.getString("title") ?: "",
-                            mentorName = doc.getString("mentorName") ?: "Unknown Mentor",
-                            duration = doc.getString("duration") ?: "00:00",
-                            videoUrl = doc.getString("videoUrl") ?: ""
-                        )
-                    }
-                    videos = newVideos
-                }
-            }
+        try {
+            videos = repository.getMentorVideos()
+        } catch (e: Exception) {
+            Toast.makeText(context, "Error fetching videos", Toast.LENGTH_SHORT).show()
+        } finally {
+            isLoading = false
+        }
     }
 
     var showUploadDialog by remember { mutableStateOf(false) }
@@ -71,28 +65,34 @@ fun MentorVideoScreen(role: String) {
             }
         }
     ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            item {
-                Text(
-                    text = "Mentor Video Library",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = AtmiyaPrimary,
-                    fontWeight = FontWeight.Bold
-                )
+        if (isLoading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = AtmiyaPrimary)
             }
-            if (videos.isEmpty()) {
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
                 item {
-                    Text("No videos available yet.", color = Color.Gray)
+                    Text(
+                        text = "Mentor Video Library",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = AtmiyaPrimary,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
-            } else {
-                items(videos) { video ->
-                    VideoCard(video)
+                if (videos.isEmpty()) {
+                    item {
+                        Text("No videos available yet.", color = Color.Gray)
+                    }
+                } else {
+                    items(videos) { video ->
+                        VideoCard(video)
+                    }
                 }
             }
         }
@@ -101,17 +101,21 @@ fun MentorVideoScreen(role: String) {
             UploadVideoDialog(
                 onDismiss = { showUploadDialog = false },
                 onUpload = { newVideo ->
-                    val user = auth.currentUser
-                    if (user != null) {
-                        val videoData = hashMapOf(
-                            "mentorId" to user.uid,
-                            "mentorName" to "My Name", // TODO: Fetch from profile
-                            "title" to newVideo.title,
-                            "videoUrl" to newVideo.videoUrl,
-                            "duration" to "10:00", // Placeholder duration
-                            "timestamp" to com.google.firebase.Timestamp.now()
-                        )
-                        db.collection("mentor_videos").add(videoData)
+                    scope.launch {
+                        val user = auth.currentUser
+                        if (user != null) {
+                            val userProfile = repository.getUser(user.uid)
+                            val video = newVideo.copy(
+                                id = UUID.randomUUID().toString(),
+                                mentorId = user.uid,
+                                mentorName = userProfile?.name ?: "Unknown Mentor",
+                                createdAt = Timestamp.now()
+                            )
+                            repository.addMentorVideo(video)
+                            // Refresh list
+                            videos = repository.getMentorVideos()
+                            Toast.makeText(context, "Video Added", Toast.LENGTH_SHORT).show()
+                        }
                     }
                     showUploadDialog = false
                 }
@@ -122,7 +126,7 @@ fun MentorVideoScreen(role: String) {
 
 @Composable
 fun VideoCard(video: MentorVideo) {
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
     
     Card(
         modifier = Modifier
@@ -131,13 +135,13 @@ fun VideoCard(video: MentorVideo) {
             .clickable {
                 if (video.videoUrl.isNotBlank()) {
                     try {
-                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(video.videoUrl))
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(video.videoUrl))
                         context.startActivity(intent)
                     } catch (e: Exception) {
-                        android.widget.Toast.makeText(context, "Could not open video", android.widget.Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Could not open video", Toast.LENGTH_SHORT).show()
                     }
                 } else {
-                    android.widget.Toast.makeText(context, "Invalid Video URL", android.widget.Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Invalid Video URL", Toast.LENGTH_SHORT).show()
                 }
             },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -180,6 +184,7 @@ fun VideoCard(video: MentorVideo) {
 fun UploadVideoDialog(onDismiss: () -> Unit, onUpload: (MentorVideo) -> Unit) {
     var title by remember { mutableStateOf("") }
     var url by remember { mutableStateOf("") }
+    var duration by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -189,11 +194,24 @@ fun UploadVideoDialog(onDismiss: () -> Unit, onUpload: (MentorVideo) -> Unit) {
                 OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Video Title") })
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(value = url, onValueChange = { url = it }, label = { Text("Video URL / Link") })
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(value = duration, onValueChange = { duration = it }, label = { Text("Duration (e.g. 10:00)") })
             }
         },
         confirmButton = {
             Button(onClick = {
-                onUpload(MentorVideo("new", title, "Me", "00:00", url))
+                onUpload(MentorVideo(
+                    id = "", // Set by caller
+                    mentorId = "", // Set by caller
+                    mentorName = "", // Set by caller
+                    title = title,
+                    description = "",
+                    videoUrl = url,
+                    thumbnailUrl = "",
+                    duration = duration.ifBlank { "00:00" },
+                    viewsCount = 0,
+                    createdAt = null
+                ))
             }) {
                 Text("Upload")
             }

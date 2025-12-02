@@ -19,20 +19,30 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         // Handle FCM messages here.
         val title = remoteMessage.notification?.title ?: "New Notification"
         val body = remoteMessage.notification?.body ?: ""
-        val screen = remoteMessage.data["screen"] // e.g., "funding", "wall"
+        val data = remoteMessage.data
         
-        sendNotification(title, body, screen)
+        val type = data["type"] // "funding_call", "wall_post", "mentor_video"
+        val id = when(type) {
+            "funding_call" -> data["fundingCallId"]
+            "wall_post" -> data["postId"]
+            "mentor_video" -> data["videoId"]
+            else -> null
+        }
+
+        sendNotification(title, body, type, id)
     }
 
     override fun onNewToken(token: String) {
         // Send token to your app server.
     }
 
-    private fun sendNotification(title: String, messageBody: String, screen: String?) {
+    private fun sendNotification(title: String, messageBody: String, type: String?, id: String?) {
         val intent = Intent(this, MainActivity::class.java)
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-        if (screen != null) {
-            intent.putExtra("navigation_destination", screen)
+        
+        if (type != null && id != null) {
+            intent.putExtra("navigation_destination", type)
+            intent.putExtra("navigation_id", id)
         }
         
         val pendingIntent = PendingIntent.getActivity(
@@ -40,7 +50,13 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        val channelId = "fcm_default_channel"
+        val channelId = when(type) {
+            "funding_call" -> "channel_funding_calls"
+            "wall_post" -> "channel_wall_posts"
+            "mentor_video" -> "channel_mentor_videos"
+            else -> "fcm_default_channel"
+        }
+        
         val defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
         val notificationBuilder = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(R.mipmap.ic_launcher)
@@ -54,14 +70,20 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
         // Since android Oreo notification channel is needed.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channelName = when(type) {
+                "funding_call" -> "Funding Calls"
+                "wall_post" -> "Wall Posts"
+                "mentor_video" -> "Mentor Videos"
+                else -> "General Notifications"
+            }
             val channel = NotificationChannel(
                 channelId,
-                "Channel human readable title",
+                channelName,
                 NotificationManager.IMPORTANCE_DEFAULT
             )
             notificationManager.createNotificationChannel(channel)
         }
 
-        notificationManager.notify(0 /* ID of notification */, notificationBuilder.build())
+        notificationManager.notify(System.currentTimeMillis().toInt(), notificationBuilder.build())
     }
 }

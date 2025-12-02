@@ -108,15 +108,15 @@ fun RoleCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(120.dp)
+            .wrapContentHeight() // Allow dynamic height
             .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = color)
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
+                .fillMaxWidth() // Changed from fillMaxSize
+                .padding(24.dp), // Increased padding
             verticalArrangement = Arrangement.Center
         ) {
             Text(

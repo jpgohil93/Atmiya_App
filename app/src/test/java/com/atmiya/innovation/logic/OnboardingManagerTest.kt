@@ -7,7 +7,7 @@ class OnboardingManagerTest {
 
     @Test
     fun `test EDP flow sequence`() {
-        val manager = OnboardingManager("startup", "edp")
+        val manager = OnboardingManager("startup", "edp", isTestMode = true)
         
         // Q1: Name
         var response = manager.processAnswer("John Doe")
@@ -32,7 +32,7 @@ class OnboardingManagerTest {
 
     @Test
     fun `test Accelerator flow sequence`() {
-        val manager = OnboardingManager("startup", "accelerator")
+        val manager = OnboardingManager("startup", "accelerator", isTestMode = true)
         
         // Q1: Startup Name
         var response = manager.processAnswer("AgriSmart")
@@ -41,18 +41,22 @@ class OnboardingManagerTest {
 
     @Test
     fun `test Investor flow sequence`() {
-        val manager = OnboardingManager("investor", null)
+        val manager = OnboardingManager("investor", null, isTestMode = true)
         
-        // Q1: Firm Name
-        var response = manager.processAnswer("Ventures LLP")
-        assertEquals("Which sectors do you invest in?", response?.text)
+        // Q1: Name
+        var response = manager.processAnswer("Jane Doe")
+        assertEquals("What is your firm/organisation name?", response?.text)
+
+        // Q2: Firm Name
+        response = manager.processAnswer("Ventures LLP")
+        assertEquals("What is your typical ticket size range?", response?.text)
     }
 
     @Test
     fun `test Edge Case - Empty Answer`() {
         // Note: The current implementation might not handle empty strings explicitly in processAnswer 
         // if the UI blocks it. But let's see what happens if we pass one.
-        val manager = OnboardingManager("startup", "edp")
+        val manager = OnboardingManager("startup", "edp", isTestMode = true)
         val response = manager.processAnswer("")
         // Assuming it proceeds because validation is currently in UI. 
         // Ideally, manager should validate. 
@@ -61,7 +65,7 @@ class OnboardingManagerTest {
     
     @Test
     fun `test Completion`() {
-        val manager = OnboardingManager("startup", "edp")
+        val manager = OnboardingManager("startup", "edp", isTestMode = true)
         manager.processAnswer("A") // Name
         manager.processAnswer("B") // City
         manager.processAnswer("C") // Sector
