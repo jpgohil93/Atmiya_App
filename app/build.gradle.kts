@@ -24,11 +24,6 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
-        
-        // Ensure Universal APK with native libs
-        ndk {
-            abiFilters += listOf("armeabi-v7a", "arm64-v8a")
-        }
     }
 
 
@@ -151,4 +146,20 @@ dependencies {
 
     // Coroutines Play Services (for await())
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
+    
+    // Accompanist for Pager and SwipeRefresh
+    implementation("com.google.accompanist:accompanist-pager:0.32.0")
+    implementation("com.google.accompanist:accompanist-pager-indicators:0.32.0")
+    implementation("com.google.accompanist:accompanist-swiperefresh:0.32.0")
+
+    // Media3 ExoPlayer
+    implementation("androidx.media3:media3-exoplayer:1.3.1")
+    implementation("androidx.media3:media3-ui:1.3.1")
+    implementation("androidx.media3:media3-common:1.3.1")
+
+    // Image Cropper
+    // Image Cropper
+    implementation("com.github.CanHub:Android-Image-Cropper:4.3.2")
+    
+
 }

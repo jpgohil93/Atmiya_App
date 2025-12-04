@@ -88,7 +88,7 @@ fun ChatOnboardingScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF5F5F5))
+            .background(MaterialTheme.colorScheme.background)
     ) {
         // Chat List
         LazyColumn(
@@ -106,7 +106,7 @@ fun ChatOnboardingScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color.White)
+                .background(MaterialTheme.colorScheme.surface)
                 .padding(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -128,7 +128,13 @@ fun ChatOnboardingScreen(
                     onValueChange = { inputText = it },
                     modifier = Modifier.weight(1f),
                     placeholder = { Text("Type your answer...") },
-                    shape = RoundedCornerShape(24.dp)
+                    shape = RoundedCornerShape(24.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                    )
                 )
             }
             
@@ -174,7 +180,7 @@ fun ChatBubble(message: ChatMessage) {
         horizontalAlignment = if (message.isFromUser) Alignment.End else Alignment.Start
     ) {
         Surface(
-            color = if (message.isFromUser) AtmiyaPrimary else Color.White,
+            color = if (message.isFromUser) AtmiyaPrimary else MaterialTheme.colorScheme.surfaceVariant,
             shape = RoundedCornerShape(
                 topStart = 16.dp,
                 topEnd = 16.dp,
@@ -186,7 +192,7 @@ fun ChatBubble(message: ChatMessage) {
             Text(
                 text = message.text,
                 modifier = Modifier.padding(12.dp),
-                color = if (message.isFromUser) Color.White else Color.Black
+                color = if (message.isFromUser) Color.White else MaterialTheme.colorScheme.onSurface
             )
         }
     }

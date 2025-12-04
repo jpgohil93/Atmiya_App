@@ -21,12 +21,12 @@
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:icon="@drawable/app_icon_final"
+        android:icon="@drawable/netfund_icon"
         android:label="@string/app_name"
-        android:roundIcon="@drawable/app_icon_final"
+        android:roundIcon="@drawable/netfund_icon"
         android:supportsRtl="true"
         android:theme="@style/Theme.AtmiyaInnovation"
-
+        android:hardwareAccelerated="true"
 
         tools:replace="android:allowBackup">
         <activity
@@ -49,6 +49,21 @@
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <activity
+            android:name="com.canhub.cropper.CropImageActivity"
+            android:theme="@style/Base.Theme.AppCompat"
+            android:exported="true" />
     </application>
 
 </manifest>

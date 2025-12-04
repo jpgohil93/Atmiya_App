@@ -57,9 +57,8 @@ fun StartupHome(
         }
         
         try {
-            repository.getFundingCalls().collect { calls ->
-                fundingCount = calls.size
-            }
+            val calls = repository.getFundingCalls(limit = 10)
+            fundingCount = calls.size
         } catch (e: Exception) {
             fundingCount = 0
         }

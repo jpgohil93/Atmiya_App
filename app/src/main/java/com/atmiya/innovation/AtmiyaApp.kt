@@ -11,5 +11,9 @@ class AtmiyaApp : Application() {
             .setCacheSizeBytes(com.google.firebase.firestore.FirebaseFirestoreSettings.CACHE_SIZE_UNLIMITED)
             .build()
         com.google.firebase.firestore.FirebaseFirestore.getInstance().firestoreSettings = settings
+
+        // YoutubeDL init removed
     }
+
+
 }

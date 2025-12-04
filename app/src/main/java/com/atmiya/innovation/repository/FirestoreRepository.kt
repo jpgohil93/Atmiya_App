@@ -93,12 +93,12 @@ class FirestoreRepository {
 
     // --- Wall (Real-time) ---
 
-    fun getWallPosts(filterType: String = "all", sector: String? = null): Flow<List<WallPost>> = callbackFlow {
-        log("getWallPosts: filter=$filterType, sector=$sector")
+    fun getWallPosts(filterType: String = "all", sector: String? = null, limit: Long = 20): Flow<List<WallPost>> = callbackFlow {
+        log("getWallPosts: filter=$filterType, sector=$sector, limit=$limit")
         var query = db.collection("wallPosts")
             .whereEqualTo("active", true)
             .orderBy("createdAt", Query.Direction.DESCENDING)
-            .limit(20) // Pagination limit
+            .limit(limit) // Pagination limit
 
         if (filterType == "funding_call") {
             query = query.whereEqualTo("postType", "funding_call")
@@ -400,17 +400,17 @@ class FirestoreRepository {
 
     fun getApplicationsForCall(callId: String): Flow<List<FundingApplication>> = callbackFlow {
         val listener = db.collection("fundingCalls").document(callId)
-            .collection("applications")
-            .orderBy("appliedAt", Query.Direction.DESCENDING)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    log("getApplicationsForCall ERROR: ${error.message}")
-                    trySend(emptyList())
-                    return@addSnapshotListener
-                }
-                val apps = snapshot?.documents?.mapNotNull { it.toObject<FundingApplication>()?.copy(id = it.id) } ?: emptyList()
-                trySend(apps)
+        .collection("applications")
+        .orderBy("appliedAt", Query.Direction.DESCENDING)
+        .addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                log("getApplicationsForCall ERROR: ${error.message}")
+                trySend(emptyList())
+                return@addSnapshotListener
             }
+            val apps = snapshot?.documents?.mapNotNull { it.toObject<FundingApplication>()?.copy(id = it.id) } ?: emptyList()
+            trySend(apps)
+        }
         awaitClose { listener.remove() }
     }
 
@@ -420,6 +420,23 @@ class FirestoreRepository {
             .get().await().toObject<FundingApplication>()?.copy(id = applicationId)
     }
 
+    suspend fun createTestFundingCall() {
+        val id = java.util.UUID.randomUUID().toString()
+        val call = FundingCall(
+            id = id,
+            title = "Seed Funding for AI Startups",
+            investorName = "Venture Catalysts",
+            description = "Looking for early-stage AI startups focusing on generative models.",
+            sectors = listOf("AI", "SaaS"),
+            minTicketAmount = "50L",
+            maxTicketAmount = "2Cr",
+            applicationDeadline = Timestamp(System.currentTimeMillis() / 1000 + 86400 * 7, 0), // 7 days from now
+            isActive = true,
+            createdAt = Timestamp.now()
+        )
+        db.collection("fundingCalls").document(id).set(call).await()
+    }
+
     suspend fun hasApplied(callId: String, startupId: String): Boolean {
         val snapshot = db.collection("fundingCalls").document(callId)
             .collection("applications")
@@ -427,6 +444,43 @@ class FirestoreRepository {
             .limit(1)
             .get().await()
         return !snapshot.isEmpty
+    }
+
+    suspend fun getFundingCalls(limit: Int = 20): List<FundingCall> {
+        val start = System.currentTimeMillis()
+        try {
+            // DEBUG: Relaxed query to find ANY funding calls
+            val snapshot = db.collection("fundingCalls")
+                // .whereEqualTo("isActive", true) // Commented out for debugging
+                // .orderBy("createdAt", Query.Direction.DESCENDING) // Commented out to avoid index issues
+                .limit(limit.toLong())
+                .get().await()
+            logPerf("getFundingCalls", System.currentTimeMillis() - start)
+            return snapshot.documents.mapNotNull { doc ->
+                doc.toObject<FundingCall>()?.copy(id = doc.id)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("FirestoreRepo", "Error fetching funding calls", e)
+            return emptyList()
+        }
+    }
+
+    suspend fun getRecommendedFundingCalls(sector: String, limit: Int = 5): List<FundingCall> {
+        val start = System.currentTimeMillis()
+        try {
+            val snapshot = db.collection("fundingCalls")
+                .whereEqualTo("isActive", true)
+                .whereArrayContains("sectors", sector)
+                .limit(limit.toLong())
+                .get().await()
+            logPerf("getRecommendedFundingCalls", System.currentTimeMillis() - start)
+            return snapshot.documents.mapNotNull { doc ->
+                doc.toObject<FundingCall>()?.copy(id = doc.id)
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("FirestoreRepo", "Index likely missing for recommended calls: ${e.message}")
+            return getFundingCalls(20).filter { it.sectors.contains(sector) }
+        }
     }
 
     // --- Mentor Videos ---
@@ -445,6 +499,61 @@ class FirestoreRepository {
         db.collection("mentorVideos").document(video.id).set(video).await()
         logPerf("addMentorVideo", System.currentTimeMillis() - start)
     }
+
+    // --- Featured Videos ---
+
+    suspend fun getFeaturedVideos(): List<FeaturedVideo> {
+        val start = System.currentTimeMillis()
+        val videos = db.collection("featuredVideos")
+            .whereEqualTo("isActive", true)
+            .orderBy("order")
+            .limit(3)
+            .get()
+            .await()
+            .mapNotNull { doc ->
+                try {
+                    doc.toObject<FeaturedVideo>()?.copy(id = doc.id)
+                } catch (e: Exception) {
+                    android.util.Log.e("FirestoreRepo", "Failed to parse FeaturedVideo: ${doc.id}", e)
+                    null
+                }
+            }
+        logPerf("getFeaturedVideos", System.currentTimeMillis() - start)
+        return videos
+    }
+
+    // --- AIF Events ---
+
+    suspend fun getAIFEvents(): List<AIFEvent> {
+        val start = System.currentTimeMillis()
+        try {
+            val snapshot = db.collection("aifEvents").get().await()
+            logPerf("getAIFEvents", System.currentTimeMillis() - start)
+            return snapshot.documents.mapNotNull { doc ->
+                doc.toObject<AIFEvent>()?.copy(id = doc.id)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("FirestoreRepo", "Error fetching aifEvents: ${e.message}")
+            return emptyList()
+        }
+    }
+
+
+
+    suspend fun getAIFEvent(eventId: String): AIFEvent? {
+        val start = System.currentTimeMillis()
+        try {
+            val doc = db.collection("aifEvents").document(eventId).get().await()
+            if (doc.exists()) {
+                logPerf("getAIFEvent", System.currentTimeMillis() - start)
+                return doc.toObject<AIFEvent>()?.copy(id = eventId)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("FirestoreRepo", "Error fetching aifEvent: ${e.message}")
+        }
+        return null
+    }
+
 
     // --- Verification ---
 
@@ -560,4 +669,6 @@ class FirestoreRepository {
             ))
         }.await()
     }
+
+
 }

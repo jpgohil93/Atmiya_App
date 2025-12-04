@@ -5,7 +5,7 @@ import androidx.compose.ui.graphics.Color
 // Atmiya Brand Colors
 // Atmiya Brand Colors
 val AtmiyaPrimary = Color(0xFF000000) // Black
-val AtmiyaSecondary = Color(0xFF007AFF) // Blue
+val AtmiyaSecondary = Color(0xFFFF3131) // Red (Brand Accent)
 val AtmiyaAccent = Color(0xFFFF3131) // Red
 
 // Soft UI - Light Mode

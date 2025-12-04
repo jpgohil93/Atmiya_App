@@ -35,31 +35,77 @@ class WallViewModel : ViewModel() {
     private val _selectedSector = MutableStateFlow("All")
     val selectedSector: StateFlow<String> = _selectedSector.asStateFlow()
 
+    private val _connections = MutableStateFlow<List<com.atmiya.innovation.data.User>>(emptyList())
+    val connections: StateFlow<List<com.atmiya.innovation.data.User>> = _connections.asStateFlow()
+
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
+
+    private val _postLimit = MutableStateFlow(20L)
+    private var loadJob: kotlinx.coroutines.Job? = null
+
     init {
         loadPosts()
     }
 
+    fun clearError() {
+        _error.value = null
+    }
+
     fun setFilter(type: String) {
         _filterType.value = type
-        loadPosts()
+        _postLimit.value = 20L // Reset limit on filter change
+        if (type == "connections") {
+            loadConnections()
+        } else {
+            loadPosts()
+        }
     }
 
     fun setSector(sector: String) {
         _selectedSector.value = sector
+        _postLimit.value = 20L // Reset limit on sector change
         loadPosts()
     }
 
     fun refresh() {
-        loadPosts()
+        _postLimit.value = 20L // Reset limit on refresh
+        if (_filterType.value == "connections") {
+            loadConnections()
+        } else {
+            loadPosts()
+        }
+    }
+
+    fun loadMore() {
+        if (_filterType.value != "connections") {
+            _postLimit.value += 20
+            loadPosts()
+        }
     }
 
     private fun loadPosts() {
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             _isLoading.value = true
-            firestoreRepository.getWallPosts(_filterType.value, _selectedSector.value).collect {
+            firestoreRepository.getWallPosts(_filterType.value, _selectedSector.value, _postLimit.value).collect {
                 _posts.value = it
                 _isLoading.value = false
             }
+        }
+    }
+
+    private fun loadConnections() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            // Simulating connections by fetching all users for now
+            // In a real app, this would be firestoreRepository.getConnections(userId)
+            val startups = firestoreRepository.getUsersByRole("startup")
+            val investors = firestoreRepository.getUsersByRole("investor")
+            val mentors = firestoreRepository.getUsersByRole("mentor")
+            
+            _connections.value = (startups + investors + mentors).distinctBy { it.uid }
+            _isLoading.value = false
         }
     }
 
@@ -81,7 +127,7 @@ class WallViewModel : ViewModel() {
                     storageRepository.validateWallMedia(context, uri, isVideo)
                 } catch (e: Exception) {
                     android.util.Log.e("WallViewModel", "Validation failed", e)
-                    // TODO: Emit error state to UI
+                    _error.value = e.message ?: "Validation failed"
                     return@launch
                 }
             }
@@ -129,10 +175,7 @@ class WallViewModel : ViewModel() {
                 android.util.Log.e("WallViewModel", "Error creating post", e)
                 // Revert optimistic update on failure
                 _posts.value = _posts.value.filter { it.id != postId }
-                
-                withContext(Dispatchers.Main) {
-                    android.widget.Toast.makeText(context, "Failed to create post: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
-                }
+                _error.value = "Failed to create post: ${e.message}"
             }
         }
     }

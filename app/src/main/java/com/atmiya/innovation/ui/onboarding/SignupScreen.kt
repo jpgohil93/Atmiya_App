@@ -135,8 +135,36 @@ fun SignupScreen(
     var showErrors by remember { mutableStateOf(false) }
 
     // -- Launchers --
+    // -- Launchers --
+    val cropImageLauncher = rememberLauncherForActivityResult(
+        contract = com.canhub.cropper.CropImageContract()
+    ) { result ->
+        if (result.isSuccessful) {
+            val uri = result.uriContent
+            if (uri != null) profilePhotoUri = uri
+        } else {
+            val exception = result.error
+            if (exception != null) {
+                Toast.makeText(context, "Crop failed: ${exception.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     val photoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (uri != null) profilePhotoUri = uri
+        if (uri != null) {
+            val cropOptions = com.canhub.cropper.CropImageOptions().apply {
+                imageSourceIncludeGallery = true
+                imageSourceIncludeCamera = true
+                cropShape = com.canhub.cropper.CropImageView.CropShape.OVAL
+                aspectRatioX = 1
+                aspectRatioY = 1
+                fixAspectRatio = true
+                guidelines = com.canhub.cropper.CropImageView.Guidelines.ON
+            }
+            cropImageLauncher.launch(
+                com.canhub.cropper.CropImageContractOptions(uri, cropOptions)
+            )
+        }
     }
     val logoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) logoUri = uri

@@ -27,6 +27,7 @@ fun WallPostDetailScreen(
     val repository = remember { FirestoreRepository() }
     val auth = FirebaseAuth.getInstance()
     val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
     
     var post by remember { mutableStateOf<WallPost?>(null) }
     var isLoading by remember { mutableStateOf(true) }
@@ -101,6 +102,9 @@ fun WallPostDetailScreen(
                                 android.util.Log.e("WallPostDetailScreen", "Error voting", e)
                             }
                         }
+                    },
+                    onConnect = {
+                        android.widget.Toast.makeText(context, "Connect request sent to ${safePost.authorName}", android.widget.Toast.LENGTH_SHORT).show()
                     }
                 )
             }

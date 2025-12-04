@@ -175,6 +175,36 @@ data class MentorVideo(
     val createdAt: Timestamp? = null
 )
 
+data class FeaturedVideo(
+    val id: String = "",
+    val title: String = "",
+    val description: String = "",
+    val videoUrl: String = "",
+    val thumbnailUrl: String? = null,
+    val category: String = "", // "educational", "promotional", "tutorial"
+    val duration: String = "",
+    val order: Int = 0, // For sorting
+    @get:com.google.firebase.firestore.PropertyName("isActive")
+    val isActive: Boolean = true,
+    val createdAt: Timestamp? = null
+)
+
+data class AIFEvent(
+    val id: String = "",
+    val title: String = "",
+    val description: String = "",
+    val startDate: Timestamp? = null,
+    val endDate: Timestamp? = null,
+    val venue: String = "",
+    val city: String = "",
+    val bannerUrl: String? = null,
+    val status: String = "upcoming", // "upcoming", "ongoing", "completed"
+    val agenda: String = "",
+    val registrationUrl: String? = null,
+    val createdAt: Timestamp? = null
+)
+
+
 data class ImportRecord(
     val id: String = "",
     val role: String = "", // "startup", "investor", "mentor"

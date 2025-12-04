@@ -99,6 +99,48 @@ fun LoginScreen(
     // State to track if verification is already done (to prevent race conditions)
     var isVerificationCompleted by remember { mutableStateOf(false) }
 
+    // Focus requester for phone input
+    val phoneFocusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
+
+    // Permission Request Logic
+    val permissions = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+        arrayOf(
+            android.Manifest.permission.CAMERA,
+            android.Manifest.permission.POST_NOTIFICATIONS
+        )
+    } else {
+        arrayOf(android.Manifest.permission.CAMERA)
+    }
+    
+    val launcher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        // Handle permission results if needed
+    }
+
+    LaunchedEffect(Unit) {
+        // Check if any permission is not granted before requesting
+        val permissionsToRequest = permissions.filter { permission ->
+            androidx.core.content.ContextCompat.checkSelfPermission(
+                context,
+                permission
+            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        }
+        
+        // Only request if there are permissions that haven't been granted
+        if (permissionsToRequest.isNotEmpty()) {
+            launcher.launch(permissionsToRequest.toTypedArray())
+        }
+        
+        // Delay to ensure layout is ready, then request focus
+        kotlinx.coroutines.delay(300)
+        try {
+            phoneFocusRequester.requestFocus()
+        } catch (e: Exception) {
+            // Ignore focus errors
+        }
+    }
+
     fun getSyntheticEmail(phone: String) = "$phone@atmiya.com"
 
     fun sendOtp(phone: String, isResend: Boolean = false) {
@@ -265,12 +307,13 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(60.dp)) // Add top spacing for visual balance
             // Logo Card
             // Logo
+            // Logo
             Image(
-                painter = painterResource(id = R.drawable.atmiya_logo_new),
-                contentDescription = "Atmiya Innovation Logo",
+                painter = painterResource(id = R.drawable.netfund_logo),
+                contentDescription = "Netfund Logo",
                 modifier = Modifier
-                    .width(250.dp) // Bigger width
-                    .height(250.dp) // Maintain aspect ratio roughly or let it wrap
+                    .width(400.dp) // Maximized width
+                    .height(220.dp) // Maximized height
                     .padding(bottom = 16.dp)
             )
 
@@ -350,6 +393,7 @@ fun LoginScreen(
                             },
                             label = "Mobile Number",
                             placeholder = "9876543210",
+                            modifier = Modifier.focusRequester(phoneFocusRequester),
                             leadingIcon = {
                                 Text(
                                     "+91",
@@ -454,7 +498,7 @@ fun LoginScreen(
                             onClick = onSignupClick,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("New to Atmiya? Sign Up", color = AtmiyaPrimary)
+                            Text("New to Netfund? Sign Up", color = AtmiyaPrimary)
                         }
                     }
 

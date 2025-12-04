@@ -107,7 +107,7 @@ fun FundingDetailScreen(
                 Spacer(modifier = Modifier.height(24.dp))
                 
                 FundingDetailSectionHeader("Description")
-                Text(text = call.description, style = MaterialTheme.typography.bodyLarge)
+                Text(text = call.description, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
                 
                 Spacer(modifier = Modifier.height(24.dp))
                 
@@ -132,7 +132,8 @@ fun FundingDetailScreen(
                                     context.startActivity(intent)
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = AtmiyaPrimary)
                         ) {
                             Icon(Icons.Default.AttachFile, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
@@ -168,18 +169,18 @@ fun FundingDetailScreen(
                     // Investor View: Show Applications
                     FundingDetailSectionHeader("Received Applications (${applications.size})")
                     if (applications.isEmpty()) {
-                        Text("No applications yet.", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                        Text("No applications yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     } else {
                         applications.forEach { app ->
                             Card(
                                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                                colors = CardDefaults.cardColors(containerColor = Color.White)
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                             ) {
                                 Column(modifier = Modifier.padding(16.dp)) {
-                                    Text(app.startupName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                    Text("Ask: ${app.fundingAsk}", style = MaterialTheme.typography.bodyMedium)
-                                    Text("Stage: ${app.startupStage} | Sector: ${app.startupSector}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                    Text(app.startupName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                    Text("Ask: ${app.fundingAsk}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                                    Text("Stage: ${app.startupStage} | Sector: ${app.startupSector}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     Spacer(modifier = Modifier.height(8.dp))
                                     if (app.pitchDeckUrl != null) {
                                         OutlinedButton(
@@ -194,7 +195,7 @@ fun FundingDetailScreen(
                                     }
                                     if (app.additionalNote.isNotBlank()) {
                                         Spacer(modifier = Modifier.height(8.dp))
-                                        Text("Note: ${app.additionalNote}", style = MaterialTheme.typography.bodySmall)
+                                        Text("Note: ${app.additionalNote}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                 }
                             }
@@ -212,7 +213,7 @@ private fun FundingDetailSectionHeader(title: String) {
         text = title,
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.Bold,
-        color = Color.Black,
+        color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.padding(bottom = 8.dp)
     )
 }
@@ -224,11 +225,12 @@ private fun FundingDetailRow(label: String, value: String) {
             text = "$label: ",
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
-            color = Color.Gray
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Text(
             text = value,
-            style = MaterialTheme.typography.bodyMedium
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }

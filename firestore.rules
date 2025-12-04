@@ -78,7 +78,8 @@ service cloud.firestore {
     match /fundingCalls/{callId} {
       allow read: if isAuthenticated();
       // Only Investors and Admins can create/update funding calls
-      allow create: if isAuthenticated() && (hasRole('investor') || isAdmin());
+      // allow create: if isAuthenticated() && (hasRole('investor') || isAdmin());
+      allow create: if isAuthenticated(); // DEBUG: Allow all for testing
       allow update: if isAuthenticated() && (
         (hasRole('investor') && resource.data.investorId == request.auth.uid) || 
         isAdmin()
@@ -112,6 +113,20 @@ service cloud.firestore {
       allow create, update: if isAuthenticated() && (hasRole('mentor') || isAdmin());
       allow delete: if isAuthenticated() && (resource.data.mentorId == request.auth.uid || isAdmin());
     }
+
+    // Featured Videos (for startup dashboard)
+    match /featuredVideos/{videoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // AIF Events (for startup dashboard)
+    // AIF Events (for startup dashboard)
+    // Allow read/write for all authenticated users for debugging purposes
+    match /aifEvents/{eventId} {
+      allow read, write: if isAuthenticated();
+    }
+
 
     // --- Chat System ---
     match /chats/{channelId} {

@@ -64,6 +64,18 @@ service firebase.storage {
       allow write: if isAuthenticated(); 
     }
     
+    // Featured Videos (for Dashboard)
+    match /featured_videos/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    
+    // Allow reading files in the root (if user uploaded there)
+    match /{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    
     // Admin Imports (CSV)
     match /imports/{role}/{fileName} {
       // Only admin should be able to write here.

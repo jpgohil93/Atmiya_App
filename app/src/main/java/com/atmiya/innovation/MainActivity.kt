@@ -97,26 +97,6 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    // Permission Request Logic
-                    val context = androidx.compose.ui.platform.LocalContext.current
-                    val permissions = arrayOf(
-                        android.Manifest.permission.CAMERA,
-                        android.Manifest.permission.POST_NOTIFICATIONS
-                    )
-                    
-                    val launcher = androidx.activity.compose.rememberLauncherForActivityResult(
-                        contract = androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions(),
-                        onResult = { /* Handle results if needed */ }
-                    )
-                    
-                    LaunchedEffect(Unit) {
-                        // Request permissions on launch
-                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                            launcher.launch(permissions)
-                        } else {
-                            launcher.launch(arrayOf(android.Manifest.permission.CAMERA))
-                        }
-                    }
 
                     when (currentScreen) {
                         "splash" -> {

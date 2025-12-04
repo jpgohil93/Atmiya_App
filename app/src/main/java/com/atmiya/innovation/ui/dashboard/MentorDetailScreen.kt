@@ -55,7 +55,7 @@ fun MentorDetailScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White,
+                    containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = AtmiyaPrimary
                 )
             )
@@ -67,7 +67,7 @@ fun MentorDetailScreen(
             }
         } else if (mentor == null) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Mentor not found.")
+                Text("Mentor not found.", color = MaterialTheme.colorScheme.onBackground)
             }
         } else {
             val m = mentor!!
@@ -98,30 +98,30 @@ fun MentorDetailScreen(
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                Text(m.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text(m.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
                 Text(m.title, style = MaterialTheme.typography.titleMedium, color = AtmiyaPrimary)
-                Text(m.organization, style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                Text(m.organization, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 
                 Spacer(modifier = Modifier.height(24.dp))
                 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         MentorSectionHeader("Expertise")
-                        Text(m.expertiseAreas.joinToString(", "))
+                        Text(m.expertiseAreas.joinToString(", "), color = MaterialTheme.colorScheme.onSurface)
                         
                         Spacer(modifier = Modifier.height(16.dp))
                         
                         MentorSectionHeader("Experience")
-                        Text("${m.experienceYears} Years")
+                        Text("${m.experienceYears} Years", color = MaterialTheme.colorScheme.onSurface)
                         
                         Spacer(modifier = Modifier.height(16.dp))
                         
                         MentorSectionHeader("Bio")
-                        Text(m.bio)
+                        Text(m.bio, color = MaterialTheme.colorScheme.onSurface)
                     }
                 }
                 
@@ -145,7 +145,7 @@ private fun MentorSectionHeader(title: String) {
         text = title,
         style = MaterialTheme.typography.titleSmall,
         fontWeight = FontWeight.Bold,
-        color = Color.Gray,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(bottom = 4.dp)
     )
 }
