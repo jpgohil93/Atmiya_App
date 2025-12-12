@@ -45,6 +45,18 @@ class FirestoreRepository {
         db.collection("users").document(uid).update(data).await()
     }
 
+    suspend fun updateStartup(uid: String, data: Map<String, Any>) {
+        db.collection("startups").document(uid).update(data).await()
+    }
+
+    suspend fun updateInvestor(uid: String, data: Map<String, Any>) {
+        db.collection("investors").document(uid).update(data).await()
+    }
+
+    suspend fun updateMentor(uid: String, data: Map<String, Any>) {
+        db.collection("mentors").document(uid).update(data).await()
+    }
+
     // --- Role Specific Operations ---
 
     suspend fun createStartup(startup: Startup) {
@@ -69,6 +81,216 @@ class FirestoreRepository {
 
     suspend fun getMentor(uid: String): Mentor? {
         return db.collection("mentors").document(uid).get().await().toObject<Mentor>()
+    }
+
+    // --- Data Sync Helper ---
+    // --- Data Sync Helper ---
+    suspend fun syncUserToRole(uid: String, role: String) {
+        try {
+            val user = getUser(uid)
+            if (user == null) {
+                log("syncUserToRole ERROR: User not found for uid: $uid")
+                return
+            }
+            
+            val updates = mutableMapOf<String, Any>()
+            if (user.profilePhotoUrl != null) updates["profilePhotoUrl"] = user.profilePhotoUrl
+            if (user.name.isNotBlank()) updates["name"] = user.name
+            
+            if (updates.isNotEmpty()) {
+                when(role) {
+                    "mentor" -> db.collection("mentors").document(uid).update(updates).await()
+                    "investor" -> db.collection("investors").document(uid).update(updates).await()
+                    "startup" -> {
+                        val startupUpdates = mutableMapOf<String, Any>()
+                        if (user.profilePhotoUrl != null) startupUpdates["logoUrl"] = user.profilePhotoUrl
+                        if (user.name.isNotBlank()) startupUpdates["startupName"] = user.name
+                         db.collection("startups").document(uid).update(startupUpdates).await()
+                    }
+                }
+                log("syncUserToRole: Success for $uid as $role")
+            } else {
+                log("syncUserToRole: No updates needed for $uid")
+            }
+        } catch (e: Exception) {
+            log("syncUserToRole CRITICAL ERROR: ${e.message}")
+            android.util.Log.e("FirestoreRepo", "Sync failed", e)
+        }
+    }
+
+    suspend fun syncAllUsers(role: String) {
+        try {
+            val collectionName = when(role) {
+                "mentor" -> "mentors"
+                "investor" -> "investors"
+                "startup" -> "startups"
+                else -> return
+            }
+
+            log("syncAllUsers: Starting batch sync for role: $role")
+            
+            // Get ALL users with this role
+            val usersSnapshot = db.collection("users").whereEqualTo("role", role).get().await()
+            log("syncAllUsers: Found ${usersSnapshot.size()} users in master collection")
+
+            // Process in chunks of 400 (limit is 500)
+            usersSnapshot.documents.chunked(400).forEach { chunk ->
+                val batch = db.batch()
+                var count = 0
+                
+                chunk.forEach { doc ->
+                    val user = doc.toObject<User>()
+                    if (user != null) {
+                        val targetRef = db.collection(collectionName).document(user.uid)
+                        val updates = mutableMapOf<String, Any>()
+                        
+                        // Map fields
+                        if (user.profilePhotoUrl != null) {
+                            val field = if(role == "startup") "logoUrl" else "profilePhotoUrl"
+                            updates[field] = user.profilePhotoUrl ?: ""
+                        }
+                        if (user.name.isNotBlank()) {
+                            val field = if(role == "startup") "startupName" else "name"
+                            updates[field] = user.name
+                        }
+                        
+                        // Sync isDeleted status
+                        updates["isDeleted"] = user.isDeleted
+                        
+                        // Use set with merge to create if missing or update if exists
+                        if (updates.isNotEmpty()) {
+                            batch.set(targetRef, updates, com.google.firebase.firestore.SetOptions.merge())
+                            count++
+                        }
+                    }
+                }
+                
+                if (count > 0) {
+                    batch.commit().await()
+                    log("syncAllUsers: Committed batch of $count updates")
+                }
+            }
+            log("syncAllUsers: Completed sync for $role")
+            
+        } catch (e: Exception) {
+             log("syncAllUsers ERROR: ${e.message}")
+             android.util.Log.e("FirestoreRepo", "Batch sync failed", e)
+             throw e // Rethrow to notify UI
+        }
+    }
+
+    // --- Lists (Real-time Flows) ---
+    
+    // --- Dynamic Listings (Users + Role Details) ---
+
+    // Helper to get users flow by role (filtered)
+    private fun getUsersByRoleFlow(role: String): Flow<List<User>> = callbackFlow {
+        log("getUsersByRoleFlow: Starting listener for role: $role")
+        val listener = db.collection("users")
+            .whereEqualTo("role", role)
+            .whereEqualTo("isDeleted", false)
+            .whereEqualTo("isBlocked", false) // Ensure blocked users are hidden
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    log("getUsersByRoleFlow ERROR: ${error.message}")
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                val users = snapshot?.documents?.mapNotNull { it.toObject<User>() } ?: emptyList()
+                log("getUsersByRoleFlow: Found ${users.size} active users for role $role")
+                trySend(users)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    fun getMentorsFlow(): Flow<List<Mentor>> {
+        val usersFlow = getUsersByRoleFlow("mentor")
+        val detailsFlow = callbackFlow {
+            val listener = db.collection("mentors").addSnapshotListener { snapshot, _ ->
+                val details = snapshot?.documents?.mapNotNull { it.toObject<Mentor>() } ?: emptyList()
+                trySend(details)
+            }
+            awaitClose { listener.remove() }
+        }
+
+        return kotlinx.coroutines.flow.combine(usersFlow, detailsFlow) { users, details ->
+            users.map { user ->
+                val detail = details.find { it.uid == user.uid }
+                // Merge User info (source of truth) with specific details
+                Mentor(
+                    uid = user.uid,
+                    name = user.name, // User collection is master for name
+                    profilePhotoUrl = user.profilePhotoUrl, // User collection is master for photo
+                    city = user.city, // User collection is master for city
+                    title = detail?.title ?: "Mentor",
+                    organization = detail?.organization ?: "",
+                    expertiseAreas = detail?.expertiseAreas ?: emptyList(),
+                    topicsToTeach = detail?.topicsToTeach ?: emptyList(),
+                    experienceYears = detail?.experienceYears ?: "",
+                    bio = detail?.bio ?: "",
+                    isDeleted = false // Filtered by users flow already
+                )
+            }
+        }
+    }
+
+    fun getInvestorsFlow(): Flow<List<Investor>> {
+        val usersFlow = getUsersByRoleFlow("investor")
+        val detailsFlow = callbackFlow {
+            val listener = db.collection("investors").addSnapshotListener { snapshot, _ ->
+                val details = snapshot?.documents?.mapNotNull { it.toObject<Investor>() } ?: emptyList()
+                trySend(details)
+            }
+            awaitClose { listener.remove() }
+        }
+
+        return kotlinx.coroutines.flow.combine(usersFlow, detailsFlow) { users, details ->
+            users.map { user ->
+                val detail = details.find { it.uid == user.uid }
+                Investor(
+                    uid = user.uid,
+                    name = user.name,
+                    profilePhotoUrl = user.profilePhotoUrl,
+                    city = user.city,
+                    firmName = detail?.firmName ?: "",
+                    sectorsOfInterest = detail?.sectorsOfInterest ?: emptyList(),
+                    preferredStages = detail?.preferredStages ?: emptyList(),
+                    ticketSizeMin = detail?.ticketSizeMin ?: "",
+                    investmentType = detail?.investmentType ?: "",
+                    bio = detail?.bio ?: "",
+                    isDeleted = false
+                )
+            }
+        }
+    }
+    
+    fun getStartupsFlow(): Flow<List<Startup>> {
+        val usersFlow = getUsersByRoleFlow("startup")
+        val detailsFlow = callbackFlow {
+            val listener = db.collection("startups").addSnapshotListener { snapshot, _ ->
+                val details = snapshot?.documents?.mapNotNull { it.toObject<Startup>() } ?: emptyList()
+                trySend(details)
+            }
+            awaitClose { listener.remove() }
+        }
+
+        return kotlinx.coroutines.flow.combine(usersFlow, detailsFlow) { users, details ->
+            users.map { user ->
+                val detail = details.find { it.uid == user.uid }
+                Startup(
+                    uid = user.uid,
+                    startupName = detail?.startupName.takeIf { !it.isNullOrBlank() } ?: user.name,
+                    logoUrl = user.profilePhotoUrl,
+                    track = detail?.track ?: "",
+                    sector = detail?.sector ?: "",
+                    stage = detail?.stage ?: "",
+                    fundingAsk = detail?.fundingAsk ?: "",
+                    isVerified = detail?.isVerified ?: false,
+                    description = detail?.description ?: "",
+                    isDeleted = false
+                )
+            }
+        }
     }
 
     // --- Lists (One-time fetch) ---
@@ -235,6 +457,12 @@ class FirestoreRepository {
     }
 
     // --- Polls ---
+
+    suspend fun deleteWallPost(postId: String) {
+        val start = System.currentTimeMillis()
+        db.collection("wallPosts").document(postId).delete().await()
+        logPerf("deleteWallPost", System.currentTimeMillis() - start)
+    }
 
     suspend fun voteOnPoll(postId: String, userId: String, optionId: String) {
         val postRef = db.collection("wallPosts").document(postId)
@@ -611,17 +839,24 @@ class FirestoreRepository {
     // --- Chat System ---
 
     suspend fun createChatChannel(channel: ChatChannel): String {
-        // Check if channel already exists between these 2 users
-        // This requires a complex query or a deterministic ID.
-        // Let's use deterministic ID: sort(uid1, uid2).join("_")
+        // Use deterministic ID: sort(uid1, uid2).join("_")
         val sortedIds = channel.participants.sorted()
         val channelId = "${sortedIds[0]}_${sortedIds[1]}"
         
-        val existing = db.collection("chats").document(channelId).get().await()
-        if (!existing.exists()) {
+        try {
+            // Try to create the channel - use set() which creates or updates
+            // We don't read first to avoid permission issues
             val newChannel = channel.copy(id = channelId, createdAt = Timestamp.now())
-            db.collection("chats").document(channelId).set(newChannel).await()
+            
+            // Use set with merge to not overwrite existing lastMessage/timestamps
+            db.collection("chats").document(channelId)
+                .set(newChannel, com.google.firebase.firestore.SetOptions.merge())
+                .await()
+        } catch (e: Exception) {
+            // Channel might already exist or permission issue - log and continue
+            android.util.Log.d("FirestoreRepo", "createChatChannel: ${e.message}")
         }
+        
         return channelId
     }
 
@@ -657,18 +892,214 @@ class FirestoreRepository {
         awaitClose { listener.remove() }
     }
 
-    suspend fun sendMessage(channelId: String, message: ChatMessage) {
+    suspend fun sendMessage(
+        channelId: String, 
+        message: ChatMessage, 
+        participants: List<String> = emptyList(),
+        participantNames: Map<String, String> = emptyMap(),
+        participantPhotos: Map<String, String> = emptyMap()
+    ) {
         val msgRef = db.collection("chats").document(channelId).collection("messages").document()
         val finalMessage = message.copy(id = msgRef.id, timestamp = Timestamp.now())
         
+        val lastMsgPreview = when(message.mediaType) {
+            "image" -> "📷 Photo"
+            "video" -> "🎥 Video"
+            "pdf" -> "📄 Document"
+            "audio" -> "🎤 Audio"
+            else -> message.text
+        }
+        
+        val chatRef = db.collection("chats").document(channelId)
+
         db.runTransaction { transaction ->
+            // Create message
             transaction.set(msgRef, finalMessage)
-            transaction.update(db.collection("chats").document(channelId), mapOf(
-                "lastMessage" to finalMessage.text,
-                "lastMessageTimestamp" to finalMessage.timestamp
-            ))
+            
+            // Check if chat exists, if not, create it with provided metadata
+            val chatSnapshot = transaction.get(chatRef)
+            if (!chatSnapshot.exists()) {
+                val newChannel = ChatChannel(
+                    id = channelId,
+                    participants = participants,
+                    participantNames = participantNames,
+                    participantPhotos = participantPhotos,
+                    lastMessage = lastMsgPreview,
+                    lastMessageTimestamp = finalMessage.timestamp,
+                    createdAt = Timestamp.now()
+                )
+                transaction.set(chatRef, newChannel)
+            } else {
+                // Just update last message
+                transaction.update(chatRef, mapOf(
+                    "lastMessage" to lastMsgPreview,
+                    "lastMessageTimestamp" to finalMessage.timestamp
+                ))
+            }
         }.await()
     }
 
+    suspend fun pinChat(channelId: String, userId: String, isPinned: Boolean) {
+        val chatRef = db.collection("chats").document(channelId)
+        if (isPinned) {
+            chatRef.update("pinnedBy", com.google.firebase.firestore.FieldValue.arrayUnion(userId)).await()
+        } else {
+            chatRef.update("pinnedBy", com.google.firebase.firestore.FieldValue.arrayRemove(userId)).await()
+        }
+    }
+
+    suspend fun archiveChat(channelId: String, userId: String, isArchived: Boolean) {
+        val chatRef = db.collection("chats").document(channelId)
+        if (isArchived) {
+            chatRef.update("archivedBy", com.google.firebase.firestore.FieldValue.arrayUnion(userId)).await()
+        } else {
+            chatRef.update("archivedBy", com.google.firebase.firestore.FieldValue.arrayRemove(userId)).await()
+        }
+    }
+
+    suspend fun markAsRead(channelId: String, userId: String) {
+        // Simple logic: Reset unread count for this user in the map
+        val chatRef = db.collection("chats").document(channelId)
+        // Note: Map updates in Firestore for nested fields can be tricky.
+        // Dot notation "unreadCounts.userId" works if the key is known and valid.
+        chatRef.update("unreadCounts.$userId", 0).await()
+    }
+    
+    // Real File Upload Implementation
+    suspend fun uploadFile(uri: android.net.Uri, type: String): String {
+        return try {
+            val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
+            val userId = auth.currentUser?.uid ?: return ""
+            
+            val storageRef = com.google.firebase.storage.FirebaseStorage.getInstance().reference
+            val timestamp = System.currentTimeMillis()
+            val fileName = "${timestamp}_${java.util.UUID.randomUUID()}"
+            
+            // Determine path based on type (mostly for organization, rules use chat_media/{userId})
+            val path = "chat_media/$userId/$fileName"
+            
+            val fileRef = storageRef.child(path)
+            
+            // Put file
+            fileRef.putFile(uri).await()
+            
+            // Get URL
+            val downloadUrl = fileRef.downloadUrl.await()
+            downloadUrl.toString()
+        } catch (e: Exception) {
+            android.util.Log.e("FirestoreRepo", "Upload failed", e)
+            ""
+        }
+    }
+
+
+    // --- Connection System ---
+
+    suspend fun sendConnectionRequest(sender: User, receiverId: String) {
+        val requestId = "${sender.uid}_$receiverId" // Deterministic ID to prevent duplicates
+        val request = ConnectionRequest(
+            id = requestId,
+            senderId = sender.uid,
+            senderName = sender.name,
+            senderRole = sender.role,
+            senderPhotoUrl = sender.profilePhotoUrl,
+            receiverId = receiverId,
+            status = "pending",
+            createdAt = Timestamp.now()
+        )
+        db.collection("connectionRequests").document(requestId).set(request).await()
+    }
+
+    // --- Saved Startup Ideas ---
+
+    suspend fun saveStartupIdea(idea: StartupIdea) {
+        val start = System.currentTimeMillis()
+        if (idea.userId.isEmpty()) throw Exception("User ID is required to save idea")
+        
+        db.collection("users").document(idea.userId)
+            .collection("saved_ideas").document(idea.id)
+            .set(idea)
+            .await()
+        logPerf("saveStartupIdea", System.currentTimeMillis() - start)
+    }
+
+    fun getSavedStartupIdeas(userId: String): Flow<List<StartupIdea>> = callbackFlow {
+        val listener = db.collection("users").document(userId)
+            .collection("saved_ideas")
+            .orderBy("generatedAt", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                val ideas = snapshot?.documents?.mapNotNull { it.toObject<StartupIdea>() } ?: emptyList()
+                trySend(ideas)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    fun getConnectionRequests(userId: String): Flow<List<ConnectionRequest>> = callbackFlow {
+        val listener = db.collection("connectionRequests")
+            .whereEqualTo("receiverId", userId)
+            .whereEqualTo("status", "pending")
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                val requests = snapshot?.documents?.mapNotNull { it.toObject<ConnectionRequest>() } ?: emptyList()
+                trySend(requests)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    suspend fun getSentConnectionRequests(userId: String): List<ConnectionRequest> {
+        return db.collection("connectionRequests")
+             .whereEqualTo("senderId", userId)
+             .whereEqualTo("status", "pending")
+             .get().await()
+             .mapNotNull { it.toObject<ConnectionRequest>() }
+    }
+
+    suspend fun updateConnectionStatus(requestId: String, status: String) {
+        db.collection("connectionRequests").document(requestId).update("status", status).await()
+    }
+
+    // Get all accepted connections (where user is either sender or receiver)
+    suspend fun getAcceptedConnections(userId: String): List<ConnectionRequest> {
+        val sent = db.collection("connectionRequests")
+            .whereEqualTo("senderId", userId)
+            .whereEqualTo("status", "accepted")
+            .get().await().toObjects(ConnectionRequest::class.java)
+
+        val received = db.collection("connectionRequests")
+            .whereEqualTo("receiverId", userId)
+            .whereEqualTo("status", "accepted")
+            .get().await().toObjects(ConnectionRequest::class.java)
+            
+        return sent + received
+    }
+    
+    // Check status between two users (One-shot)
+    suspend fun checkConnectionStatus(currentUserId: String, targetUserId: String): String {
+        // Check if I sent a request
+        val myRequestNode = "${currentUserId}_${targetUserId}"
+        val myRequest = db.collection("connectionRequests").document(myRequestNode).get().await()
+        if (myRequest.exists()) {
+             val status = myRequest.getString("status") ?: "pending"
+             return if (status == "accepted") "connected" else "pending_sent" // or rejected
+        }
+        
+        // Check if they sent a request
+        val theirRequestNode = "${targetUserId}_${currentUserId}"
+        val theirRequest = db.collection("connectionRequests").document(theirRequestNode).get().await()
+        if (theirRequest.exists()) {
+            val status = theirRequest.getString("status") ?: "pending"
+             return if (status == "accepted") "connected" else "pending_received"
+        }
+        
+        return "none"
+    }
 
 }

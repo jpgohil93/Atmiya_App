@@ -63,6 +63,12 @@ service firebase.storage {
       // We allow any authenticated investor to upload here for now.
       allow write: if isAuthenticated(); 
     }
+
+    // Chat Media
+    match /chat_media/{userId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId);
+    }
     
     // Featured Videos (for Dashboard)
     match /featured_videos/{allPaths=**} {

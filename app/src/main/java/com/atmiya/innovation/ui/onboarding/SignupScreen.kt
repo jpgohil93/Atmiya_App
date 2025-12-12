@@ -13,12 +13,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.ArrowUpward
+import compose.icons.TablerIcons
+import compose.icons.tablericons.Check
+import compose.icons.tablericons.Lock
+import compose.icons.tablericons.Eye
+import compose.icons.tablericons.EyeOff
+import compose.icons.tablericons.Id
+import compose.icons.tablericons.Upload
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -547,7 +548,7 @@ fun SignupScreen(
                                         onClick = { selectedTrack = "EDP" },
                                         label = { Text("EDP (Idea)") },
                                         leadingIcon = if (selectedTrack == "EDP") {
-                                            { Icon(Icons.Default.Check, contentDescription = null) }
+                                            { Icon(TablerIcons.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                                         } else null
                                     )
                                     FilterChip(
@@ -555,7 +556,7 @@ fun SignupScreen(
                                         onClick = { selectedTrack = "ACC" },
                                         label = { Text("Accelerator") },
                                         leadingIcon = if (selectedTrack == "ACC") {
-                                            { Icon(Icons.Default.Check, contentDescription = null) }
+                                            { Icon(TablerIcons.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                                         } else null
                                     )
                                 }
@@ -643,7 +644,7 @@ fun SignupScreen(
                                     modifier = Modifier.padding(16.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(Icons.Default.ArrowUpward, contentDescription = null)
+                                    Icon(TablerIcons.Upload, contentDescription = null, modifier = Modifier.size(24.dp))
                                     Spacer(modifier = Modifier.width(16.dp))
                                     Column {
                                         Text("Pitch Deck (PDF) *", fontWeight = FontWeight.Bold)
@@ -669,7 +670,7 @@ fun SignupScreen(
                                     modifier = Modifier.padding(16.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(Icons.Default.Image, contentDescription = null)
+                                    Icon(TablerIcons.Id, contentDescription = null, modifier = Modifier.size(24.dp))
                                     Spacer(modifier = Modifier.width(16.dp))
                                     Column {
                                         Text("Startup Logo (Optional)", fontWeight = FontWeight.Bold)
@@ -759,7 +760,7 @@ fun PasswordTextField(
         visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
         trailingIcon = {
-            val image = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+            val image = if (passwordVisible) TablerIcons.EyeOff else TablerIcons.Eye 
             IconButton(onClick = { passwordVisible = !passwordVisible }) {
                 Icon(imageVector = image, contentDescription = null)
             }

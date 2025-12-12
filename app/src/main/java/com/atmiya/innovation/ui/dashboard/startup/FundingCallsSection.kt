@@ -8,8 +8,12 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import compose.icons.TablerIcons
+import compose.icons.tablericons.MapPin
+import compose.icons.tablericons.InfoCircle
+import compose.icons.tablericons.ArrowRight
+import compose.icons.tablericons.Calendar
+import compose.icons.tablericons.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -290,7 +294,7 @@ fun FundingCallCard(
                             if (!investorLocation.isNullOrEmpty()) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(
-                                        Icons.Default.LocationOn,
+                                        TablerIcons.MapPin,
                                         contentDescription = null,
                                         modifier = Modifier.size(12.dp),
                                         tint = Color.Gray
@@ -390,7 +394,7 @@ fun FundingCallCard(
                     }
                     
                     Icon(
-                        imageVector = Icons.Default.ArrowForward,
+                        imageVector = TablerIcons.ArrowRight,
                         contentDescription = "View Details",
                         tint = AtmiyaAccent, // Red
                         modifier = Modifier.size(20.dp)
@@ -430,7 +434,7 @@ fun CardTimer(deadline: Timestamp) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = Icons.Default.Timer,
+                imageVector = TablerIcons.InfoCircle,
                 contentDescription = null,
                 modifier = Modifier.size(12.dp),
                 tint = AtmiyaAccent
@@ -488,7 +492,7 @@ fun DeadlineBadge(deadline: Timestamp?) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = Icons.Default.Schedule,
+                imageVector = TablerIcons.Calendar,
                 contentDescription = null,
                 modifier = Modifier.size(12.dp),
                 tint = color.copy(alpha = alpha)
@@ -584,7 +588,7 @@ fun FundingCallsSummaryCard(
         ) {
             // Background Pattern/Icon
             Icon(
-                imageVector = Icons.Default.AttachMoney,
+                imageVector = TablerIcons.InfoCircle,
                 contentDescription = null,
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
@@ -609,7 +613,7 @@ fun FundingCallsSummaryCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.MonetizationOn,
+                        imageVector = TablerIcons.Star,
                         contentDescription = null,
                         tint = Color.White,
                         modifier = Modifier.size(32.dp)
@@ -654,7 +658,7 @@ fun FundingCallsSummaryCard(
                 Spacer(modifier = Modifier.weight(1f))
                 
                 Icon(
-                    imageVector = Icons.Default.ArrowForward,
+                    imageVector = TablerIcons.ArrowRight,
                     contentDescription = null,
                     tint = Color.White,
                     modifier = Modifier.size(24.dp)

@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.Home // Replaced AccountBalance
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -110,7 +110,7 @@ fun SchemeBanner(scheme: Scheme) {
                 Box(contentAlignment = Alignment.Center) {
                     // Placeholder for logo if URL fails or just generic icon
                     Icon(
-                        imageVector = Icons.Default.AccountBalance,
+                        imageVector = Icons.Default.Home,
                         contentDescription = null,
                         tint = scheme.color,
                         modifier = Modifier.size(40.dp)

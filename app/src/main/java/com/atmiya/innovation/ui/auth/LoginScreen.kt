@@ -12,10 +12,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Login
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import compose.icons.TablerIcons
+import compose.icons.tablericons.ArrowRight
+import compose.icons.tablericons.Eye
+import compose.icons.tablericons.EyeOff
+import compose.icons.tablericons.Lock
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
@@ -426,13 +427,17 @@ fun LoginScreen(
                                 label = { Text("Password") },
                                 placeholder = { Text("Enter your password") },
                                 leadingIcon = {
-                                    Icon(Icons.Default.Login, contentDescription = null)
+                                    Icon(
+                                        imageVector = TablerIcons.Lock,
+                                        contentDescription = null,
+                                        tint = Color.Gray
+                                    )
                                 },
                                 trailingIcon = {
                                     val image = if (passwordVisible)
-                                        Icons.Filled.Visibility
+                                        TablerIcons.EyeOff
                                     else
-                                        Icons.Filled.VisibilityOff
+                                        TablerIcons.Eye
 
                                     IconButton(onClick = { passwordVisible = !passwordVisible }) {
                                         Icon(imageVector = image, contentDescription = if (passwordVisible) "Hide password" else "Show password")
@@ -488,7 +493,7 @@ fun LoginScreen(
                                 }
                             },
                             text = if (loginMode == LoginMode.OTP) "Get OTP" else "Login",
-                            icon = Icons.Default.Login,
+                            icon = TablerIcons.ArrowRight,
                             isLoading = isLoading
                         )
 
@@ -619,7 +624,7 @@ fun LoginScreen(
                             shape = RoundedCornerShape(16.dp),
                             visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                             trailingIcon = {
-                                val image = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                                val image = if (passwordVisible) TablerIcons.EyeOff else TablerIcons.Eye
                                 IconButton(onClick = { passwordVisible = !passwordVisible }) {
                                     Icon(imageVector = image, contentDescription = null)
                                 }
@@ -637,7 +642,7 @@ fun LoginScreen(
                             shape = RoundedCornerShape(16.dp),
                             visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                             trailingIcon = {
-                                val image = if (confirmPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                                val image = if (confirmPasswordVisible) TablerIcons.EyeOff else TablerIcons.Eye
                                 IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
                                     Icon(imageVector = image, contentDescription = null)
                                 }

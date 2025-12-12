@@ -5,10 +5,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Send
-import androidx.compose.material.icons.filled.UploadFile
+import compose.icons.TablerIcons
+import compose.icons.tablericons.ArrowLeft
+import compose.icons.tablericons.Send
+import compose.icons.tablericons.Upload
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -103,7 +103,7 @@ fun ApplyProposalScreen(
                 title = { Text("Submit Proposal") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(TablerIcons.ArrowLeft, contentDescription = "Back", modifier = Modifier.size(28.dp))
                     }
                 },
                 colors = TopAppBarDefaults.smallTopAppBarColors(
@@ -153,7 +153,7 @@ fun ApplyProposalScreen(
                 SoftButton(
                     onClick = { deckLauncher.launch(arrayOf("application/pdf")) },
                     text = if (pitchDeckUrl != null) "Update Pitch Deck (PDF)" else "Upload Pitch Deck (PDF)",
-                    icon = Icons.Default.UploadFile,
+                    icon = TablerIcons.Upload,
                     containerColor = if (pitchDeckUrl != null) androidx.compose.ui.graphics.Color.Green.copy(alpha = 0.2f) else com.atmiya.innovation.ui.theme.AtmiyaSecondary
                 )
                 if (pitchDeckUrl != null) {
@@ -203,7 +203,7 @@ fun ApplyProposalScreen(
                         }
                     },
                     text = "Submit Proposal",
-                    icon = Icons.Default.Send,
+                    icon = TablerIcons.Send,
                     isLoading = isSubmitting,
                     modifier = Modifier.fillMaxWidth()
                 )

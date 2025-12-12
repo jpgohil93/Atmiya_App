@@ -8,9 +8,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.PlayArrow
+import compose.icons.TablerIcons
+import compose.icons.tablericons.Plus
+import compose.icons.tablericons.PlayerPlay
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -60,7 +60,7 @@ fun MentorVideoScreen(role: String) {
                     containerColor = AtmiyaSecondary,
                     contentColor = Color.White
                 ) {
-                    Icon(Icons.Filled.Add, contentDescription = "Upload Video")
+                    Icon(TablerIcons.Plus, contentDescription = "Upload Video", modifier = Modifier.size(24.dp))
                 }
             }
         }
@@ -159,7 +159,7 @@ fun VideoCard(video: MentorVideo) {
             
             // Play Button Overlay
             Icon(
-                Icons.Filled.PlayArrow,
+                TablerIcons.PlayerPlay,
                 contentDescription = "Play",
                 tint = Color.White,
                 modifier = Modifier.size(64.dp)

@@ -1,445 +1,100 @@
 package com.atmiya.innovation.ui.dashboard.startup
 
+import android.net.Uri
 import android.view.ViewGroup
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.OpenInNew
-import androidx.compose.material.icons.filled.Error
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.compose.ui.platform.LocalLifecycleOwner
-import coil.compose.AsyncImage
+import androidx.media3.common.MediaItem
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 import com.atmiya.innovation.data.FeaturedVideo
-import com.atmiya.innovation.ui.theme.AtmiyaAccent
-import com.atmiya.innovation.ui.theme.AtmiyaPrimary
-import com.google.accompanist.pager.ExperimentalPagerApi
-import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.HorizontalPagerIndicator
-import com.google.accompanist.pager.rememberPagerState
+import com.google.firebase.storage.FirebaseStorage
+import kotlinx.coroutines.tasks.await
+import com.atmiya.innovation.ui.theme.AtmiyaPrimary
+import compose.icons.TablerIcons
+import compose.icons.tablericons.PlayerPlay
+import compose.icons.tablericons.Maximize
+import compose.icons.tablericons.X
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.layout.ContentScale
+import coil.request.ImageRequest
+import coil.compose.AsyncImage
 
-@OptIn(ExperimentalPagerApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HeroVideoSlider(
-    videosState: StartupDashboardViewModel.UiState<List<FeaturedVideo>>,
+    videosState: Any? = null, 
     isVisible: Boolean = true,
-    onVideoClick: (String) -> Unit // Kept for compatibility but unused for inline
+    onVideoClick: (String) -> Unit = {}
 ) {
+    if (!isVisible) return
+
+    val videos = when (videosState) {
+        is com.atmiya.innovation.ui.dashboard.startup.StartupDashboardViewModel.UiState.Success<*> -> {
+            (videosState.data as? List<*>)?.filterIsInstance<FeaturedVideo>() ?: emptyList()
+        }
+        is List<*> -> {
+            videosState.filterIsInstance<FeaturedVideo>()
+        }
+        else -> emptyList()
+    }
+
+    if (videos.isEmpty()) return
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 16.dp)
+            .padding(bottom = 16.dp)
     ) {
-        when (videosState) {
-            is StartupDashboardViewModel.UiState.Loading -> {
-                VideoSliderShimmer()
-            }
-            is StartupDashboardViewModel.UiState.Success -> {
-                val videos = videosState.data
-                if (videos.isEmpty()) {
-                    EmptyVideoState()
-                } else {
-                    val pagerState = rememberPagerState()
-                    
-                    // We need to track which video is currently playing to stop others
-                    var playingVideoId by remember { mutableStateOf<String?>(null) }
+        val pagerState = rememberPagerState(pageCount = { videos.size })
 
-                    // Auto-pause video when user scrolls to a different page
-                    LaunchedEffect(pagerState.currentPage) {
-                        // If we scroll away from the currently playing video, pause it
-                        if (playingVideoId != null) {
-                            val currentVideo = videos.getOrNull(pagerState.currentPage)
-                            if (currentVideo?.id != playingVideoId) {
-                                playingVideoId = null // This will trigger the video to stop
-                            }
-                        }
-                    }
-
-                    // Auto-pause when the entire slider becomes invisible (tab switch or scroll away)
-                    LaunchedEffect(isVisible) {
-                        if (!isVisible) {
-                            playingVideoId = null
-                        }
-                    }
-
-                    HorizontalPager(
-                        count = videos.size,
-                        state = pagerState,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(240.dp), // Increased height slightly for player
-                        contentPadding = PaddingValues(horizontal = 20.dp)
-                    ) { page ->
-                        val video = videos[page]
-                        val isPlaying = playingVideoId == video.id
-                        
-                        VideoCard(
-                            video = video,
-                            isPlaying = isPlaying,
-                            onPlayClick = { 
-                                playingVideoId = video.id 
-                            },
-                            onPause = {
-                                if (playingVideoId == video.id) {
-                                    playingVideoId = null
-                                }
-                            }
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.height(12.dp))
-                    
-                    // Page Indicators
-                    // Page Indicators (Numbered)
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.CenterHorizontally)
-                            .background(
-                                color = Color.Black.copy(alpha = 0.6f),
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
-                    ) {
-                        Text(
-                            text = "${pagerState.currentPage + 1} / ${videos.size}",
-                            color = Color.White,
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-            is StartupDashboardViewModel.UiState.Error -> {
-                ErrorVideoState(message = videosState.message)
-            }
+        // Banner Video Container
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(220.dp), // Height for standard 16:9 feel
+            contentPadding = PaddingValues(horizontal = 16.dp), // Peek next item
+            pageSpacing = 16.dp
+        ) { page ->
+            VideoBannerItem(video = videos[page])
         }
-    }
-}
-
-@Composable
-fun VideoCard(
-    video: FeaturedVideo,
-    isPlaying: Boolean,
-    onPlayClick: () -> Unit,
-    onPause: () -> Unit = {}
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 8.dp),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            if (isPlaying) {
-                // Native Video Player (ExoPlayer) with gs:// URL support
-                val context = LocalContext.current
-                val lifecycleOwner = LocalLifecycleOwner.current
-                var isVideoLoading by remember { mutableStateOf(true) }
-                var videoError by remember { mutableStateOf<String?>(null) }
-                var downloadUrl by remember { mutableStateOf<String?>(null) }
-                
-                // Convert gs:// to https:// download URL
-                LaunchedEffect(video.videoUrl) {
-                    try {
-                        if (video.videoUrl.startsWith("gs://")) {
-                            // Extract the storage reference from gs:// URL
-                            val storage = com.google.firebase.storage.FirebaseStorage.getInstance()
-                            val storageRef = storage.getReferenceFromUrl(video.videoUrl)
-                            
-                            // Get download URL
-                            storageRef.downloadUrl.addOnSuccessListener { uri ->
-                                downloadUrl = uri.toString()
-                                android.util.Log.d("HeroVideoSlider", "Converted gs:// to: $downloadUrl")
-                            }.addOnFailureListener { e ->
-                                android.util.Log.e("HeroVideoSlider", "Failed to get download URL", e)
-                                videoError = "Failed to load video: ${e.message}"
-                                isVideoLoading = false
-                            }
-                        } else {
-                            // Already an https:// URL
-                            downloadUrl = video.videoUrl
-                        }
-                    } catch (e: Exception) {
-                        android.util.Log.e("HeroVideoSlider", "URL conversion error", e)
-                        videoError = "Invalid video URL"
-                        isVideoLoading = false
-                    }
-                }
-                
-                val exoPlayer = remember(downloadUrl) {
-                    if (downloadUrl != null) {
-                        androidx.media3.exoplayer.ExoPlayer.Builder(context).build().apply {
-                            val mediaItem = androidx.media3.common.MediaItem.Builder()
-                                .setUri(downloadUrl)
-                                .setMimeType(androidx.media3.common.MimeTypes.VIDEO_MP4)
-                                .build()
-                            setMediaItem(mediaItem)
-                            prepare()
-                            playWhenReady = true
-                        }
-                    } else {
-                        null
-                    }
-                }
-                
-                // Observe lifecycle to pause/resume video
-                DisposableEffect(lifecycleOwner) {
-                    val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-                        when (event) {
-                            androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> {
-                                exoPlayer?.pause()
-                                android.util.Log.d("HeroVideoSlider", "Video paused (lifecycle)")
-                            }
-                            androidx.lifecycle.Lifecycle.Event.ON_RESUME -> {
-                                // Don't auto-resume, let user control
-                            }
-                            androidx.lifecycle.Lifecycle.Event.ON_DESTROY -> {
-                                exoPlayer?.release()
-                            }
-                            else -> {}
-                        }
-                    }
-                    lifecycleOwner.lifecycle.addObserver(observer)
-                    onDispose {
-                        lifecycleOwner.lifecycle.removeObserver(observer)
-                    }
-                }
-                
-                DisposableEffect(exoPlayer) {
-                    val listener = object : androidx.media3.common.Player.Listener {
-                        override fun onPlaybackStateChanged(playbackState: Int) {
-                            android.util.Log.d("HeroVideoSlider", "Playback State: $playbackState")
-                            when (playbackState) {
-                                androidx.media3.common.Player.STATE_BUFFERING -> {
-                                    isVideoLoading = true
-                                }
-                                androidx.media3.common.Player.STATE_READY -> {
-                                    isVideoLoading = false
-                                    videoError = null
-                                }
-                                androidx.media3.common.Player.STATE_ENDED -> {
-                                    isVideoLoading = false
-                                }
-                            }
-                        }
-
-                        override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                            android.util.Log.e("HeroVideoSlider", "Player Error: ${error.message}", error)
-                            isVideoLoading = false
-                            videoError = "Playback error: ${error.message ?: "Unknown error"}"
-                        }
-                    }
-                    exoPlayer?.addListener(listener)
-                    onDispose {
-                        exoPlayer?.removeListener(listener)
-                        exoPlayer?.release()
-                    }
-                }
-
-                // Observe when isPlaying changes from true to false
-                LaunchedEffect(isPlaying) {
-                    if (!isPlaying) {
-                        exoPlayer?.pause()
-                        onPause()
-                    }
-                }
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clickable {
-                            // Toggle play/pause when clicking anywhere on the video
-                            exoPlayer?.let {
-                                if (it.isPlaying) {
-                                    it.pause()
-                                } else {
-                                    it.play()
-                                }
-                            }
-                        }
-                ) {
-                    if (videoError == null && exoPlayer != null) {
-                        AndroidView(
-                            factory = { ctx ->
-                                androidx.media3.ui.PlayerView(ctx).apply {
-                                    player = exoPlayer
-                                    useController = true
-                                    controllerShowTimeoutMs = 3000
-                                    setShowNextButton(false)
-                                    setShowPreviousButton(false)
-                                    // Enable fullscreen button - the button is controlled by the layout
-                                    // Setting the listener enables the button
-                                    setControllerOnFullScreenModeChangedListener { isFullScreen ->
-                                        android.util.Log.d("HeroVideoSlider", "Fullscreen: $isFullScreen")
-                                        // The PlayerView handles the actual fullscreen toggle
-                                        // Just log it here for debugging
-                                    }
-                                    resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                                    layoutParams = ViewGroup.LayoutParams(
-                                        ViewGroup.LayoutParams.MATCH_PARENT,
-                                        ViewGroup.LayoutParams.MATCH_PARENT
-                                    )
-                                }
-                            },
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else if (videoError != null) {
-                        // Error State
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color.Black),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(
-                                    imageVector = androidx.compose.material.icons.Icons.Default.Error,
-                                    contentDescription = "Error",
-                                    tint = Color.Red,
-                                    modifier = Modifier.size(32.dp)
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = videoError!!,
-                                    color = Color.White,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    modifier = Modifier.padding(16.dp),
-                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                                )
-                            }
-                        }
-                    }
-
-                    // Loading indicator - show when buffering or initially loading
-                    if (isVideoLoading && videoError == null) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color.Black.copy(alpha = 0.5f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(48.dp),
-                                color = AtmiyaPrimary,
-                                strokeWidth = 4.dp
-                            )
-                        }
-                    }
-                }
-            } else {
-                // Thumbnail and Overlay
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clickable { onPlayClick() }
-                ) {
-                    // Thumbnail
-                    AsyncImage(
-                        model = video.thumbnailUrl ?: "https://via.placeholder.com/400x220/6366F1/FFFFFF?text=${video.title}",
-                        contentDescription = video.title,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                    
-                    // Gradient Overlay
+        
+        // Indicators
+        if (videos.size > 1) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                repeat(videos.size) { iteration ->
+                    val color = if (pagerState.currentPage == iteration) AtmiyaPrimary else Color.LightGray.copy(alpha = 0.5f)
                     Box(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    colors = listOf(
-                                        Color.Transparent,
-                                        Color.Black.copy(alpha = 0.7f)
-                                    )
-                                )
-                            )
+                            .padding(horizontal = 3.dp)
+                            .clip(CircleShape)
+                            .background(color)
+                            .size(if (pagerState.currentPage == iteration) 8.dp else 6.dp)
                     )
-                    
-                    // Content
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        // Category Badge
-                        if (video.category.isNotEmpty()) {
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = AtmiyaAccent.copy(alpha = 0.9f)
-                            ) {
-                                Text(
-                                    text = video.category.uppercase(),
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        } else {
-                            Spacer(modifier = Modifier.height(1.dp))
-                        }
-                        
-                        // Title and Watch Button
-                        Column {
-                            Text(
-                                text = video.title,
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            
-                            Spacer(modifier = Modifier.height(12.dp))
-                            
-                            // Watch Button
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .background(
-                                        color = Color.White.copy(alpha = 0.3f),
-                                        shape = RoundedCornerShape(20.dp)
-                                    )
-                                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.PlayArrow,
-                                    contentDescription = "Play",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Play Video",
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold,
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                        }
-                    }
                 }
             }
         }
@@ -447,47 +102,325 @@ fun VideoCard(
 }
 
 @Composable
-fun VideoSliderShimmer() {
+fun VideoBannerItem(video: FeaturedVideo) {
+    var isPlaying by remember { mutableStateOf(false) }
+    var showFullScreen by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    var resolvedThumbnailModel by remember { mutableStateOf<Any?>(null) }
+
+    LaunchedEffect(video) {
+        val thumb = video.thumbnailUrl
+        val vid = video.videoUrl
+        
+        // Prioritize thumbnail, fallback to video (for frame extraction)
+        val sourceToUse = if (!thumb.isNullOrEmpty()) thumb else vid
+        
+        if (sourceToUse.startsWith("gs://")) {
+             try {
+                 resolvedThumbnailModel = FirebaseStorage.getInstance().getReferenceFromUrl(sourceToUse).downloadUrl.await()
+             } catch (e: Exception) {
+                 e.printStackTrace()
+                 resolvedThumbnailModel = sourceToUse
+             }
+        } else {
+             resolvedThumbnailModel = sourceToUse
+        }
+    }
+
+    if (showFullScreen) {
+        BannerFullScreenPlayer(video = video, onDismiss = { showFullScreen = false })
+    }
+
     Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .height(240.dp)
-            .padding(horizontal = 28.dp)
+            .fillMaxSize()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.LightGray.copy(alpha = 0.3f))
+            .background(Color.Black)
+            .clickable { isPlaying = !isPlaying }
+    ) {
+        if (isPlaying) {
+            BannerVideoPlayer(videoUrl = video.videoUrl)
+        } else {
+            // Thumbnail
+            coil.compose.AsyncImage(
+                model = coil.request.ImageRequest.Builder(context)
+                    .data(resolvedThumbnailModel)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = null,
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+            
+            // Gradient Overlay
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f)),
+                            startY = 100f
+                        )
+                    )
+            )
+
+            // Play Button (Center)
+            Box(
+                modifier = Modifier.align(Alignment.Center),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = compose.icons.TablerIcons.PlayerPlay,
+                    contentDescription = "Play",
+                    tint = Color.White,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(Color.Black.copy(alpha = 0.4f), CircleShape)
+                        .padding(8.dp)
+                )
+            }
+
+            // Text Info (Bottom Left)
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(16.dp)
+            ) {
+                if (video.category.isNotEmpty()) {
+                    Text(
+                        text = video.category.uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = AtmiyaPrimary,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        modifier = Modifier
+                            .background(Color.White.copy(alpha = 0.9f), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                }
+                Text(
+                    text = video.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+            }
+        }
+        
+        // Actions (Top Right)
+        Row(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(8.dp)
+        ) {
+            // Fullscreen Button
+            IconButton(
+                onClick = { showFullScreen = true },
+                modifier = Modifier
+                     .background(Color.Black.copy(alpha = 0.4f), CircleShape)
+                     .size(32.dp)
+            ) {
+                Icon(
+                    imageVector = compose.icons.TablerIcons.Maximize,
+                    contentDescription = "Fullscreen",
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun BannerFullScreenPlayer(video: FeaturedVideo, onDismiss: () -> Unit) {
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true
+        )
+    ) {
+         Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+            // Re-use BannerVideoPlayer but ensure it handles fullscreen layout
+            BannerVideoPlayer(videoUrl = video.videoUrl)
+            
+            // Close Button
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+                    .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+            ) {
+                Icon(
+                     imageVector = compose.icons.TablerIcons.X,
+                     contentDescription = "Close",
+                     tint = Color.White
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun BannerVideoPlayer(videoUrl: String) {
+    if (videoUrl.contains("youtube.com") || videoUrl.contains("youtu.be")) {
+        // Extract Video ID
+        val videoId = extractYouTubeId(videoUrl)
+        if (videoId != null) {
+            YouTubeVideoPlayer(videoId = videoId)
+        } else {
+             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("Invalid YouTube URL", color = Color.White)
+            }
+        }
+    } else {
+        // Treat as MP4 / Native
+        NativeBannerVideoPlayer(videoUrl = videoUrl)
+    }
+}
+
+@Composable
+fun NativeBannerVideoPlayer(videoUrl: String) {
+    val context = LocalContext.current
+    var playableUrl by remember { mutableStateOf<String?>(null) }
+    
+    // Resolve GS URL
+    LaunchedEffect(videoUrl) {
+        if (videoUrl.startsWith("gs://")) {
+            try {
+                val storageRef = FirebaseStorage.getInstance().getReferenceFromUrl(videoUrl)
+                playableUrl = storageRef.downloadUrl.await().toString()
+            } catch (e: Exception) {
+                android.util.Log.e("HeroVideoSlider", "Error resolving gs url", e)
+            }
+        } else {
+            playableUrl = videoUrl
+        }
+    }
+
+    if (playableUrl != null) {
+        val exoPlayer = remember {
+            ExoPlayer.Builder(context).build().apply {
+                setMediaItem(MediaItem.fromUri(Uri.parse(playableUrl)))
+                prepare()
+                playWhenReady = true // Auto-play since user explicitly clicked Play
+            }
+        }
+
+        DisposableEffect(Unit) {
+            onDispose {
+                exoPlayer.release()
+            }
+        }
+
+        AndroidView(
+            factory = {
+                PlayerView(it).apply {
+                    player = exoPlayer
+                    useController = true
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+    } else {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = Color.White)
+        }
+    }
+}
+
+
+@Composable
+fun YouTubeVideoPlayer(videoId: String) {
+    val htmlData = """
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+            <style>
+                body, html { margin: 0; padding: 0; background-color: black; width: 100%; height: 100%; overflow: hidden; }
+                #player { width: 100%; height: 100%; }
+            </style>
+          </head>
+          <body>
+            <div id="player"></div>
+            <script>
+              var tag = document.createElement('script');
+              tag.src = "https://www.youtube.com/iframe_api";
+              var firstScriptTag = document.getElementsByTagName('script')[0];
+              firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+              var player;
+              function onYouTubeIframeAPIReady() {
+                player = new YT.Player('player', {
+                  height: '100%',
+                  width: '100%',
+                  videoId: '$videoId',
+                  playerVars: {
+                    'playsinline': 1,
+                    'autoplay': 1, 
+                    'controls': 1,
+                    'rel': 0,
+                    'fs': 1,
+                    'modestbranding': 1
+                  },
+                  events: {
+                    'onReady': onPlayerReady
+                  }
+                });
+              }
+
+              function onPlayerReady(event) {
+                event.target.playVideo();
+              }
+            </script>
+          </body>
+        </html>
+    """.trimIndent()
+    
+    AndroidView(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black),
+        factory = { context ->
+            WebView(context).apply {
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
+                settings.javaScriptEnabled = true
+                settings.domStorageEnabled = true
+                settings.loadWithOverviewMode = true
+                settings.useWideViewPort = true
+                settings.mediaPlaybackRequiresUserGesture = false
+                
+                webChromeClient = WebChromeClient()
+                webViewClient = WebViewClient()
+                
+                loadDataWithBaseURL("https://www.youtube.com", htmlData, "text/html", "UTF-8", null)
+            }
+        },
+        update = { webView ->
+             // webView.loadUrl(embedUrl) 
+        }
     )
 }
 
-@Composable
-fun EmptyVideoState() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(240.dp)
-            .padding(horizontal = 28.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "No featured videos available",
-            style = MaterialTheme.typography.bodyLarge,
-            color = Color.Gray
-        )
-    }
-}
-
-@Composable
-fun ErrorVideoState(message: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(240.dp)
-            .padding(horizontal = 28.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "Unable to load videos",
-            style = MaterialTheme.typography.bodyLarge,
-            color = Color.Gray
-        )
+fun extractYouTubeId(url: String): String? {
+    // Basic extraction logic
+    return try {
+        if (url.contains("youtu.be/")) {
+            url.split("youtu.be/")[1].split("?")[0]
+        } else if (url.contains("v=")) {
+            url.split("v=")[1].split("&")[0]
+        } else {
+            null
+        }
+    } catch (e: Exception) {
+        null
     }
 }

@@ -2,6 +2,10 @@ package com.atmiya.innovation.ui.dashboard.home
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Home // Replaced School
+import androidx.compose.material.icons.filled.PlayArrow // Replaced VideoLibrary
+import androidx.compose.material.icons.filled.Email // Replaced QuestionAnswer
+import androidx.compose.material.icons.filled.List // Replaced Forum
 import androidx.compose.runtime.*
 import com.atmiya.innovation.repository.FirestoreRepository
 import com.atmiya.innovation.ui.components.BentoCardType
@@ -31,7 +35,7 @@ fun MentorHome(
             type = BentoCardType.HERO,
             title = "Welcome, $userName",
             subtitle = "Guide the next generation",
-            icon = Icons.Default.School,
+            icon = Icons.Default.Home,
             span = 2,
             onClick = { onNavigate("network") }
         ),
@@ -39,14 +43,14 @@ fun MentorHome(
             type = BentoCardType.FEATURE,
             title = "My Videos",
             subtitle = "Manage your content",
-            icon = Icons.Default.VideoLibrary,
+            icon = Icons.Default.PlayArrow,
             onClick = { onNavigate("mentor_videos") }
         ),
         BentoItem(
             type = BentoCardType.FEATURE,
             title = "Requests",
             subtitle = "Startup inquiries",
-            icon = Icons.Default.QuestionAnswer,
+            icon = Icons.Default.Email,
             badge = "Pending", // Placeholder
             onClick = { onNavigate("network") }
         ),
@@ -54,7 +58,7 @@ fun MentorHome(
             type = BentoCardType.FEATURE,
             title = "Community Wall",
             subtitle = "Engage with startups",
-            icon = Icons.Default.Forum,
+            icon = Icons.Default.List,
             span = 2,
             onClick = { onNavigate("wall") }
         ),

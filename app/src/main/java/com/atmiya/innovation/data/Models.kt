@@ -45,10 +45,10 @@ data class Startup(
     val revenue: String = "",
     val description: String = "",
     // Verification
-    @get:com.google.firebase.firestore.PropertyName("isVerified")
     val isVerified: Boolean = false,
     val verifiedByAdminId: String? = null,
-    val verifiedAt: Timestamp? = null
+    val verifiedAt: Timestamp? = null,
+    val isDeleted: Boolean = false // Added for filtering
 )
 
 data class Investor(
@@ -58,11 +58,12 @@ data class Investor(
     val sectorsOfInterest: List<String> = emptyList(),
     val preferredStages: List<String> = emptyList(), // Added
     val ticketSizeMin: String = "",
-    val ticketSizeMax: String = "",
+    // val ticketSizeMax: String = "",
     val investmentType: String = "",
     val city: String = "",
     val bio: String = "",
-    val profilePhotoUrl: String? = null
+    val profilePhotoUrl: String? = null,
+    val isDeleted: Boolean = false // Added for filtering
 )
 
 data class Mentor(
@@ -75,7 +76,8 @@ data class Mentor(
     val experienceYears: String = "",
     val city: String = "",
     val bio: String = "",
-    val profilePhotoUrl: String? = null
+    val profilePhotoUrl: String? = null,
+    val isDeleted: Boolean = false // Added for filtering
 )
 
 // --- Content ---
@@ -99,8 +101,16 @@ data class WallPost(
     val commentsCount: Int = 0,
     @get:com.google.firebase.firestore.PropertyName("active")
     val isActive: Boolean = true,
+    val attachments: List<PostAttachment> = emptyList(), // Added for multiple media
     val createdAt: Timestamp? = null,
     val updatedAt: Timestamp? = null
+)
+
+data class PostAttachment(
+    val id: String = "",
+    val type: String = "", // "image" or "video"
+    val url: String = "",
+    val thumbnailUrl: String? = null
 )
 
 data class PollOption(
@@ -230,9 +240,13 @@ data class ChatChannel(
     val id: String = "",
     val participants: List<String> = emptyList(), // [userId1, userId2]
     val participantNames: Map<String, String> = emptyMap(), // {userId1: "Name1", userId2: "Name2"}
+    val participantPhotos: Map<String, String> = emptyMap(), // Added for efficient UI loading
     val lastMessage: String = "",
     val lastMessageTimestamp: Timestamp? = null,
-    val createdAt: Timestamp? = null
+    val createdAt: Timestamp? = null,
+    val pinnedBy: List<String> = emptyList(), // List of UserIDs who have pinned this chat
+    val archivedBy: List<String> = emptyList(), // List of UserIDs who have archived this chat
+    val unreadCounts: Map<String, Int> = emptyMap() // Map of userId -> count
 )
 
 data class ChatMessage(
@@ -240,5 +254,49 @@ data class ChatMessage(
     val senderId: String = "",
     val text: String = "",
     val timestamp: Timestamp? = null,
-    val isRead: Boolean = false
+    val isRead: Boolean = false,
+    val mediaType: String = "text", // "text", "image", "video", "pdf", "audio"
+    val mediaUrl: String? = null, // URL for image/video/pdf/audio
+    val thumbnailUrl: String? = null, // For video thumbnails
+    val fileName: String? = null, // For PDF/Docs
+    val fileSize: String? = null, // Display string e.g., "5 MB"
+    val audioDuration: String? = null // "00:30"
+)
+
+// --- Governance ---
+data class GovernmentScheme(
+    val id: String = "",
+    val name: String = "",
+    val ministry: String = "",
+    val description: String = "",
+    val benefits: String = "",
+    val eligibility: String = "",
+    val applyUrl: String = "",
+    val category: String = "General" // "Funding", "Tax", "Incubation", "General"
+)
+
+// --- Connections ---
+data class ConnectionRequest(
+    val id: String = "",
+    val senderId: String = "",
+    val senderName: String = "",
+    val senderRole: String = "",
+    val senderPhotoUrl: String? = null,
+    val receiverId: String = "",
+    val status: String = "pending", // "pending", "accepted", "rejected", "ignored"
+    val createdAt: Timestamp? = null
+)
+
+// --- Incubator ---
+data class Incubator(
+    val id: String = "",
+    val name: String = "",
+    val state: String = "",
+    val city: String = "",
+    val sector: String = "Sector Agnostic",
+    val website: String = "",
+    val logoUrl: String? = null,
+    val contactEmail: String = "",
+    val approvedFunding: String = "5.0 Cr", // Mock data field
+    val remainingFunding: String = "2.0 Cr" // Mock data field
 )

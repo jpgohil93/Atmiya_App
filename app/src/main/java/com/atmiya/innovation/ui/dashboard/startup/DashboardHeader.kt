@@ -6,9 +6,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Search
+import compose.icons.TablerIcons
+import compose.icons.tablericons.Bell
+import compose.icons.tablericons.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -98,9 +98,10 @@ fun DashboardTopSection(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = { /* TODO: Notifications */ }) {
                             Icon(
-                                Icons.Default.Notifications,
+                                TablerIcons.Bell,
                                 contentDescription = "Notifications",
-                                tint = Color.White
+                                tint = Color.White,
+                                modifier = Modifier.size(28.dp)
                             )
                         }
                         Spacer(modifier = Modifier.width(8.dp))
@@ -168,9 +169,10 @@ fun DashboardTopSection(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        Icons.Default.Search,
+                        TablerIcons.Search,
                         contentDescription = "Search",
-                        tint = Color.Gray
+                        tint = Color.Gray,
+                        modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(

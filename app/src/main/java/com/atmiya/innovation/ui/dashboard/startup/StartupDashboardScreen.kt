@@ -6,17 +6,44 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+
+import androidx.compose.foundation.border
+import compose.icons.TablerIcons
+import compose.icons.tablericons.InfoCircle
+import compose.icons.tablericons.CalendarEvent
+import compose.icons.tablericons.School
+import compose.icons.tablericons.Search
+import compose.icons.tablericons.Building
+import compose.icons.tablericons.CurrencyRupee
+import compose.icons.tablericons.Bulb
+import compose.icons.tablericons.TrendingUp
+import compose.icons.tablericons.Leaf
+import compose.icons.tablericons.ShieldCheck
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Gavel
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.atmiya.innovation.ui.dashboard.news.DashboardNewsSection
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
+
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import coil.compose.AsyncImage
+import com.atmiya.innovation.R
+import com.atmiya.innovation.ui.generator.IdeaGeneratorEntryCard
+import com.atmiya.innovation.data.FundingCall
 import com.atmiya.innovation.repository.FirestoreRepository
 import com.atmiya.innovation.ui.components.SoftCard
 import com.atmiya.innovation.ui.theme.AtmiyaPrimary
@@ -79,21 +106,30 @@ fun StartupDashboardScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 state = listState,
-                contentPadding = PaddingValues(bottom = 100.dp)
+                contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp)
             ) {
-                // 1. Header & Search
-                item {
-                    DashboardTopSection(
-                        userName = userName,
-                        userPhotoUrl = userPhotoUrl,
-                        onNavigate = onNavigate
-                    )
-                }
+                // 1. Header is now outside lazy column or handled by scaffold, 
+                // but since we want it scrolling or fixed? 
+                // The prompt says "The header of the app should be same for the dashaborad and wall screen". 
+                // Wall screen has fixed header. Let's make it fixed here too by using Scaffold if possible, 
+                // but since StartupDashboardScreen is a screen content, let's just put it at top if not using Scaffold here.
+                // Wait, DashboardScreen calls StartupDashboardScreen. 
+                // To match WallScreen structure, we should probably add Scaffold with TopBar here or in DashboardScreen.
+                // However, modifying DashboardScreen is complex due to Pager.
+                // Simplest is to put CommonTopBar at the top of LazyColumn (scrollable) or Box (fixed).
+                // WallScreen has it fixed. Let's try to simulate fixed if possible, or just scrollable for now.
+                // Actually, let's just make it part of the content for now to avoid major refactoring of DashboardScreen pager,
+                // OR we can wrap this screen in a Scaffold.
+                
+                // Let's use Scaffold here to have a fixed top bar like WallScreen
+                
+                // 2. Search Box (Now below header)
+                // 2. Search Box removed as per request
+
                 
                 // 3. Featured Videos (Hero Slider)
                 item {
                     Column(modifier = Modifier.padding(top = 0.dp)) { // Adjust for overlap
-                        PaddingTitle(title = "Featured Videos")
                         HeroVideoSlider(
                             videosState = videosState,
                             isVisible = isTabVisible && isVideoVisible,
@@ -104,105 +140,97 @@ fun StartupDashboardScreen(
                     }
                 }
                 
-                // 4. Netfund Utility Grid
+                // Idea Generator Entry
                 item {
-                    Spacer(modifier = Modifier.height(24.dp))
-                    PaddingTitle(title = "Netfund Utility")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    IdeaGeneratorEntryCard(
+                        onClick = { onNavigate("idea_generator") }
+                    )
+                }
+                
+                // 4. Accelerate Your Growth Grid
+                item {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Accelerate Your Growth",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
+                    )
                     
-                    Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
                         // Row 1
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                            GridCard(
+                            DashboardCard(
                                 title = "Funding Calls",
-                                subtitle = "${fundingCalls.size} Active",
-                                icon = Icons.Default.AttachMoney,
-                                color = Color(0xFFE3F2FD), // Light Blue
-                                iconColor = Color(0xFF1565C0),
+                                subtitle = "Serve funds & grants",
                                 modifier = Modifier.weight(1f),
-                                onClick = { onNavigate("funding") }
+                                imageResId = R.drawable.ic_funding_calls,
+                                onClick = { onNavigate("funding_calls_list") }
                             )
-                            GridCard(
-                                title = "My Applications",
-                                subtitle = "Track Status",
-                                icon = Icons.Default.Assignment,
-                                color = Color(0xFFE8F5E9), // Light Green
-                                iconColor = Color(0xFF2E7D32),
+                            
+                            DashboardCard(
+                                title = "Events",
+                                subtitle = "Upcoming events",
                                 modifier = Modifier.weight(1f),
-                                onClick = { onNavigate("my_applications") }
+                                imageResId = R.drawable.ic_events,
+                                onClick = { onNavigate("events_list") }
                             )
                         }
-                        Spacer(modifier = Modifier.height(16.dp))
+                        
                         // Row 2
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                            GridCard(
-                                title = "Investors",
-                                subtitle = "Connect",
-                                icon = Icons.Default.TrendingUp,
-                                color = Color(0xFFFFF3E0), // Light Orange
-                                iconColor = Color(0xFFEF6C00),
-                                modifier = Modifier.weight(1f),
-                                onClick = { onNavigate("network") }
-                            )
-                            GridCard(
+                            DashboardCard(
                                 title = "Mentors",
-                                subtitle = "Get Guidance",
-                                icon = Icons.Default.School,
-                                color = Color(0xFFF3E5F5), // Light Purple
-                                iconColor = Color(0xFF7B1FA2),
+                                subtitle = "Engagement mentors",
                                 modifier = Modifier.weight(1f),
-                                onClick = { onNavigate("network") }
+                                imageResId = R.drawable.ic_mentors,
+                                onClick = { onNavigate("mentors_list") }
+                            )
+                            
+                            DashboardCard(
+                                title = "Investors",
+                                subtitle = "Connect with investors",
+                                modifier = Modifier.weight(1f),
+                                imageResId = R.drawable.ic_investors,
+                                onClick = { onNavigate("investors_list") }
                             )
                         }
-                        Spacer(modifier = Modifier.height(16.dp))
-                         // Row 3
+                        
+                        // Row 3
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                            GridCard(
-                                title = "Events",
-                                subtitle = "${if (eventsState is StartupDashboardViewModel.UiState.Success) (eventsState as StartupDashboardViewModel.UiState.Success).data.size else 0} Upcoming",
-                                icon = Icons.Default.Event,
-                                color = Color(0xFFFFEBEE), // Light Red
-                                iconColor = Color(0xFFC62828),
+                            DashboardCard(
+                                title = "Incubators",
+                                subtitle = "Growth incubating",
                                 modifier = Modifier.weight(1f),
-                                onClick = { /* TODO: Events List */ }
+                                imageResId = R.drawable.ic_incubators,
+                                onClick = { onNavigate("incubators_list") }
                             )
-                            GridCard(
-                                title = "Profile",
-                                subtitle = "Manage",
-                                icon = Icons.Default.Person,
-                                color = Color(0xFFECEFF1), // Light Grey
-                                iconColor = Color(0xFF455A64),
+                            
+                            DashboardCard(
+                                title = "Governance",
+                                subtitle = "Government Policy",
                                 modifier = Modifier.weight(1f),
-                                onClick = { onNavigate("profile_screen") }
+                                imageResId = R.drawable.ic_governance,
+                                onClick = { onNavigate("governance") }
                             )
                         }
                     }
                 }
                 
-                // 5. AIF Events Section (Horizontal List)
                 item {
                     Spacer(modifier = Modifier.height(24.dp))
-                    PaddingTitle(title = "Upcoming Events")
-                    AIFEventsSection(
-                        eventsState = eventsState,
-                        debugInfo = eventDebugInfo,
-                        onEventClick = { eventId ->
-                            onNavigate("event_detail/$eventId")
+                    DashboardNewsSection(
+                        onViewAllClick = { onNavigate("news_list") },
+                        onNewsClick = { url -> 
+                             val encodedUrl = URLEncoder.encode(url, StandardCharsets.UTF_8.toString())
+                             onNavigate("news_detail/$encodedUrl")
                         }
                     )
-                }
-                
-                // 6. Government Schemes Section
-                item {
-                    Spacer(modifier = Modifier.height(24.dp))
-                    PaddingTitle(title = "Government Schemes & Policies")
-                    GovernmentSchemesSection()
-                }
-
-                // 7. Incubation Centers Section
-                item {
-                    Spacer(modifier = Modifier.height(24.dp))
-                    PaddingTitle(title = "Incubation Support")
-                    IncubationCentersSection()
                 }
 
                 item {
@@ -214,67 +242,77 @@ fun StartupDashboardScreen(
 }
 
 @Composable
-fun PaddingTitle(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleLarge,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onBackground,
-        modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
-    )
-}
-
-@Composable
-fun GridCard(
+fun DashboardCard(
     title: String,
     subtitle: String,
-    icon: ImageVector,
-    color: Color,
-    iconColor: Color,
     modifier: Modifier = Modifier,
-    onClick: () -> Unit
+    imageResId: Int? = null,
+    onClick: () -> Unit,
+    content: @Composable BoxScope.() -> Unit = {}
 ) {
     Surface(
         modifier = modifier
-            .height(110.dp)
+            .height(180.dp)
             .clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 2.dp
+        shape = RoundedCornerShape(24.dp),
+        color = Color.White,
+        shadowElevation = 2.dp,
+        tonalElevation = 2.dp
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Image area (takes top ~65% of card)
             Box(
                 modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(color),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .weight(0.65f)
+                    .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = iconColor,
-                    modifier = Modifier.size(20.dp)
-                )
+                if (imageResId != null) {
+                    Image(
+                        painter = painterResource(id = imageResId),
+                        contentDescription = title,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        content()
+                    }
+                }
             }
             
-            Column {
+            // Text area with solid white background (takes bottom ~35%)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(0.35f)
+                    .background(Color.White)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        letterSpacing = 0.5.sp
+                    ),
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = Color(0xFF263238), // Dark Blue Grey for premium look
+                    fontSize = 17.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = Color(0xFF78909C), // Softer Blue Grey
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontWeight = FontWeight.Medium
                 )
             }
         }
     }
 }
-

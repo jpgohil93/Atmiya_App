@@ -5,7 +5,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.AttachFile
+// import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.Info // Added explicit import
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -135,7 +136,7 @@ fun FundingDetailScreen(
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = AtmiyaPrimary)
                         ) {
-                            Icon(Icons.Default.AttachFile, contentDescription = null)
+                            Icon(Icons.Default.Info, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(attachment["name"] ?: "Document")
                         }

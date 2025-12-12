@@ -4,9 +4,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,13 +21,11 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.atmiya.innovation.data.Mentor
 import com.atmiya.innovation.repository.FirestoreRepository
-import com.atmiya.innovation.ui.components.SoftScaffold
+import com.atmiya.innovation.ui.components.SoftScaffold // Assuming usage of SoftScaffold if available, or just Scaffold
 import com.atmiya.innovation.ui.theme.AtmiyaPrimary
 import com.atmiya.innovation.ui.theme.AtmiyaSecondary
-import com.google.firebase.firestore.FirebaseFirestore
-import kotlinx.coroutines.tasks.await
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun MentorDetailScreen(
     mentorId: String,
@@ -39,34 +39,34 @@ fun MentorDetailScreen(
         try {
             mentor = repository.getMentor(mentorId)
         } catch (e: Exception) {
-            android.util.Log.e("MentorDetailScreen", "Error fetching mentor", e)
+            // Log error
         } finally {
             isLoading = false
         }
     }
 
-    SoftScaffold(
+    Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Mentor Profile", fontWeight = FontWeight.Bold) },
+                title = { Text("Mentor Details", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = AtmiyaPrimary
+                    containerColor = MaterialTheme.colorScheme.background
                 )
             )
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = AtmiyaPrimary)
             }
         } else if (mentor == null) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Text("Mentor not found.", color = MaterialTheme.colorScheme.onBackground)
             }
         } else {
@@ -76,63 +76,78 @@ fun MentorDetailScreen(
                     .fillMaxSize()
                     .padding(innerPadding)
                     .padding(16.dp)
-                    .verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .verticalScroll(rememberScrollState())
             ) {
-                // Profile Photo
-                if (m.profilePhotoUrl != null) {
-                    AsyncImage(
-                        model = m.profilePhotoUrl,
-                        contentDescription = null,
-                        modifier = Modifier.size(120.dp).clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier.size(120.dp).clip(CircleShape).background(AtmiyaSecondary.copy(alpha = 0.2f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(m.name.take(1), style = MaterialTheme.typography.displayMedium, color = AtmiyaPrimary)
+                // Profile Header
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (m.profilePhotoUrl != null) {
+                        AsyncImage(
+                            model = m.profilePhotoUrl,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(80.dp)
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                         Box(
+                            modifier = Modifier.size(80.dp).clip(CircleShape).background(Color.Gray.copy(alpha = 0.2f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(40.dp), tint = Color.Gray)
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.width(16.dp))
+                    
+                    Column {
+                        Text(
+                            text = m.name,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = AtmiyaPrimary
+                        )
+                        Text(
+                            text = m.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = AtmiyaSecondary
+                        )
+                         Text(
+                            text = m.organization,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
+                        )
                     }
                 }
                 
+                Spacer(modifier = Modifier.height(24.dp))
+                Divider(color = Color.LightGray.copy(alpha = 0.5f))
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                Text(m.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
-                Text(m.title, style = MaterialTheme.typography.titleMedium, color = AtmiyaPrimary)
-                Text(m.organization, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                // Detailed Info
+                DetailItem(label = "Expertise", value = m.expertiseAreas.joinToString(", "))
+                DetailItem(label = "Experience", value = "${m.experienceYears} Years")
+                DetailItem(label = "About", value = m.bio)
                 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(32.dp))
                 
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        MentorSectionHeader("Expertise")
-                        Text(m.expertiseAreas.joinToString(", "), color = MaterialTheme.colorScheme.onSurface)
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        MentorSectionHeader("Experience")
-                        Text("${m.experienceYears} Years", color = MaterialTheme.colorScheme.onSurface)
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        MentorSectionHeader("Bio")
-                        Text(m.bio, color = MaterialTheme.colorScheme.onSurface)
+                // Actions
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Button(
+                        onClick = { /* Request */ },
+                        colors = ButtonDefaults.buttonColors(containerColor = AtmiyaPrimary),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.weight(1f).height(50.dp)
+                    ) {
+                        Text("Request Mentorship")
                     }
-                }
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                Button(
-                    onClick = { /* TODO: Request Mentorship */ },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = AtmiyaSecondary)
-                ) {
-                    Text("Request Mentorship")
+                    OutlinedButton(
+                        onClick = { /* Message */ },
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.weight(1f).height(50.dp)
+                    ) {
+                        Text("Message")
+                    }
                 }
             }
         }
@@ -140,12 +155,11 @@ fun MentorDetailScreen(
 }
 
 @Composable
-private fun MentorSectionHeader(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(bottom = 4.dp)
-    )
+fun DetailItem(label: String, value: String) {
+    if (value.isNotBlank()) {
+        Column(modifier = Modifier.padding(vertical = 8.dp)) {
+            Text(text = label, style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+            Text(text = value, style = MaterialTheme.typography.bodyLarge)
+        }
+    }
 }

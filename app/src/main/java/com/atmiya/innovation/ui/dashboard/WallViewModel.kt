@@ -112,8 +112,7 @@ class WallViewModel : ViewModel() {
     fun createPost(
         context: Context, 
         content: String, 
-        uri: Uri?, 
-        isVideo: Boolean,
+        mediaItems: List<Pair<Uri, Boolean>>, // Changed to list
         pollQuestion: String? = null,
         pollOptions: List<String> = emptyList()
     ) {
@@ -121,8 +120,8 @@ class WallViewModel : ViewModel() {
         val postId = UUID.randomUUID().toString()
         
         viewModelScope.launch(Dispatchers.IO) {
-            // 0. Pre-check media size
-            if (uri != null) {
+            // 0. Pre-check media size (check all)
+            for ((uri, isVideo) in mediaItems) {
                 try {
                     storageRepository.validateWallMedia(context, uri, isVideo)
                 } catch (e: Exception) {
@@ -132,50 +131,88 @@ class WallViewModel : ViewModel() {
                 }
             }
 
-            // 1. Optimistic Update
+            // 1. Optimistic Update (Simplified: wait for upload for multi-media to ensure URLs are ready, or show placeholder)
+            // For now, let's just do standard upload then add.
+            
             val userProfile = firestoreRepository.getUser(user.uid)
             
             val finalPollOptions = pollOptions.map { 
                 com.atmiya.innovation.data.PollOption(id = UUID.randomUUID().toString(), text = it, voteCount = 0) 
             }
             
-            val optimisticPost = WallPost(
-                id = postId,
-                authorUserId = user.uid,
-                authorName = userProfile?.name ?: "Anonymous",
-                authorRole = userProfile?.role ?: "User",
-                authorPhotoUrl = userProfile?.profilePhotoUrl,
-                content = content,
-                mediaType = if (uri != null) (if (isVideo) "video" else "image") else "none",
-                mediaUrl = null, // Placeholder or local URI if possible, but null for now
-                postType = if (pollQuestion != null) "poll" else "generic",
-                pollQuestion = pollQuestion,
-                pollOptions = finalPollOptions,
-                isActive = true,
-                createdAt = Timestamp.now(),
-                likesCount = 0,
-                commentsCount = 0
-            )
-            
-            // Add to local list immediately (at top)
-            _posts.value = listOf(optimisticPost) + _posts.value
-
             try {
-                var mediaUrl: String? = null
-                if (uri != null) {
-                    mediaUrl = storageRepository.uploadWallMedia(context, postId, uri, isVideo)
+                _isLoading.value = true
+                
+                val attachments = mutableListOf<com.atmiya.innovation.data.PostAttachment>()
+                var mainMediaType = "none"
+                var mainMediaUrl: String? = null
+                var mainThumbnailUrl: String? = null
+
+                // Upload all media
+                mediaItems.forEachIndexed { index, (uri, isVideo) ->
+                    val url = storageRepository.uploadWallMedia(context, postId + "_$index", uri, isVideo)
+                    // TODO: Thumbnails for videos
+                    
+                    val type = if (isVideo) "video" else "image"
+                    attachments.add(com.atmiya.innovation.data.PostAttachment(
+                        id = UUID.randomUUID().toString(),
+                        type = type,
+                        url = url,
+                        thumbnailUrl = null // Add logic if needed
+                    ))
+                    
+                    // Set legacy fields for first item
+                    if (index == 0) {
+                        mainMediaType = type
+                        mainMediaUrl = url
+                        mainThumbnailUrl = null
+                    }
                 }
 
-                val finalPost = optimisticPost.copy(mediaUrl = mediaUrl)
+                val finalPost = WallPost(
+                    id = postId,
+                    authorUserId = user.uid,
+                    authorName = userProfile?.name ?: "Anonymous",
+                    authorRole = userProfile?.role ?: "User",
+                    authorPhotoUrl = userProfile?.profilePhotoUrl,
+                    content = content,
+                    mediaType = mainMediaType, // Legacy support
+                    mediaUrl = mainMediaUrl,   // Legacy support
+                    thumbnailUrl = mainThumbnailUrl,
+                    attachments = attachments,
+                    postType = if (pollQuestion != null) "poll" else "generic",
+                    pollQuestion = pollQuestion,
+                    pollOptions = finalPollOptions,
+                    isActive = true,
+                    createdAt = Timestamp.now(),
+                    likesCount = 0,
+                    commentsCount = 0
+                )
+                
                 android.util.Log.d("WallViewModel", "Creating post: $finalPost")
                 firestoreRepository.addWallPost(finalPost)
                 
-                // Update local list with final post (though listener might handle this)
+                // Refresh to show new post
+                loadPosts()
+                
             } catch (e: Exception) {
                 android.util.Log.e("WallViewModel", "Error creating post", e)
-                // Revert optimistic update on failure
-                _posts.value = _posts.value.filter { it.id != postId }
                 _error.value = "Failed to create post: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+    
+    fun deletePost(postId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                firestoreRepository.deleteWallPost(postId)
+                // Remove from local list
+                _posts.value = _posts.value.filter { it.id != postId }
+            } catch (e: Exception) {
+                 android.util.Log.e("WallViewModel", "Error deleting post", e)
+                _error.value = "Failed to delete post"
             }
         }
     }

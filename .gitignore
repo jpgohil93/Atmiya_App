@@ -14,3 +14,5 @@
 .cxx
 local.properties
 app/build/
+service-account.json
+functions/node_modules/

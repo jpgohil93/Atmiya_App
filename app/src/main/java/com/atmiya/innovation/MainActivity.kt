@@ -3,6 +3,7 @@ package com.atmiya.innovation
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.core.view.WindowCompat
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -17,7 +18,34 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         val themeManager = com.atmiya.innovation.ui.theme.ThemeManager(this)
+        
+        // Notification Permission Launcher (Android 13+)
+        val requestPermissionLauncher = registerForActivityResult(
+            androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+        ) { isGranted: Boolean ->
+            if (isGranted) {
+                // Permission granted
+                com.google.firebase.messaging.FirebaseMessaging.getInstance().subscribeToTopic("all_posts")
+            } else {
+                // Permission denied
+            }
+        }
+
+        // Ask for permission on Valid Session
+        fun askNotificationPermission() {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) !=
+                    android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                } else {
+                     com.google.firebase.messaging.FirebaseMessaging.getInstance().subscribeToTopic("all_posts")
+                }
+            } else {
+                 com.google.firebase.messaging.FirebaseMessaging.getInstance().subscribeToTopic("all_posts")
+            }
+        }
         
         setContent {
             val themePreference by themeManager.themeFlow.collectAsState(initial = "system")
@@ -84,6 +112,9 @@ class MainActivity : ComponentActivity() {
                                             android.util.Log.d("SessionCheck", "Navigating to Signup. User null? ${user == null}, Onboarding? ${user?.isOnboardingComplete}, Role? ${user?.role}")
                                             currentScreen = "signup"
                                         }
+                                        
+                                        // Ask for permission after successful login check
+                                        askNotificationPermission()
                                     }
                                 } catch (e: Exception) {
                                     android.util.Log.e("SessionCheck", "Error: ${e.message}", e)
@@ -116,6 +147,7 @@ class MainActivity : ComponentActivity() {
                                 onSignupComplete = { role ->
                                     selectedRole = role
                                     currentScreen = "dashboard"
+                                    askNotificationPermission()
                                 },
                                 onLogout = {
                                     auth.signOut()
@@ -124,8 +156,20 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         "dashboard" -> {
-                            val startDest = intent.getStringExtra("navigation_destination")
-                            val navId = intent.getStringExtra("navigation_id")
+                            var startDest = intent.getStringExtra("navigation_destination")
+                            var navId = intent.getStringExtra("navigation_id")
+
+                            // Handle Deep Link URI if extras are missing
+                            if (startDest == null && intent.data != null) {
+                                val uri = intent.data
+                                if (uri != null && uri.pathSegments.size >= 2) {
+                                    // Path: /wall_post/{id}
+                                    if (uri.pathSegments[0] == "wall_post") {
+                                        startDest = "wall_post"
+                                        navId = uri.pathSegments[1]
+                                    }
+                                }
+                            }
                             
                             // Subscribe to topics if Startup
                             LaunchedEffect(selectedRole) {
@@ -137,7 +181,8 @@ class MainActivity : ComponentActivity() {
                                         android.util.Log.d("FCM", "Subscribed to topic: $topic")
                                     }
                                 }
-                                com.google.firebase.messaging.FirebaseMessaging.getInstance().subscribeToTopic("all_users")
+                                // Ensure global topic subscription here too just in case
+                                com.google.firebase.messaging.FirebaseMessaging.getInstance().subscribeToTopic("all_posts")
                             }
 
                             com.atmiya.innovation.ui.dashboard.DashboardScreen(

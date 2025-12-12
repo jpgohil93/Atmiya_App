@@ -3,20 +3,23 @@ package com.atmiya.innovation.ui.dashboard
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import compose.icons.TablerIcons
+import compose.icons.tablericons.ArrowLeft
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.atmiya.innovation.data.Startup
+import com.atmiya.innovation.data.Investor
+import com.atmiya.innovation.data.Mentor
 import com.atmiya.innovation.repository.FirestoreRepository
-import com.atmiya.innovation.ui.components.*
-import com.atmiya.innovation.ui.theme.AtmiyaPrimary
+import com.atmiya.innovation.ui.components.SoftScaffold
+import com.atmiya.innovation.ui.components.SoftTextField
+import com.atmiya.innovation.ui.components.SoftButton
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
@@ -25,235 +28,186 @@ import kotlinx.coroutines.launch
 fun EditProfileScreen(
     onBack: () -> Unit
 ) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val firestoreRepository = remember { FirestoreRepository() }
     val auth = FirebaseAuth.getInstance()
-    val user = auth.currentUser
+    val userId = auth.currentUser?.uid ?: return
+    val repository = remember { FirestoreRepository() }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     var isLoading by remember { mutableStateOf(true) }
     var isSaving by remember { mutableStateOf(false) }
-
-    // Fields
-    var name by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var city by remember { mutableStateOf("") }
-    var state by remember { mutableStateOf("") }
-    var bio by remember { mutableStateOf("") }
     
-    // Role specific
     var role by remember { mutableStateOf("") }
+    
+    // Startup Fields
     var startupName by remember { mutableStateOf("") }
-    var sector by remember { mutableStateOf<String?>(null) }
-    var stage by remember { mutableStateOf<String?>(null) }
-    var teamSize by remember { mutableStateOf<String?>(null) }
-    var fundingAsk by remember { mutableStateOf("") }
-    var firmName by remember { mutableStateOf("") }
-    var ticketSize by remember { mutableStateOf<String?>(null) }
-    var expertise by remember { mutableStateOf<String?>(null) }
-    var experience by remember { mutableStateOf("") }
+    var startupSector by remember { mutableStateOf("") }
+    var startupStage by remember { mutableStateOf("") }
+    var startupFundingAsk by remember { mutableStateOf("") }
+    
+    // Investor Fields
+    var investorFirm by remember { mutableStateOf("") }
+    var investorTicketMin by remember { mutableStateOf("") }
+    var investorSectors by remember { mutableStateOf("") } // Comma separated
+    
+    // Mentor Fields
+    var mentorTitle by remember { mutableStateOf("") }
+    var mentorOrg by remember { mutableStateOf("") }
+    var mentorExpertise by remember { mutableStateOf("") } // Comma separated
+    
+    // Common
+    var name by remember { mutableStateOf("") }
+    var city by remember { mutableStateOf("") }
+    var bio by remember { mutableStateOf("") } // Description
 
-    LaunchedEffect(user) {
+    LaunchedEffect(userId) {
+        val user = repository.getUser(userId)
         if (user != null) {
-            val userProfile = firestoreRepository.getUser(user.uid)
-            if (userProfile != null) {
-                name = userProfile.name
-                phone = userProfile.phoneNumber
-                email = userProfile.email
-                city = userProfile.city
-                state = userProfile.region
-                role = userProfile.role
-
-                when (role) {
-                    "startup" -> {
-                        val startup = firestoreRepository.getStartup(user.uid)
-                        if (startup != null) {
-                            startupName = startup.startupName
-                            sector = startup.sector.ifBlank { null }
-                            stage = startup.stage.ifBlank { null }
-                            teamSize = startup.teamSize.ifBlank { null }
-                            fundingAsk = startup.fundingAsk
-                            bio = startup.description
-                        }
+            role = user.role
+            name = user.name
+            city = user.city
+            
+            when (role) {
+                "startup" -> {
+                    val s = repository.getStartup(userId)
+                    if (s != null) {
+                        startupName = s.startupName
+                        startupSector = s.sector
+                        startupStage = s.stage
+                        startupFundingAsk = s.fundingAsk
+                        bio = s.description
                     }
-                    "investor" -> {
-                        val investor = firestoreRepository.getInvestor(user.uid)
-                        if (investor != null) {
-                            firmName = investor.firmName
-                            ticketSize = investor.ticketSizeMin.ifBlank { null } // Simplified mapping
-                            bio = investor.bio
-                        }
+                }
+                "investor" -> {
+                    val i = repository.getInvestor(userId)
+                    if (i != null) {
+                        investorFirm = i.firmName
+                        investorTicketMin = i.ticketSizeMin
+                        // investorTicketMax = i.ticketSizeMax
+                        investorSectors = i.sectorsOfInterest.joinToString(", ")
+                        bio = i.bio
                     }
-                    "mentor" -> {
-                        val mentor = firestoreRepository.getMentor(user.uid)
-                        if (mentor != null) {
-                            expertise = mentor.expertiseAreas.firstOrNull()
-                            experience = mentor.experienceYears
-                            bio = mentor.bio
-                        }
+                }
+                "mentor" -> {
+                    val m = repository.getMentor(userId)
+                    if (m != null) {
+                        // Assuming Mentor model has title/org/expertise
+                        mentorTitle = m.title
+                        mentorOrg = m.organization
+                        mentorExpertise = m.expertiseAreas.joinToString(", ")
+                        bio = m.bio
                     }
                 }
             }
-            isLoading = false
         }
+        isLoading = false
     }
 
-    Scaffold(
+    SoftScaffold(
         topBar = {
-            SmallTopAppBar(
+            TopAppBar(
                 title = { Text("Edit Profile") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(TablerIcons.ArrowLeft, contentDescription = "Back", modifier = Modifier.size(28.dp))
                     }
                 },
-                colors = TopAppBarDefaults.smallTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = AtmiyaPrimary
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
             )
         }
     ) { padding ->
         if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = AtmiyaPrimary)
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
             }
         } else {
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
                     .padding(padding)
-                    .verticalScroll(rememberScrollState())
                     .padding(16.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Read-only fields
-                ValidatedTextField(name, {}, "Full Name", readOnly = true)
-                Spacer(modifier = Modifier.height(16.dp))
-                ValidatedTextField(phone, {}, "Phone Number", readOnly = true)
-                Spacer(modifier = Modifier.height(16.dp))
+                SoftTextField(value = name, onValueChange = { name = it }, label = "Full Name")
+                SoftTextField(value = city, onValueChange = { city = it }, label = "City")
+                SoftTextField(value = bio, onValueChange = { bio = it }, label = "About / Bio", minLines = 3)
 
-                // Editable Common Fields
-                ValidatedTextField(email, { email = it }, "Email", keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
-                Spacer(modifier = Modifier.height(16.dp))
-                ValidatedTextField(city, { city = it }, "City")
-                Spacer(modifier = Modifier.height(16.dp))
-                DropdownField("State", listOf("Gujarat", "Maharashtra", "Delhi", "Karnataka", "Other"), state, { state = it })
-                Spacer(modifier = Modifier.height(16.dp))
+                Divider()
+                Text("Role Specific Details", style = MaterialTheme.typography.titleMedium)
 
-                // Role Specific
                 when (role) {
                     "startup" -> {
-                        ValidatedTextField(startupName, { startupName = it }, "Startup Name")
-                        Spacer(modifier = Modifier.height(16.dp))
-                        DropdownField("Sector", listOf("AgriTech", "HealthTech", "FinTech", "EdTech", "CleanTech", "Other"), sector, { sector = it })
-                        Spacer(modifier = Modifier.height(16.dp))
-                        DropdownField("Stage", listOf("Ideation", "Prototype", "MVP", "Early Traction", "Scaling"), stage, { stage = it })
-                        Spacer(modifier = Modifier.height(16.dp))
-                        DropdownField("Team Size", listOf("1-5", "6-20", "21-100", "100+"), teamSize, { teamSize = it })
-                        Spacer(modifier = Modifier.height(16.dp))
-                        ValidatedTextField(fundingAsk, { fundingAsk = it }, "Funding Ask (₹)", keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                        SoftTextField(value = startupName, onValueChange = { startupName = it }, label = "Startup Name")
+                        SoftTextField(value = startupSector, onValueChange = { startupSector = it }, label = "Sector")
+                        SoftTextField(value = startupStage, onValueChange = { startupStage = it }, label = "Stage")
+                        SoftTextField(value = startupFundingAsk, onValueChange = { startupFundingAsk = it }, label = "Funding Ask")
                     }
                     "investor" -> {
-                        ValidatedTextField(firmName, { firmName = it }, "Firm Name")
-                        Spacer(modifier = Modifier.height(16.dp))
-                        DropdownField("Ticket Size", listOf("< 10L", "10L - 50L", "50L - 2Cr", "> 2Cr"), ticketSize, { ticketSize = it })
+                        SoftTextField(value = investorFirm, onValueChange = { investorFirm = it }, label = "Firm Name")
+                        SoftTextField(value = investorTicketMin, onValueChange = { investorTicketMin = it }, label = "Min Ticket Size")
+                        SoftTextField(value = investorSectors, onValueChange = { investorSectors = it }, label = "Sectors (Comma separated)")
                     }
                     "mentor" -> {
-                        DropdownField("Expertise", listOf("Tech", "Finance", "Marketing", "Legal"), expertise, { expertise = it })
-                        Spacer(modifier = Modifier.height(16.dp))
-                        ValidatedTextField(experience, { experience = it }, "Experience (Years)", keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                        SoftTextField(value = mentorTitle, onValueChange = { mentorTitle = it }, label = "Title")
+                        SoftTextField(value = mentorOrg, onValueChange = { mentorOrg = it }, label = "Organization")
+                        SoftTextField(value = mentorExpertise, onValueChange = { mentorExpertise = it }, label = "Expertise Areas (Comma separated)")
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(16.dp))
-                ValidatedTextField(bio, { bio = it }, "Bio / Description", minLines = 3)
-                
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(24.dp))
                 
                 SoftButton(
                     onClick = {
-                        if (user != null) {
+                        scope.launch {
                             isSaving = true
-                            scope.launch {
-                                try {
-                                    // Update User
-                                    firestoreRepository.updateUser(user.uid, mapOf(
-                                        "email" to email,
-                                        "city" to city,
-                                        "region" to state
-                                    ))
-                                    
-                                    // Update Role Doc
-                                    when (role) {
-                                        "startup" -> {
-                                            val currentStartup = firestoreRepository.getStartup(user.uid)
-                                            val startupToSave = currentStartup?.copy(
-                                                uid = user.uid,
-                                                startupName = startupName,
-                                                sector = sector ?: "",
-                                                stage = stage ?: "",
-                                                teamSize = teamSize ?: "",
-                                                fundingAsk = fundingAsk,
-                                                description = bio
-                                            ) ?: com.atmiya.innovation.data.Startup(
-                                                uid = user.uid,
-                                                startupName = startupName,
-                                                sector = sector ?: "",
-                                                stage = stage ?: "",
-                                                teamSize = teamSize ?: "",
-                                                fundingAsk = fundingAsk,
-                                                description = bio
-                                            )
-                                            firestoreRepository.createStartup(startupToSave)
-                                        }
-                                        "investor" -> {
-                                            val currentInvestor = firestoreRepository.getInvestor(user.uid)
-                                            val investorToSave = currentInvestor?.copy(
-                                                uid = user.uid,
-                                                firmName = firmName,
-                                                ticketSizeMin = ticketSize ?: "",
-                                                city = city,
-                                                bio = bio
-                                            ) ?: com.atmiya.innovation.data.Investor(
-                                                uid = user.uid,
-                                                firmName = firmName,
-                                                ticketSizeMin = ticketSize ?: "",
-                                                city = city,
-                                                bio = bio
-                                            )
-                                            firestoreRepository.createInvestor(investorToSave)
-                                        }
-                                        "mentor" -> {
-                                            val currentMentor = firestoreRepository.getMentor(user.uid)
-                                            val mentorToSave = currentMentor?.copy(
-                                                uid = user.uid,
-                                                expertiseAreas = expertise?.let { listOf(it) } ?: emptyList(),
-                                                experienceYears = experience,
-                                                city = city,
-                                                bio = bio
-                                            ) ?: com.atmiya.innovation.data.Mentor(
-                                                uid = user.uid,
-                                                expertiseAreas = expertise?.let { listOf(it) } ?: emptyList(),
-                                                experienceYears = experience,
-                                                city = city,
-                                                bio = bio
-                                            )
-                                            firestoreRepository.createMentor(mentorToSave)
-                                        }
+                            try {
+                                // 1. Update Base User
+                                repository.updateUser(userId, mapOf("name" to name, "city" to city))
+                                
+                                // 2. Update Role Doc
+                                when(role) {
+                                    "startup" -> {
+                                        val data = mapOf(
+                                            "startupName" to startupName,
+                                            "sector" to startupSector,
+                                            "stage" to startupStage,
+                                            "fundingAsk" to startupFundingAsk,
+                                            "description" to bio
+                                        )
+                                        repository.updateStartup(userId, data)
                                     }
-                                    
-                                    Toast.makeText(context, "Profile Updated", Toast.LENGTH_SHORT).show()
-                                    onBack()
-                                } catch (e: Exception) {
-                                    Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_LONG).show()
-                                } finally {
-                                    isSaving = false
+                                    "investor" -> {
+                                        val data = mapOf(
+                                            "name" to name, // Sync name
+                                            "firmName" to investorFirm,
+                                            "ticketSizeMin" to investorTicketMin,
+                                            // "ticketSizeMax" to investorTicketMax,
+                                            "sectorsOfInterest" to investorSectors.split(",").map { it.trim() },
+                                            "bio" to bio
+                                        )
+                                        repository.updateInvestor(userId, data)
+                                    }
+                                    "mentor" -> {
+                                        val data = mapOf(
+                                            "name" to name,
+                                            "title" to mentorTitle,
+                                            "organization" to mentorOrg,
+                                            "expertiseAreas" to mentorExpertise.split(",").map { it.trim() },
+                                            "bio" to bio
+                                        )
+                                        repository.updateMentor(userId, data)
+                                    }
                                 }
+                                Toast.makeText(context, "Profile Updated", Toast.LENGTH_SHORT).show()
+                                onBack()
+                            } catch(e: Exception) {
+                                Toast.makeText(context, "Error saving: ${e.message}", Toast.LENGTH_LONG).show()
+                            } finally {
+                                isSaving = false
                             }
                         }
                     },
-                    text = "Save Changes",
+                    text = if(isSaving) "Saving..." else "Save Changes",
                     isLoading = isSaving,
                     modifier = Modifier.fillMaxWidth()
                 )

@@ -5,9 +5,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.UploadFile
-import androidx.compose.material.icons.filled.Check
+import compose.icons.TablerIcons
+import compose.icons.tablericons.Plus
+import compose.icons.tablericons.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -141,7 +141,7 @@ fun PhotoUploadField(
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
-                    Icon(Icons.Default.UploadFile, contentDescription = null, tint = AtmiyaPrimary, modifier = Modifier.size(40.dp))
+                    Icon(TablerIcons.Plus, contentDescription = null, tint = AtmiyaPrimary, modifier = Modifier.size(40.dp))
                 }
             }
         }
@@ -165,7 +165,7 @@ fun StepIndicator(step: Int, title: String, isActive: Boolean, isCompleted: Bool
         ) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 if (isCompleted) {
-                    Icon(androidx.compose.material.icons.Icons.Filled.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                    Icon(TablerIcons.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
                 } else {
                     Text(
                         text = step.toString(),

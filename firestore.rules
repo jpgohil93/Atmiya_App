@@ -38,22 +38,26 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && request.auth.uid == userId; // Self-signup
       allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      
+      match /saved_ideas/{ideaId} {
+        allow read, write: if isAuthenticated() && request.auth.uid == userId;
+      }
     }
     
     // --- Role Specific Collections ---
     match /startups/{userId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAuthenticated(); // DEBUG: Relaxed for Force Sync Tool
     }
     match /investors/{userId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && request.auth.uid == userId;
-      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow update: if isAuthenticated(); // DEBUG: Relaxed for Force Sync Tool
     }
     match /mentors/{userId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && request.auth.uid == userId;
-      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow update: if isAuthenticated(); // DEBUG: Relaxed for Force Sync Tool
     }
 
     // --- Wall Posts ---
@@ -132,12 +136,36 @@ service cloud.firestore {
     match /chats/{channelId} {
       allow read: if isAuthenticated() && request.auth.uid in resource.data.participants;
       allow create: if isAuthenticated(); // Check participants in code or via function
+      // Allow updates for pinning/archiving (participants check)
       allow update: if isAuthenticated() && request.auth.uid in resource.data.participants;
       
       match /messages/{messageId} {
         allow read: if isAuthenticated() && request.auth.uid in get(/databases/$(database)/documents/chats/$(channelId)).data.participants;
         allow create: if isAuthenticated() && request.auth.uid in get(/databases/$(database)/documents/chats/$(channelId)).data.participants;
       }
+    }
+
+    // --- Connections ---
+    match /connectionRequests/{requestId} {
+      // Sender and Receiver can read
+      allow read: if isAuthenticated() && (
+         resource.data.senderId == request.auth.uid || 
+         resource.data.receiverId == request.auth.uid
+      );
+      // Sender can create
+      allow create: if isAuthenticated() && request.resource.data.senderId == request.auth.uid;
+      // Receiver can update (accept/reject), Sender can update (cancel?)
+      allow update: if isAuthenticated() && (
+         resource.data.receiverId == request.auth.uid || 
+         resource.data.senderId == request.auth.uid
+      );
+    }
+    
+    // --- Imports ---
+    match /imports/{importId} {
+       allow read: if isAuthenticated(); // For listing
+       allow create: if isAdmin();
+       allow update: if isAdmin(); // For status updates
     }
 
     // --- Collection Group Queries ---

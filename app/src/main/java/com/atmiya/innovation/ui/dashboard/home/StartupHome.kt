@@ -9,6 +9,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Star // Replaced MonetizationOn
+import androidx.compose.material.icons.filled.Home // Replaced School
+import androidx.compose.material.icons.filled.List // Replaced Forum/Description
+import androidx.compose.material.icons.filled.CheckCircle // Replaced VerifiedUser
+import androidx.compose.material.icons.filled.DateRange // Replaced CalendarToday
+import androidx.compose.material.icons.filled.LocationOn // Replaced Map
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -65,11 +71,11 @@ fun StartupHome(
     }
 
     val items = listOf(
-        BentoItem(BentoCardType.FEATURE, "Funding Calls", "Apply for investment", Icons.Default.MonetizationOn, badge = if (fundingCount > 0) "$fundingCount New" else null, onClick = { onNavigate("funding") }),
-        BentoItem(BentoCardType.FEATURE, "Mentorship", "Connect with experts", Icons.Default.School, onClick = { onNavigate("Network") }),
-        BentoItem(BentoCardType.FEATURE, "Community Wall", "Share & Connect", Icons.Default.Forum, span = 2, onClick = { onNavigate("wall") }),
-        BentoItem(BentoCardType.UTILITY, "Verification", "Show QR", Icons.Default.VerifiedUser, onClick = { onNavigate("startup_verification") }),
-        BentoItem(BentoCardType.UTILITY, "My Pitch Deck", icon = Icons.Default.Description, onClick = { /* Open PDF */ }),
+        BentoItem(BentoCardType.FEATURE, "Funding Calls", "Apply for investment", Icons.Default.Star, badge = if (fundingCount > 0) "$fundingCount New" else null, onClick = { onNavigate("funding") }),
+        BentoItem(BentoCardType.FEATURE, "Mentorship", "Connect with experts", Icons.Default.Home, onClick = { onNavigate("Network") }),
+        BentoItem(BentoCardType.FEATURE, "Community Wall", "Share & Connect", Icons.Default.List, span = 2, onClick = { onNavigate("wall") }),
+        BentoItem(BentoCardType.UTILITY, "Verification", "Show QR", Icons.Default.CheckCircle, onClick = { onNavigate("startup_verification") }),
+        BentoItem(BentoCardType.UTILITY, "My Pitch Deck", icon = Icons.Default.List, onClick = { /* Open PDF */ }),
         BentoItem(BentoCardType.UTILITY, "Settings", icon = Icons.Default.Settings, onClick = { onNavigate("profile") })
     )
 
@@ -140,7 +146,7 @@ fun EventCompanionSection(
         // 2. Schedule Card
         SoftCard(modifier = Modifier.fillMaxWidth()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.CalendarToday, contentDescription = null, tint = AtmiyaPrimary)
+                Icon(Icons.Default.DateRange, contentDescription = null, tint = AtmiyaPrimary)
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text("Event Schedule", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -162,7 +168,7 @@ fun EventCompanionSection(
         // 3. Venue Map
         SoftCard(modifier = Modifier.fillMaxWidth(), onClick = onOpenMap) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Map, contentDescription = null, tint = AtmiyaSecondary)
+                Icon(Icons.Default.LocationOn, contentDescription = null, tint = AtmiyaSecondary)
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text("Venue: Atmiya University", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)

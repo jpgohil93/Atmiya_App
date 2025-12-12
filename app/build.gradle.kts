@@ -62,6 +62,12 @@ android {
             )
             signingConfig = signingConfigs.getByName("release")
         }
+        debug {
+            ndk {
+                // Filter for ARM64 devices only (most common) to reduce debug APK size
+                abiFilters.add("arm64-v8a")
+            }
+        }
     }
 
     packaging {
@@ -102,8 +108,8 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
-    // Fixes 'Search' icon error
-    implementation("androidx.compose.material:material-icons-extended") 
+    implementation("androidx.compose.material:material-icons-extended")
+    implementation("br.com.devsrsouza.compose.icons:tabler-icons:1.1.1") 
 
     // Navigation
     implementation("androidx.navigation:navigation-compose:2.7.7")
@@ -161,5 +167,10 @@ dependencies {
     // Image Cropper
     implementation("com.github.CanHub:Android-Image-Cropper:4.3.2")
     
+    // Google Generative AI
+    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
+    
+    // Gson
+    implementation("com.google.code.gson:gson:2.10.1")
 
 }

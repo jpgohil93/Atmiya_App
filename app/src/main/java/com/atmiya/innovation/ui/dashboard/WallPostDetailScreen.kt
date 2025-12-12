@@ -105,6 +105,17 @@ fun WallPostDetailScreen(
                     },
                     onConnect = {
                         android.widget.Toast.makeText(context, "Connect request sent to ${safePost.authorName}", android.widget.Toast.LENGTH_SHORT).show()
+                    },
+                    onDelete = {
+                        scope.launch {
+                             try {
+                                 repository.deleteWallPost(safePost.id)
+                                 onBack() // Exit detailed view after deletion
+                             } catch (e: Exception) {
+                                  android.util.Log.e("WallPostDetailScreen", "Error deleting post", e)
+                                  android.widget.Toast.makeText(context, "Failed to delete post", android.widget.Toast.LENGTH_SHORT).show()
+                             }
+                        }
                     }
                 )
             }

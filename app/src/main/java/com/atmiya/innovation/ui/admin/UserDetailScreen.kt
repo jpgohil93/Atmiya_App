@@ -9,11 +9,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.Warning // Replaced Block
+import androidx.compose.material.icons.filled.Refresh // Replaced Restore
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -206,7 +206,7 @@ fun UserDetailScreen(
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(
-                            if (user!!.isBlocked) Icons.Default.CheckCircle else Icons.Default.Block,
+                            if (user!!.isBlocked) Icons.Default.CheckCircle else Icons.Default.Warning,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp)
                         )
@@ -240,7 +240,7 @@ fun UserDetailScreen(
                             modifier = Modifier.weight(1f).height(50.dp),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Icon(Icons.Default.Restore, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Restore")
                         }

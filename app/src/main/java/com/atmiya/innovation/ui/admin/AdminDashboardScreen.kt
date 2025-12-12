@@ -2,7 +2,7 @@ package com.atmiya.innovation.ui.admin
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Info // Replaced QrCodeScanner
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
@@ -71,7 +71,7 @@ fun AdminDashboardScreen(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Icon(
-                                Icons.Default.QrCodeScanner,
+                                Icons.Default.Info,
                                 contentDescription = null,
                                 modifier = Modifier.size(64.dp),
                                 tint = AtmiyaPrimary

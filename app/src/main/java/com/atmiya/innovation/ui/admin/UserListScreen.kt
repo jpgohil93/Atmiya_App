@@ -17,9 +17,9 @@ import com.atmiya.innovation.ui.theme.AtmiyaPrimary
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material.icons.filled.Person
+import compose.icons.TablerIcons
+import compose.icons.tablericons.ArrowRight
+import compose.icons.tablericons.User
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 
@@ -108,7 +108,7 @@ fun UserCard(user: User, onClick: () -> Unit) {
                     modifier = Modifier.size(48.dp).clip(CircleShape).background(Color.Gray.copy(alpha = 0.2f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(24.dp), tint = Color.Gray)
+                    Icon(TablerIcons.User, contentDescription = null, modifier = Modifier.size(24.dp), tint = Color.Gray)
                 }
             }
             
@@ -142,7 +142,7 @@ fun UserCard(user: User, onClick: () -> Unit) {
                 }
             }
             Icon(
-                imageVector = Icons.Filled.ArrowForward,
+                imageVector = TablerIcons.ArrowRight,
                 contentDescription = null,
                 tint = Color.Gray
             )

@@ -16,7 +16,7 @@ import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Info // Replaced QrCodeScanner
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -138,7 +138,7 @@ fun AdminVerificationScreen(
                         text = { Text(title) },
                         icon = { 
                             Icon(
-                                if (index == 0) Icons.Default.QrCodeScanner else Icons.Default.Search, 
+                                if (index == 0) Icons.Default.Info else Icons.Default.Search, 
                                 contentDescription = null
                             ) 
                         }

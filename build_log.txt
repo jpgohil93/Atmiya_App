@@ -1,13 +1,139 @@
-WARNING: A restricted method in java.lang.System has been called
-WARNING: java.lang.System::load has been called by net.rubygrapefruit.platform.internal.NativeLibraryLoader in an unnamed module (file:/Users/jaydeepkubavat/.gradle/wrapper/dists/gradle-8.13-bin/5xuhj0ry160q40clulazy9h7d/gradle-8.13/lib/native-platform-0.22-milestone-28.jar)
-WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
-WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:processDebugGoogleServices UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:mergeDebugShaders UP-TO-DATE
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets UP-TO-DATE
+> Task :app:compressDebugAssets UP-TO-DATE
+> Task :app:checkDebugDuplicateClasses UP-TO-DATE
+> Task :app:desugarDebugFileDependencies UP-TO-DATE
+> Task :app:mergeExtDexDebug UP-TO-DATE
+> Task :app:mergeLibDexDebug UP-TO-DATE
+> Task :app:mergeDebugJniLibFolders UP-TO-DATE
+> Task :app:mergeDebugNativeLibs UP-TO-DATE
+> Task :app:stripDebugDebugSymbols UP-TO-DATE
+> Task :app:validateSigningDebug UP-TO-DATE
+> Task :app:writeDebugAppMetadata UP-TO-DATE
+> Task :app:writeDebugSigningConfigVersions UP-TO-DATE
 
+> Task :app:compileDebugKotlin FAILED
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/InvestorDetailScreen.kt:26:1 Conflicting overloads:
+@Composable() @ComposableTarget(...) fun InvestorDetailScreen(investorId: String, onBack: () -> Unit): Unit
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/InvestorDetailScreen.kt:109:26 None of the following candidates is applicable:
+@Composable() @ComposableTarget(...) fun Text(text: AnnotatedString, modifier: Modifier = ..., color: Color = ..., fontSize: TextUnit = ..., fontStyle: FontStyle? = ..., fontWeight: FontWeight? = ..., fontFamily: FontFamily? = ..., letterSpacing: TextUnit = ..., textDecoration: TextDecoration? = ..., textAlign: TextAlign? = ..., lineHeight: TextUnit = ..., overflow: TextOverflow = ..., softWrap: Boolean = ..., maxLines: Int = ..., minLines: Int = ..., inlineContent: Map<String, InlineTextContent> = ..., onTextLayout: (TextLayoutResult) -> Unit = ..., style: TextStyle = ...): Unit
+@Composable() @ComposableTarget(...) fun Text(text: String, modifier: Modifier = ..., color: Color = ..., fontSize: TextUnit = ..., fontStyle: FontStyle? = ..., fontWeight: FontWeight? = ..., fontFamily: FontFamily? = ..., letterSpacing: TextUnit = ..., textDecoration: TextDecoration? = ..., textAlign: TextAlign? = ..., lineHeight: TextUnit = ..., overflow: TextOverflow = ..., softWrap: Boolean = ..., maxLines: Int = ..., minLines: Int = ..., onTextLayout: ((TextLayoutResult) -> Unit)? = ..., style: TextStyle = ...): Unit
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/InvestorDetailScreen.kt:110:38 Unresolved reference 'organization'.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/InvestorDetailScreen.kt:143:25 The API of this layout is experimental and is likely to change in the future.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/InvestorDetailScreen.kt:147:31 Unresolved reference 'portfolio'.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/InvestorDetailScreen.kt:147:51 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/InvestorDetailScreen.kt:148:33 @Composable invocations can only happen from the context of a @Composable function
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/InvestorDetailScreen.kt:152:37 Overload resolution ambiguity between candidates:
+@Composable() @ComposableTarget(...) fun Text(text: AnnotatedString, modifier: Modifier = ..., color: Color = ..., fontSize: TextUnit = ..., fontStyle: FontStyle? = ..., fontWeight: FontWeight? = ..., fontFamily: FontFamily? = ..., letterSpacing: TextUnit = ..., textDecoration: TextDecoration? = ..., textAlign: TextAlign? = ..., lineHeight: TextUnit = ..., overflow: TextOverflow = ..., softWrap: Boolean = ..., maxLines: Int = ..., minLines: Int = ..., inlineContent: Map<String, InlineTextContent> = ..., onTextLayout: (TextLayoutResult) -> Unit = ..., style: TextStyle = ...): Unit
+@Composable() @ComposableTarget(...) fun Text(text: String, modifier: Modifier = ..., color: Color = ..., fontSize: TextUnit = ..., fontStyle: FontStyle? = ..., fontWeight: FontWeight? = ..., fontFamily: FontFamily? = ..., letterSpacing: TextUnit = ..., textDecoration: TextDecoration? = ..., textAlign: TextAlign? = ..., lineHeight: TextUnit = ..., overflow: TextOverflow = ..., softWrap: Boolean = ..., maxLines: Int = ..., minLines: Int = ..., onTextLayout: ((TextLayoutResult) -> Unit)? = ..., style: TextStyle = ...): Unit
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/MentorDetailScreen.kt:152:25 The API of this layout is experimental and is likely to change in the future.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:201:33 Unresolved reference 'PostCard'.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:205:48 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:281:5 None of the following candidates is applicable:
+@Composable() @ComposableInferredTarget(...) fun AlertDialog(onDismissRequest: () -> Unit, confirmButton: @Composable() ComposableFunction0<Unit>, modifier: Modifier = ..., dismissButton: @Composable() ComposableFunction0<Unit>? = ..., icon: @Composable() ComposableFunction0<Unit>? = ..., title: @Composable() ComposableFunction0<Unit>? = ..., text: @Composable() ComposableFunction0<Unit>? = ..., shape: Shape = ..., containerColor: Color = ..., iconContentColor: Color = ..., titleContentColor: Color = ..., textContentColor: Color = ..., tonalElevation: Dp = ..., properties: DialogProperties = ...): Unit
+@Deprecated(...) @ExperimentalMaterial3Api() @Composable() @ComposableInferredTarget(...) fun AlertDialog(onDismissRequest: () -> Unit, modifier: Modifier = ..., properties: DialogProperties = ..., content: @Composable() ComposableFunction0<Unit>): Unit
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:283:19 @Composable invocations can only happen from the context of a @Composable function
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:285:13 @Composable invocations can only happen from the context of a @Composable function
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:285:55 @Composable invocations can only happen from the context of a @Composable function
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:457:33 Overload resolution ambiguity between candidates:
+@Composable() @ComposableTarget(...) fun Icon(bitmap: ImageBitmap, contentDescription: String?, modifier: Modifier = ..., tint: Color = ...): Unit
+@Composable() @ComposableTarget(...) fun Icon(painter: Painter, contentDescription: String?, modifier: Modifier = ..., tint: Color = ...): Unit
+@Composable() @ComposableTarget(...) fun Icon(imageVector: ImageVector, contentDescription: String?, modifier: Modifier = ..., tint: Color = ...): Unit
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:457:52 Unresolved reference 'BarChart'.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:466:10 Syntax error: Unexpected tokens (use ';' to separate expressions on the same line).
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:467:9 Unresolved reference 'confirmButton'.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:468:13 @Composable invocations can only happen from the context of a @Composable function
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:491:10 Syntax error: Unexpected tokens (use ';' to separate expressions on the same line).
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:492:9 Unresolved reference 'dismissButton'.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:493:13 @Composable invocations can only happen from the context of a @Composable function
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:496:10 Syntax error: Unexpected tokens (use ';' to separate expressions on the same line).
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:497:9 Unresolved reference 'containerColor'.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:497:40 @Composable invocations can only happen from the context of a @Composable function
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:497:59 Syntax error: Unexpected tokens (use ';' to separate expressions on the same line).
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:498:9 Unresolved reference 'shape'.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:499:5 Syntax error: Expecting an element.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:500:2 Syntax error: Expecting ','.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:502:1 Anonymous functions with names are prohibited.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:507:2 Syntax error: Expecting ','.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:509:1 Anonymous functions with names are prohibited.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:618:21 Unresolved reference 'PollSection'.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:622:21 Overload resolution ambiguity between candidates:
+@Composable() @ComposableTarget(...) fun Text(text: AnnotatedString, modifier: Modifier = ..., color: Color = ..., fontSize: TextUnit = ..., fontStyle: FontStyle? = ..., fontWeight: FontWeight? = ..., fontFamily: FontFamily? = ..., letterSpacing: TextUnit = ..., textDecoration: TextDecoration? = ..., textAlign: TextAlign? = ..., lineHeight: TextUnit = ..., overflow: TextOverflow = ..., softWrap: Boolean = ..., maxLines: Int = ..., minLines: Int = ..., inlineContent: Map<String, InlineTextContent> = ..., onTextLayout: (TextLayoutResult) -> Unit = ..., style: TextStyle = ...): Unit
+@Composable() @ComposableTarget(...) fun Text(text: String, modifier: Modifier = ..., color: Color = ..., fontSize: TextUnit = ..., fontStyle: FontStyle? = ..., fontWeight: FontWeight? = ..., fontFamily: FontFamily? = ..., letterSpacing: TextUnit = ..., textDecoration: TextDecoration? = ..., textAlign: TextAlign? = ..., lineHeight: TextUnit = ..., overflow: TextOverflow = ..., softWrap: Boolean = ..., maxLines: Int = ..., minLines: Int = ..., onTextLayout: ((TextLayoutResult) -> Unit)? = ..., style: TextStyle = ...): Unit
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:623:32 Unresolved reference 'getAnnotatedString'.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:646:21 Unresolved reference 'FullScreenMediaDialog'.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:670:37 Unresolved reference 'VideoPlayerWithPreview'.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:731:25 Unresolved reference 'VideoPlayerWithPreview'.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:832:17 Unresolved reference 'InlineCommentsSection'.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:841:2 Syntax error: Expecting ','.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:843:1 Anonymous functions with names are prohibited.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:844:1 This annotation is not repeatable.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:934:2 Syntax error: Expecting ','.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:936:1 Anonymous functions with names are prohibited.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:1030:2 Syntax error: Expecting ','.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:1033:1 Anonymous functions with names are prohibited.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:1049:2 Syntax error: Expecting ','.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:1052:1 Anonymous functions with names are prohibited.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:1128:2 Syntax error: Expecting ','.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:1130:1 Anonymous functions with names are prohibited.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:1304:2 Syntax error: Expecting ','.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:1306:1 Anonymous functions with names are prohibited.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/WallScreen.kt:1342:2 Syntax error: Expecting ')'.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/listing/InvestorListingScreen.kt:121:21 None of the following candidates is applicable:
+@Composable() @ComposableTarget(...) fun Text(text: AnnotatedString, modifier: Modifier = ..., color: Color = ..., fontSize: TextUnit = ..., fontStyle: FontStyle? = ..., fontWeight: FontWeight? = ..., fontFamily: FontFamily? = ..., letterSpacing: TextUnit = ..., textDecoration: TextDecoration? = ..., textAlign: TextAlign? = ..., lineHeight: TextUnit = ..., overflow: TextOverflow = ..., softWrap: Boolean = ..., maxLines: Int = ..., minLines: Int = ..., inlineContent: Map<String, InlineTextContent> = ..., onTextLayout: (TextLayoutResult) -> Unit = ..., style: TextStyle = ...): Unit
+@Composable() @ComposableTarget(...) fun Text(text: String, modifier: Modifier = ..., color: Color = ..., fontSize: TextUnit = ..., fontStyle: FontStyle? = ..., fontWeight: FontWeight? = ..., fontFamily: FontFamily? = ..., letterSpacing: TextUnit = ..., textDecoration: TextDecoration? = ..., textAlign: TextAlign? = ..., lineHeight: TextUnit = ..., overflow: TextOverflow = ..., softWrap: Boolean = ..., maxLines: Int = ..., minLines: Int = ..., onTextLayout: ((TextLayoutResult) -> Unit)? = ..., style: TextStyle = ...): Unit
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/listing/InvestorListingScreen.kt:122:37 Unresolved reference 'organization'.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/listing/InvestorListingScreen.kt:137:48 Unresolved reference 'portfolio'.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/listing/InvestorListingScreen.kt:138:41 Overload resolution ambiguity between candidates:
+@InlineOnly() fun <T> Array<out T>.isNotEmpty(): Boolean
+@InlineOnly() fun BooleanArray.isNotEmpty(): Boolean
+@InlineOnly() fun ByteArray.isNotEmpty(): Boolean
+@InlineOnly() fun CharArray.isNotEmpty(): Boolean
+@InlineOnly() fun DoubleArray.isNotEmpty(): Boolean
+@InlineOnly() fun FloatArray.isNotEmpty(): Boolean
+@InlineOnly() fun IntArray.isNotEmpty(): Boolean
+@InlineOnly() fun LongArray.isNotEmpty(): Boolean
+@InlineOnly() fun ShortArray.isNotEmpty(): Boolean
+@InlineOnly() fun <T> Collection<T>.isNotEmpty(): Boolean
+@InlineOnly() fun <K, V> Map<out K, V>.isNotEmpty(): Boolean
+@InlineOnly() fun CharSequence.isNotEmpty(): Boolean
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/listing/InvestorListingScreen.kt:139:42 Overload resolution ambiguity between candidates:
+@HidesMembers() fun <T> Iterable<T>.forEach(action: (T) -> Unit): Unit
+@HidesMembers() fun <K, V> Map<out K, V>.forEach(action: (Map.Entry<K, V>) -> Unit): Unit
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/listing/InvestorListingScreen.kt:139:52 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/listing/InvestorListingScreen.kt:140:33 @Composable invocations can only happen from the context of a @Composable function
+e: file:///Users/jaydeepkubavat/Downloads/Atmiya_App/app/src/main/java/com/atmiya/innovation/ui/dashboard/listing/InvestorListingScreen.kt:145:37 Overload resolution ambiguity between candidates:
+@Composable() @ComposableTarget(...) fun Text(text: AnnotatedString, modifier: Modifier = ..., color: Color = ..., fontSize: TextUnit = ..., fontStyle: FontStyle? = ..., fontWeight: FontWeight? = ..., fontFamily: FontFamily? = ..., letterSpacing: TextUnit = ..., textDecoration: TextDecoration? = ..., textAlign: TextAlign? = ..., lineHeight: TextUnit = ..., overflow: TextOverflow = ..., softWrap: Boolean = ..., maxLines: Int = ..., minLines: Int = ..., inlineContent: Map<String, InlineTextContent> = ..., onTextLayout: (TextLayoutResult) -> Unit = ..., style: TextStyle = ...): Unit
+@Composable() @ComposableTarget(...) fun Text(text: String, modifier: Modifier = ..., color: Color = ..., fontSize: TextUnit = ..., fontStyle: FontStyle? = ..., fontWeight: FontWeight? = ..., fontFamily: FontFamily? = ..., letterSpacing: TextUnit = ..., textDecoration: TextDecoration? = ..., textAlign: TextAlign? = ..., lineHeight: TextUnit = ..., overflow: TextOverflow = ..., softWrap: Boolean = ..., maxLines: Int = ..., minLines: Int = ..., onTextLayout: ((TextLayoutResult) -> Unit)? = ..., style: TextStyle = ...): Unit
 
 FAILURE: Build failed with an exception.
 
 * What went wrong:
-25.0.1
+Execution failed for task ':app:compileDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
 
 * Try:
 > Run with --stacktrace option to get the stack trace.
@@ -16,3 +142,4 @@ FAILURE: Build failed with an exception.
 > Get more help at https://help.gradle.org.
 
 BUILD FAILED in 1s
+30 actionable tasks: 1 executed, 29 up-to-date

@@ -1,5 +1,5 @@
-# Keep Data Models for Firestore Reflection
--keep class com.atmiya.innovation.data.** { *; }
+# Keep application classes
+-keep class com.atmiya.** { *; }
 
 # Keep AndroidX and Compose
 -keep class androidx.navigation.** { *; }

@@ -98,7 +98,7 @@ fun InvestorCard(investor: Investor, onInvestorClick: (String) -> Unit) {
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text(text = "Ticket Size", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                    Text(text = "${investor.ticketSizeMin} - ${investor.ticketSizeMax}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                    Text(text = "${investor.ticketSizeMin}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
                 }
             }
             Spacer(modifier = Modifier.height(12.dp))

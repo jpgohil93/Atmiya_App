@@ -2,6 +2,10 @@ package com.atmiya.innovation.ui.dashboard.home
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Star // Replaced TrendingUp
+import androidx.compose.material.icons.filled.Info // Replaced Campaign
+import androidx.compose.material.icons.filled.List // Replaced Assignment/Forum
+import androidx.compose.material.icons.filled.Settings // Replaced Tune
 import androidx.compose.runtime.*
 import com.atmiya.innovation.repository.FirestoreRepository
 import com.atmiya.innovation.ui.components.BentoCardType
@@ -31,7 +35,7 @@ fun InvestorHome(
             type = BentoCardType.HERO,
             title = "Welcome, $userName",
             subtitle = "Discover the next big thing",
-            icon = Icons.Default.TrendingUp,
+            icon = Icons.Default.Star,
             span = 2,
             onClick = { onNavigate("funding") }
         ),
@@ -39,14 +43,14 @@ fun InvestorHome(
             type = BentoCardType.FEATURE,
             title = "My Funding Calls",
             subtitle = "Manage your calls",
-            icon = Icons.Default.Campaign,
+            icon = Icons.Default.Info,
             onClick = { onNavigate("funding") }
         ),
         BentoItem(
             type = BentoCardType.FEATURE,
             title = "Applications",
             subtitle = "Review startups",
-            icon = Icons.Default.Assignment,
+            icon = Icons.Default.List,
             badge = "New", // Placeholder until logic implemented
             onClick = { onNavigate("funding") }
         ),
@@ -54,14 +58,14 @@ fun InvestorHome(
             type = BentoCardType.FEATURE,
             title = "Community Wall",
             subtitle = "See what's happening",
-            icon = Icons.Default.Forum,
+            icon = Icons.Default.List,
             span = 2,
             onClick = { onNavigate("wall") }
         ),
         BentoItem(
             type = BentoCardType.UTILITY,
             title = "Preferences",
-            icon = Icons.Default.Tune,
+            icon = Icons.Default.Settings,
             onClick = { onNavigate("profile") }
         ),
         BentoItem(

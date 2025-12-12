@@ -7,6 +7,7 @@ import android.util.Log
 import com.atmiya.innovation.utils.StorageUtils
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageException
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
 import javax.inject.Inject
@@ -143,15 +144,19 @@ class StorageRepository {
 
     suspend fun uploadWallMedia(context: Context, postId: String, uri: Uri, isVideo: Boolean): String {
         val start = System.currentTimeMillis()
-        val fileSize = getFileSize(context, uri)
-        val maxSizeBytes = if (isVideo) 50 * 1024 * 1024L else 10 * 1024 * 1024L // 50MB Video, 10MB Image (generous)
+        val auth = FirebaseAuth.getInstance()
+        val userId = auth.currentUser?.uid ?: throw IllegalStateException("User must be logged in to upload media")
 
+        val fileSize = getFileSize(context, uri)
+        val maxSizeBytes = if (isVideo) 20 * 1024 * 1024L else 5 * 1024 * 1024L // 20MB Video, 5MB Image
+        
         if (fileSize > maxSizeBytes) {
-            throw IllegalArgumentException("File too large. Max size: ${if (isVideo) "50MB" else "10MB"}")
+            throw IllegalArgumentException("File too large. Max size: ${if (isVideo) "20MB" else "5MB"}")
         }
 
         val filename = UUID.randomUUID().toString() + if (isVideo) ".mp4" else ".jpg"
-        val path = if (isVideo) "wallVideos/$postId/$filename" else "wallImages/$postId/$filename"
+        // Path must match storage.rules: /wall_media/{userId}/{fileName}
+        val path = "wall_media/$userId/$filename"
         val ref = storage.reference.child(path)
 
         Log.d(TAG, "Starting wall media upload. Path: $path")
@@ -236,9 +241,9 @@ class StorageRepository {
 
     fun validateWallMedia(context: Context, uri: Uri, isVideo: Boolean) {
         val fileSize = getFileSize(context, uri)
-        val maxSizeBytes = if (isVideo) 50 * 1024 * 1024L else 10 * 1024 * 1024L
+        val maxSizeBytes = if (isVideo) 20 * 1024 * 1024L else 5 * 1024 * 1024L
         if (fileSize > maxSizeBytes) {
-            throw IllegalArgumentException("File too large. Max size: ${if (isVideo) "50MB" else "10MB"}")
+            throw IllegalArgumentException("File too large. Max size: ${if (isVideo) "20MB" else "5MB"}")
         }
     }
 

@@ -1,14 +1,18 @@
 package com.atmiya.innovation.ui.dashboard
+import androidx.compose.ui.zIndex
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AttachMoney
-import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.Forum
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.Gavel
+import androidx.compose.foundation.layout.width // Added
+import compose.icons.TablerIcons
+import compose.icons.tablericons.Home
+import compose.icons.tablericons.Users
+import compose.icons.tablericons.Building
+import compose.icons.tablericons.Bell
+// Removed unused import
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
@@ -26,6 +30,10 @@ import com.atmiya.innovation.ui.theme.AtmiyaAccent
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.atmiya.innovation.ui.components.CommonTopBar
+import androidx.compose.ui.platform.LocalDensity 
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
 
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -48,6 +56,30 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
+import com.atmiya.innovation.ui.funding.FundingCallsScreen
+import com.atmiya.innovation.ui.dashboard.listing.EventsListingScreen
+import com.atmiya.innovation.ui.dashboard.listing.StartupListingScreen
+import com.atmiya.innovation.ui.dashboard.listing.GovernanceListingScreen
+import com.atmiya.innovation.ui.dashboard.listing.IncubatorListingScreen
+
+
+import com.atmiya.innovation.ui.funding.FundingCallDetailScreen
+import com.atmiya.innovation.ui.funding.CreateFundingCallScreen
+import com.atmiya.innovation.ui.dashboard.startup.FeaturedVideoDetailScreen
+import com.atmiya.innovation.ui.event.EventDetailScreen
+import com.atmiya.innovation.ui.dashboard.MentorDetailScreen
+// import com.atmiya.innovation.ui.dashboard.ProfileDetailScreen // REMOVED: does not exist
+import com.atmiya.innovation.ui.dashboard.WallPostDetailScreen
+import com.atmiya.innovation.ui.video.MentorVideoScreen
+import com.atmiya.innovation.ui.video.MentorVideoDetailScreen
+import com.atmiya.innovation.ui.dashboard.ProfileScreen
+import com.atmiya.innovation.ui.dashboard.EditProfileScreen
+import com.atmiya.innovation.ui.settings.SettingsScreen
+import com.atmiya.innovation.ui.dashboard.news.NewsListScreen
+import com.atmiya.innovation.ui.dashboard.news.NewsWebViewScreen
+
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 
@@ -78,8 +110,8 @@ fun DashboardScreen(
     val coroutineScope = rememberCoroutineScope()
 
     val items = listOf(
-        Screen.Wall,
-        Screen.Dashboard
+        Screen.Dashboard,
+        Screen.Wall
     )
 
     // Handle Deep Links
@@ -99,9 +131,9 @@ fun DashboardScreen(
                 if (route == "main_tabs") {
                     // Scroll to specific tab
                     val page = when(startDestination) {
-                        "wall" -> 0
-                        "dashboard" -> 1
-                        "funding" -> 1 // Dashboard contains funding
+                        "dashboard" -> 0
+                        "funding" -> 0 // Dashboard contains funding
+                        "wall" -> 1
                         else -> 0
                     }
                     pagerState.scrollToPage(page)
@@ -115,372 +147,457 @@ fun DashboardScreen(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    // Check for Keyboard Visibility
+    val density = LocalDensity.current
+    val isKeyboardOpen = WindowInsets.ime.getBottom(density) > 0
+
     AppNavigationDrawer(
         drawerState = drawerState,
         user = currentUser,
-        onNavigateToDashboard = { 
-            scope.launch { 
-                pagerState.animateScrollToPage(1) 
+        onNavigate = { route ->
+            when(route) {
+                "dashboard_tab" -> { scope.launch { pagerState.scrollToPage(0) } }
+                "wall_tab" -> { scope.launch { pagerState.scrollToPage(1) } }
+                "profile_screen" -> { scope.launch { drawerState.close() }; navController.navigate("profile_screen") }
+                "settings_screen" -> { scope.launch { drawerState.close() }; navController.navigate("settings_screen") }
+                "conversations_list" -> { scope.launch { drawerState.close() }; navController.navigate("conversations") }
+                "funding_calls_list" -> { scope.launch { drawerState.close() }; navController.navigate("funding_calls") }
+                "events_list" -> { scope.launch { drawerState.close() }; navController.navigate("events") }
+                "network" -> { scope.launch { drawerState.close() }; navController.navigate("network_hub") }
+                else -> { scope.launch { drawerState.close() }; navController.navigate(route) }
             }
         },
-        onNavigateToProfile = { navController.navigate("profile_screen") },
-        onNavigateToSettings = { navController.navigate("settings_screen") },
         onLogout = onLogout
     ) {
         SoftScaffold(
-            bottomBar = {
-                // Only show bottom bar on main tabs
-                val navBackStackEntry by navController.currentBackStackEntryAsState()
-                val currentRoute = navBackStackEntry?.destination?.route
-                
-                // Check if we are on a route that should show the bottom bar
-                val bottomBarRoutes = listOf(
-                    "main_tabs", 
-                    "network", 
-                    "mentor_videos", 
-                    "edit_profile"
-                )
-                
-                // For dynamic routes, we check if the current route starts with the base path
-                val isBottomBarVisible = currentRoute in bottomBarRoutes || 
-                                         currentRoute?.startsWith("user_detail") == true ||
-                                         currentRoute?.startsWith("mentor_detail") == true ||
-                                         currentRoute?.startsWith("investor_detail") == true ||
-                                         currentRoute?.startsWith("funding_call") == true ||
-                                         currentRoute?.startsWith("wall_post") == true
-
-                if (isBottomBarVisible) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 24.dp, vertical = 16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        NavigationBar(
-                            modifier = Modifier
-                                .widthIn(max = 300.dp) // Reduced width for 2 items
-                                .fillMaxWidth()
-                                .height(70.dp), // Slightly smaller height
-                            containerColor = Color.Transparent,
-                            contentColor = Color.White,
-                            tonalElevation = 0.dp,
-                            windowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(RoundedCornerShape(35.dp))
-                                    .background(Color.Black), // Apply background here
-                                horizontalArrangement = Arrangement.SpaceEvenly,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                items.forEachIndexed { index, screen ->
-                                    val isSelected = pagerState.currentPage == index
-                                    val color = if (isSelected) AtmiyaAccent else Color.Gray
-                                    
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.Center,
-                                        modifier = Modifier
-                                            .clickable {
-                                                coroutineScope.launch {
-                                                    pagerState.animateScrollToPage(index)
-                                                }
-                                            }
-                                            .padding(vertical = 8.dp)
-                                            .weight(1f)
-                                    ) {
-                                        // Icon Container
-                                        Box(
-                                            modifier = Modifier
-                                                .size(40.dp) // Fixed size for touch target and background
-                                                .clip(RoundedCornerShape(12.dp))
-                                                .background(if (isSelected) AtmiyaAccent else Color.Transparent),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(
-                                                imageVector = screen.icon,
-                                                contentDescription = screen.route,
-                                                tint = if (isSelected) Color.White else Color.Gray,
-                                                modifier = Modifier.size(24.dp)
-                                            )
-                                        }
-                                        
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        
-                                        Text(
-                                            text = screen.route,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = color,
-                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
+            topBar = {
+                // Show Top Bar only on Main Tabs (Dashboard/Wall)
+                // Or maybe show on all screens? Usually inner screens have their own top bar (Back button)
+                // The requirements say "missing from where we can access edit profile...". 
+                // That implies standard dashboard. Inner screens usually have their own back button top bar.
+                // So let's keep CommonTopBar primarily for "main_tabs".
+                if (currentRoute == "main_tabs") {
+                   CommonTopBar(
+                        onOpenDrawer = { scope.launch { drawerState.open() } },
+                        onNavigateToProfile = { navController.navigate("profile_screen") },
+                        onNavigateToNotifications = { navController.navigate("notifications") },
+                        userPhotoUrl = currentUser?.profilePhotoUrl
+                    )
                 }
             }
         ) { paddingValues ->
-            NavHost(
-                navController = navController,
-                startDestination = "main_tabs",
-                modifier = Modifier.padding(paddingValues)
-            ) {
-                // Main Tabs Route containing the Pager
-                composable("main_tabs") {
-                    HorizontalPager(
-                        state = pagerState,
-                        modifier = Modifier.fillMaxSize(),
-                        userScrollEnabled = false
-                    ) { page ->
-                        when (page) {
-                            0 -> WallScreen(
-                                onNavigateToProfile = { navController.navigate("profile_screen") },
-                                onNavigateToSettings = { navController.navigate("settings_screen") },
-                                onNavigateToDashboard = { coroutineScope.launch { pagerState.animateScrollToPage(1) } },
-                                onLogout = onLogout,
-                                onOpenDrawer = { scope.launch { drawerState.open() } }
-                            )
-                            1 -> {
-                                // Dashboard Logic
-                                val onNavigateToRoute: (String) -> Unit = { route ->
-                                    val normalizedRoute = route.lowercase()
-                                    when (normalizedRoute) {
-                                        "wall" -> coroutineScope.launch { pagerState.animateScrollToPage(0) }
-                                        "funding" -> navController.navigate("funding_calls") // Separate route for funding
-                                        else -> navController.navigate(route)
+            Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+                NavHost(
+                    navController = navController,
+                    startDestination = "main_tabs",
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    // Main Tabs Route containing the Pager
+                    composable("main_tabs") {
+                        HorizontalPager(
+                            state = pagerState,
+                            modifier = Modifier.fillMaxSize(),
+                            userScrollEnabled = true
+                        ) { page ->
+                            when (page) {
+                                0 -> {
+                                    // Dashboard Logic
+                                    val onNavigateToRoute: (String) -> Unit = { route ->
+                                        val normalizedRoute = route.lowercase()
+                                        when (normalizedRoute) {
+                                            "wall" -> coroutineScope.launch { pagerState.animateScrollToPage(1) }
+                                            "funding" -> navController.navigate("funding_calls_list") 
+                                            // Make sure other grid items map correctly
+                                            else -> navController.navigate(route)
+                                        }
+                                    }
+
+                                    when(role) {
+                                        "startup" -> com.atmiya.innovation.ui.dashboard.startup.StartupDashboardScreen(
+                                            isTabVisible = pagerState.currentPage == 0,
+                                            onNavigate = onNavigateToRoute
+                                        )
+                                        "investor" -> com.atmiya.innovation.ui.dashboard.home.InvestorHome(onNavigate = onNavigateToRoute)
+                                        "mentor" -> com.atmiya.innovation.ui.dashboard.home.MentorHome(onNavigate = onNavigateToRoute)
+                                        "admin" -> com.atmiya.innovation.ui.dashboard.home.AdminHome(onNavigate = onNavigateToRoute)
+                                        else -> Text("Unknown Role", modifier = Modifier.padding(16.dp))
                                     }
                                 }
+                                1 -> WallScreen(
+                                    onNavigateToProfile = { navController.navigate("profile_screen") },
+                                    onNavigateToSettings = { navController.navigate("settings_screen") },
+                                    onNavigateToDashboard = { coroutineScope.launch { pagerState.animateScrollToPage(0) } },
+                                    onLogout = onLogout,
+                                    onOpenDrawer = { scope.launch { drawerState.open() } }
+                                )
+                            }
+                        }
+                    }
 
-                                when(role) {
-                                    "startup" -> com.atmiya.innovation.ui.dashboard.startup.StartupDashboardScreen(
-                                        isTabVisible = pagerState.currentPage == 1,
-                                        onNavigate = onNavigateToRoute
-                                    )
-                                    "investor" -> com.atmiya.innovation.ui.dashboard.home.InvestorHome(onNavigate = onNavigateToRoute)
-                                    "mentor" -> com.atmiya.innovation.ui.dashboard.home.MentorHome(onNavigate = onNavigateToRoute)
-                                    "admin" -> com.atmiya.innovation.ui.dashboard.home.AdminHome(onNavigate = onNavigateToRoute)
-                                    else -> Text("Unknown Role", modifier = Modifier.padding(16.dp))
+                    // --- Inner Routes ---
+
+                    composable("notifications") {
+                        com.atmiya.innovation.ui.notifications.NotificationScreen(
+                            onBack = { navController.popBackStack() },
+                            onNotificationClick = { type, id ->
+                                // Reuse deep link logic
+                                if (type == "wall_post") {
+                                    navController.navigate("wall_post/$id")
+                                } else if (type == "mentor_video") {
+                                    navController.navigate("mentor_video/$id")
+                                }
+                            }
+                        )
+                    }
+
+                    composable("profile_screen") {
+                        ProfileScreen(
+                            onLogout = onLogout,
+                            onEditProfile = { navController.navigate("edit_profile_screen") },
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+
+                    composable("edit_profile_screen") {
+                        EditProfileScreen(
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+
+                    composable("settings_screen") {
+                        SettingsScreen(
+                            onBack = { navController.popBackStack() },
+                            onLogout = onLogout
+                        )
+                    }
+
+                    composable("idea_generator") {
+                        com.atmiya.innovation.ui.generator.IdeaGeneratorScreen(
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+
+                    composable("saved_ideas") {
+                        com.atmiya.innovation.ui.generator.SavedIdeasScreen(
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+
+                    composable("funding_calls_list") {
+                         FundingCallsScreen(
+                             role = role,
+                             onNavigate = { route -> navController.navigate(route) },
+                             onBack = { navController.popBackStack() }
+                         )
+                    }
+
+                    composable("create_funding_call") {
+                         CreateFundingCallScreen(
+                             onBack = { navController.popBackStack() },
+                             onCallCreated = { navController.popBackStack() }
+                         )
+                    }
+
+                    composable(
+                        "funding_call/{callId}",
+                        arguments = listOf(navArgument("callId") { type = NavType.StringType })
+                    ) { backStackEntry ->
+                        val callId = backStackEntry.arguments?.getString("callId") ?: return@composable
+                        FundingCallDetailScreen(
+                            callId = callId,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+
+                    composable(
+                        "video_detail/{videoId}",
+                        arguments = listOf(navArgument("videoId") { type = NavType.StringType })
+                    ) { backStackEntry ->
+                        val videoId = backStackEntry.arguments?.getString("videoId") ?: return@composable
+                        FeaturedVideoDetailScreen(
+                            videoId = videoId,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+
+                    composable("events_list") {
+                        EventsListingScreen(
+                            onBack = { navController.popBackStack() },
+                            onEventClick = { eventId -> navController.navigate("event_detail/$eventId") }
+                        )
+                    }
+                    
+                    composable("incubators_list") {
+                        com.atmiya.innovation.ui.dashboard.listing.IncubatorListingScreen(
+                            onBack = { navController.popBackStack() },
+                            onItemClick = { incubator ->
+                                val encodedName = java.net.URLEncoder.encode(incubator.name, java.nio.charset.StandardCharsets.UTF_8.toString())
+                                val encodedLogo = java.net.URLEncoder.encode(incubator.logoUrl ?: "", java.nio.charset.StandardCharsets.UTF_8.toString())
+                                val encodedWeb = java.net.URLEncoder.encode(incubator.website, java.nio.charset.StandardCharsets.UTF_8.toString())
+                                val encodedCity = java.net.URLEncoder.encode(incubator.city, java.nio.charset.StandardCharsets.UTF_8.toString())
+                                val encodedState = java.net.URLEncoder.encode(incubator.state, java.nio.charset.StandardCharsets.UTF_8.toString())
+                                val encodedSector = java.net.URLEncoder.encode(incubator.sector, java.nio.charset.StandardCharsets.UTF_8.toString())
+                                val encodedEmail = java.net.URLEncoder.encode(incubator.contactEmail, java.nio.charset.StandardCharsets.UTF_8.toString())
+                                val encodedFunding = java.net.URLEncoder.encode(incubator.approvedFunding, java.nio.charset.StandardCharsets.UTF_8.toString())
+                                val encodedRemaining = java.net.URLEncoder.encode(incubator.remainingFunding, java.nio.charset.StandardCharsets.UTF_8.toString())
+                                
+                                navController.navigate("incubator_detail/$encodedName/$encodedLogo/$encodedWeb/$encodedCity/$encodedState/$encodedSector/$encodedEmail/$encodedFunding/$encodedRemaining")
+                            }
+                        )
+                    }
+
+                    composable(
+                        "incubator_detail/{name}/{logoUrl}/{website}/{city}/{state}/{sector}/{email}/{funding}/{remaining}",
+                        arguments = listOf(
+                            navArgument("name") { type = NavType.StringType },
+                            navArgument("logoUrl") { type = NavType.StringType },
+                            navArgument("website") { type = NavType.StringType },
+                            navArgument("city") { type = NavType.StringType },
+                            navArgument("state") { type = NavType.StringType },
+                            navArgument("sector") { type = NavType.StringType },
+                            navArgument("email") { type = NavType.StringType },
+                            navArgument("funding") { type = NavType.StringType },
+                            navArgument("remaining") { type = NavType.StringType }
+                        )
+                    ) { backStackEntry ->
+                        val name = backStackEntry.arguments?.getString("name") ?: ""
+                        val logoUrl = backStackEntry.arguments?.getString("logoUrl") ?: ""
+                        val website = backStackEntry.arguments?.getString("website") ?: ""
+                        val city = backStackEntry.arguments?.getString("city") ?: ""
+                        val state = backStackEntry.arguments?.getString("state") ?: ""
+                        val sector = backStackEntry.arguments?.getString("sector") ?: ""
+                        val email = backStackEntry.arguments?.getString("email") ?: ""
+                        val funding = backStackEntry.arguments?.getString("funding") ?: ""
+                        val remaining = backStackEntry.arguments?.getString("remaining") ?: ""
+
+                        com.atmiya.innovation.ui.dashboard.listing.IncubatorDetailScreen(
+                            name = java.net.URLDecoder.decode(name, java.nio.charset.StandardCharsets.UTF_8.toString()),
+                            logoUrl = java.net.URLDecoder.decode(logoUrl, java.nio.charset.StandardCharsets.UTF_8.toString()),
+                            website = java.net.URLDecoder.decode(website, java.nio.charset.StandardCharsets.UTF_8.toString()),
+                            city = java.net.URLDecoder.decode(city, java.nio.charset.StandardCharsets.UTF_8.toString()),
+                            state = java.net.URLDecoder.decode(state, java.nio.charset.StandardCharsets.UTF_8.toString()),
+                            sector = java.net.URLDecoder.decode(sector, java.nio.charset.StandardCharsets.UTF_8.toString()),
+                            email = java.net.URLDecoder.decode(email, java.nio.charset.StandardCharsets.UTF_8.toString()),
+                            approvedFunding = java.net.URLDecoder.decode(funding, java.nio.charset.StandardCharsets.UTF_8.toString()),
+                            remainingFunding = java.net.URLDecoder.decode(remaining, java.nio.charset.StandardCharsets.UTF_8.toString()),
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+                    
+                    composable("governance") {
+                        com.atmiya.innovation.ui.dashboard.listing.GovernanceListingScreen(
+                            onBack = { navController.popBackStack() },
+                            onSchemeClick = { url, title ->
+                                val encodedUrl = java.net.URLEncoder.encode(url, java.nio.charset.StandardCharsets.UTF_8.toString())
+                                val encodedTitle = java.net.URLEncoder.encode(title, java.nio.charset.StandardCharsets.UTF_8.toString())
+                                navController.navigate("webview?url=$encodedUrl&title=$encodedTitle")
+                            }
+                        )
+                    }
+
+                    composable(
+                        "webview?url={url}&title={title}",
+                        arguments = listOf(
+                            navArgument("url") { type = NavType.StringType },
+                            navArgument("title") { type = NavType.StringType; defaultValue = "Web View" }
+                        )
+                    ) { backStackEntry ->
+                        val url = backStackEntry.arguments?.getString("url") ?: ""
+                        val titleArg = backStackEntry.arguments?.getString("title") ?: "Web View"
+                        val title = java.net.URLDecoder.decode(titleArg, java.nio.charset.StandardCharsets.UTF_8.toString())
+                        
+                        com.atmiya.innovation.ui.dashboard.web.GenericWebViewScreen(
+                            url = url,
+                            title = title,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+
+                    composable(
+                        "event_detail/{eventId}",
+                        arguments = listOf(navArgument("eventId") { type = NavType.StringType })
+                    ) { backStackEntry ->
+                        val eventId = backStackEntry.arguments?.getString("eventId") ?: return@composable
+                        EventDetailScreen(
+                            eventId = eventId,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+                    
+                    composable("mentors_list") {
+                        com.atmiya.innovation.ui.dashboard.listing.MentorListingScreen(
+                            onBack = { navController.popBackStack() },
+                            onMentorClick = { mentorId -> navController.navigate("mentor_detail/$mentorId") }
+                        )
+                    }
+
+                    composable("investors_list") {
+                        com.atmiya.innovation.ui.dashboard.listing.InvestorListingScreen(
+                            onBack = { navController.popBackStack() },
+                            onInvestorClick = { investorId -> navController.navigate("investor_detail/$investorId") }
+                        )
+                    }
+
+                    composable(
+                        "mentor_detail/{mentorId}",
+                         arguments = listOf(navArgument("mentorId") { type = NavType.StringType })
+                    ) { backStackEntry ->
+                        val mentorId = backStackEntry.arguments?.getString("mentorId") ?: return@composable
+                        MentorDetailScreen(
+                            mentorId = mentorId,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+                    
+                    composable(
+                        "investor_detail/{investorId}",
+                        arguments = listOf(navArgument("investorId") { type = NavType.StringType })
+                    ) { backStackEntry ->
+                        val investorId = backStackEntry.arguments?.getString("investorId") ?: return@composable
+                        // Using ProfileDetailScreen as generic detail viewer for user profiles (investors)
+                        // Using InvestorDetailScreen
+                        InvestorDetailScreen(
+                            investorId = investorId,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+                    
+                    composable("mentor_videos") {
+                         MentorVideoScreen(
+                             role = role
+                         )
+                    }
+
+                    composable(
+                        "mentor_video/{videoId}",
+                        arguments = listOf(navArgument("videoId") { type = NavType.StringType })
+                    ) { backStackEntry ->
+                         val videoId = backStackEntry.arguments?.getString("videoId") ?: return@composable
+                         MentorVideoDetailScreen(
+                             videoId = videoId,
+                             onBack = { navController.popBackStack() }
+                         )
+                    }
+
+                    composable(
+                        "wall_post/{postId}",
+                        arguments = listOf(navArgument("postId") { type = NavType.StringType })
+                    ) { backStackEntry ->
+                        val postId = backStackEntry.arguments?.getString("postId") ?: return@composable
+                        WallPostDetailScreen(
+                            postId = postId,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+
+                    composable("news_list") {
+                        NewsListScreen(
+                            onBack = { navController.popBackStack() },
+                            onNewsClick = { url ->
+                                val encodedUrl = java.net.URLEncoder.encode(url, java.nio.charset.StandardCharsets.UTF_8.toString())
+                                navController.navigate("news_detail/$encodedUrl")
+                            }
+                        )
+                    }
+
+                     composable(
+                        "news_detail/{url}",
+                        arguments = listOf(navArgument("url") { type = NavType.StringType })
+                    ) { backStackEntry ->
+                        val url = backStackEntry.arguments?.getString("url") ?: return@composable
+                        // Decode handling might be automated by NavController if simple, but double check. 
+                        // Usually encoded string is passed safely.
+                        // We will decode inside the screen or just pass it to WebView.
+                        // WebView loadUrl handles encoded/decoded? Best to decode.
+                        val decodedUrl = java.net.URLDecoder.decode(url, java.nio.charset.StandardCharsets.UTF_8.toString())
+                        NewsWebViewScreen(
+                            url = decodedUrl,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+
+                }
+                
+                // Bottom Bar - Only Visible on Main Tabs AND Keyboard Closed
+                if (currentRoute == "main_tabs" && !isKeyboardOpen) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 24.dp)
+                            .padding(horizontal = 48.dp) // Indent for floating look
+                    ) {
+                        Surface(
+                            color = Color(0xFF2C2C2C), // Dark pill background
+                            shape = RoundedCornerShape(50),
+                            shadowElevation = 8.dp,
+                            modifier = Modifier.align(Alignment.BottomCenter).height(64.dp)
+                        ) {
+                            TabRow(
+                                selectedTabIndex = pagerState.currentPage,
+                                containerColor = Color.Transparent,
+                                indicator = { tabPositions ->
+                                    if (pagerState.currentPage < tabPositions.size) {
+                                        val currentTabPosition = tabPositions[pagerState.currentPage]
+                                        Box(
+                                            modifier = Modifier
+                                                .tabIndicatorOffset(currentTabPosition)
+                                                .padding(horizontal = 4.dp, vertical = 4.dp)
+                                                .fillMaxSize()
+                                                .background(AtmiyaPrimary, RoundedCornerShape(50))
+                                                .zIndex(-1f)
+                                        )
+                                    }
+                                },
+                                divider = {},
+                                modifier = Modifier.padding(4.dp).widthIn(max = 300.dp)
+                            ) {
+                                items.forEachIndexed { index, screen ->
+                                    val selected = pagerState.currentPage == index
+                                    Tab(
+                                        selected = selected,
+                                        onClick = { coroutineScope.launch { pagerState.animateScrollToPage(index) } },
+                                        modifier = Modifier.clip(RoundedCornerShape(50)).height(56.dp)
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Icon(
+                                              imageVector = screen.icon,
+                                              contentDescription = screen.route,
+                                              tint = if (selected) Color.White else Color.Gray,
+                                              modifier = Modifier.size(28.dp) // Increased size
+                                          )
+                                            if (selected) {
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text(
+                                                    text = screen.route,
+                                                    color = Color.White,
+                                                    style = MaterialTheme.typography.labelLarge,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
-
-                // Detail Routes
-                composable("settings_screen") {
-                    com.atmiya.innovation.ui.settings.SettingsScreen(
-                        onBack = { navController.popBackStack() },
-                        onLogout = onLogout
-                    )
-                }
-
-
-
-            // Detail Routes
-            composable("settings") {
-                com.atmiya.innovation.ui.settings.SettingsScreen(
-                    onBack = { navController.popBackStack() },
-                    onLogout = onLogout
-                )
-            }
-
-            composable("funding_calls") {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    com.atmiya.innovation.ui.funding.FundingCallsScreen(
-                        role = role,
-                        onNavigate = { route -> navController.navigate(route) },
-                        onBack = { navController.popBackStack() }
-                    )
-                }
-            }
-
-            // ... (Rest of the routes remain mostly same)
-            composable("network") { 
-                NetworkScreen(
-                    role = role,
-                    onMentorClick = { id -> navController.navigate("mentor_detail/$id") },
-                    onInvestorClick = { id -> navController.navigate("investor_detail/$id") }
-                ) 
-            }
-            
-            composable("edit_profile") {
-                EditProfileScreen(onBack = { navController.popBackStack() })
-            }
-            
-            composable("mentor_videos") { com.atmiya.innovation.ui.video.MentorVideoScreen(role) }
-            
-            composable("create_funding_call") {
-                com.atmiya.innovation.ui.funding.CreateFundingCallScreen(
-                    onBack = { navController.popBackStack() },
-                    onCallCreated = { navController.popBackStack() }
-                )
-            }
-
-            composable(
-                "funding_apps_list/{callId}",
-                arguments = listOf(androidx.navigation.navArgument("callId") { type = androidx.navigation.NavType.StringType })
-            ) { backStackEntry ->
-                val callId = backStackEntry.arguments?.getString("callId") ?: ""
-                com.atmiya.innovation.ui.funding.FundingAppsListScreen(
-                    callId = callId,
-                    onBack = { navController.popBackStack() },
-                    onAppClick = { appId -> navController.navigate("application_detail/$callId/$appId") }
-                )
-            }
-
-            composable(
-                "application_detail/{callId}/{appId}",
-                arguments = listOf(
-                    androidx.navigation.navArgument("callId") { type = androidx.navigation.NavType.StringType },
-                    androidx.navigation.navArgument("appId") { type = androidx.navigation.NavType.StringType }
-                )
-            ) { backStackEntry ->
-                val callId = backStackEntry.arguments?.getString("callId") ?: ""
-                val appId = backStackEntry.arguments?.getString("appId") ?: ""
-                com.atmiya.innovation.ui.funding.ApplicationDetailScreen(
-                    callId = callId,
-                    applicationId = appId,
-                    onBack = { navController.popBackStack() },
-                    onChatCreated = { channelId, otherUserName ->
-                        navController.navigate("chat_detail/$channelId/$otherUserName")
-                    }
-                )
-            }
-            
-            composable("my_applications") {
-                com.atmiya.innovation.ui.funding.MyApplicationsScreen(
-                    onBack = { navController.popBackStack() },
-                    onChatClick = { channelId, otherUserName ->
-                        navController.navigate("chat_detail/$channelId/$otherUserName")
-                    }
-                )
-            }
-            
-            composable("chat_list") {
-            com.atmiya.innovation.ui.chat.ChatListScreen(
-                onBack = { navController.popBackStack() },
-                onChatClick = { channelId, otherUserName -> 
-                    navController.navigate("chat_detail/$channelId/$otherUserName") 
-                }
-            )
-        }
-        
-        composable(
-            "chat_detail/{channelId}/{otherUserName}",
-            arguments = listOf(
-                androidx.navigation.navArgument("channelId") { type = androidx.navigation.NavType.StringType },
-                androidx.navigation.navArgument("otherUserName") { type = androidx.navigation.NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val channelId = backStackEntry.arguments?.getString("channelId") ?: ""
-            val otherUserName = backStackEntry.arguments?.getString("otherUserName") ?: ""
-            com.atmiya.innovation.ui.chat.ChatScreen(
-                channelId = channelId,
-                otherUserName = otherUserName,
-                onBack = { navController.popBackStack() }
-            )
-        }          
-            composable("mentor_detail/{mentorId}") { backStackEntry ->
-                val mentorId = backStackEntry.arguments?.getString("mentorId") ?: return@composable
-                MentorDetailScreen(mentorId = mentorId, onBack = { navController.popBackStack() })
-            }
-            composable("investor_detail/{investorId}") { backStackEntry ->
-                val investorId = backStackEntry.arguments?.getString("investorId") ?: return@composable
-                InvestorDetailScreen(investorId = investorId, onBack = { navController.popBackStack() })
-            }
-            
-            composable("funding_call/{callId}") { backStackEntry ->
-                val callId = backStackEntry.arguments?.getString("callId") ?: return@composable
-                com.atmiya.innovation.ui.funding.FundingCallDetailScreen(
-                    callId = callId,
-                    onBack = { navController.popBackStack() }
-                )
-            }
-            
-            composable("apply_proposal/{callId}") { backStackEntry ->
-                val callId = backStackEntry.arguments?.getString("callId") ?: return@composable
-                com.atmiya.innovation.ui.funding.ApplyProposalScreen(
-                    callId = callId,
-                    onBack = { navController.popBackStack() },
-                    onSuccess = { 
-                        navController.popBackStack() 
-                    }
-                )
-            }
-            
-            composable("wall_post/{postId}") { backStackEntry ->
-                val postId = backStackEntry.arguments?.getString("postId") ?: return@composable
-                com.atmiya.innovation.ui.dashboard.WallPostDetailScreen(
-                    postId = postId,
-                    onBack = { navController.popBackStack() }
-                )
-            }
-            composable("mentor_video/{videoId}") { backStackEntry ->
-                val videoId = backStackEntry.arguments?.getString("videoId") ?: return@composable
-                com.atmiya.innovation.ui.video.MentorVideoDetailScreen(
-                    videoId = videoId,
-                    onBack = { navController.popBackStack() }
-                )
-            }
-            
-            composable("user_detail/{userId}") { backStackEntry ->
-                val userId = backStackEntry.arguments?.getString("userId") ?: return@composable
-                com.atmiya.innovation.ui.admin.UserDetailScreen(
-                    userId = userId,
-                    onBack = { navController.popBackStack() }
-                )
-            }
-            
-            // Verification Routes
-            composable("startup_verification") {
-                com.atmiya.innovation.ui.dashboard.startup.StartupVerificationScreen(
-                    onBack = { navController.popBackStack() }
-                )
-            }
-            
-            composable("admin_verification") {
-                com.atmiya.innovation.ui.admin.AdminVerificationScreen(
-                    onBack = { navController.popBackStack() }
-                )
-            }
-            
-            // Event Detail Route
-            composable("event_detail/{eventId}") { backStackEntry ->
-                val eventId = backStackEntry.arguments?.getString("eventId") ?: return@composable
-                com.atmiya.innovation.ui.event.EventDetailScreen(
-                    eventId = eventId,
-                    onBack = { navController.popBackStack() }
-                )
-            }
-            
-            // Video Detail Route - use FeaturedVideoDetailScreen for startup dashboard videos
-            composable("video_detail/{videoId}") { backStackEntry ->
-                val videoId = backStackEntry.arguments?.getString("videoId") ?: return@composable
-                com.atmiya.innovation.ui.dashboard.startup.FeaturedVideoDetailScreen(
-                    videoId = videoId,
-                    onBack = { navController.popBackStack() }
-                )
-            }
-            
-            composable("profile_screen") {
-                ProfileScreen(
-                    onLogout = onLogout,
-                    onEditProfile = { navController.navigate("edit_profile") },
-                    onBack = { navController.popBackStack() }
-                )
             }
         }
     }
 }
-}
 
-sealed class Screen(val route: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
-    object Wall : Screen("Wall", Icons.Filled.Forum)
-    object Dashboard : Screen("Dashboard", Icons.Filled.Dashboard)
+sealed class Screen(val route: String, val icon: ImageVector) {
+    object Dashboard : Screen("Dashboard", TablerIcons.Home)
+    object Wall : Screen("Wall", TablerIcons.Users) 
+    object Incubators : Screen("Incubators", TablerIcons.Building) // Incubator icon
+    object Governance : Screen("Governance", Icons.Filled.Gavel) // Governance icon
 }
 
 @Composable
@@ -516,8 +633,14 @@ fun NetworkScreen(
         }
 
         when (selectedTab) {
-            0 -> InvestorsScreen(onInvestorClick = onInvestorClick)
-            1 -> MentorsScreen(onViewProfile = onMentorClick)
+            0 -> com.atmiya.innovation.ui.dashboard.listing.InvestorListingScreen(
+                onBack = {}, // Back not needed inside tab context or handle differently if required
+                onInvestorClick = onInvestorClick
+            )
+            1 -> com.atmiya.innovation.ui.dashboard.listing.MentorListingScreen(
+                onBack = {},
+                onMentorClick = onMentorClick
+            )
         }
     }
 }

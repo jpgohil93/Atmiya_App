@@ -5,30 +5,32 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import compose.icons.TablerIcons
+import compose.icons.tablericons.*
+import androidx.compose.foundation.verticalScroll // Added
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.atmiya.innovation.data.User
 import com.atmiya.innovation.ui.theme.AtmiyaPrimary
+import com.atmiya.innovation.ui.theme.AtmiyaSecondary
 import kotlinx.coroutines.launch
 
 @Composable
 fun AppNavigationDrawer(
     drawerState: DrawerState,
     user: User?,
-    onNavigateToDashboard: () -> Unit,
-    onNavigateToProfile: () -> Unit,
-    onNavigateToSettings: () -> Unit,
+    onNavigate: (String) -> Unit, // Unified navigation callback
     onLogout: () -> Unit,
     content: @Composable () -> Unit
 ) {
@@ -39,169 +41,141 @@ fun AppNavigationDrawer(
 
     ModalNavigationDrawer(
         drawerState = drawerState,
-        gesturesEnabled = false,
+        gesturesEnabled = true,
         drawerContent = {
             ModalDrawerSheet(
                 drawerContainerColor = Color.White,
                 drawerContentColor = Color.Black,
-                modifier = Modifier.width(300.dp)
+                modifier = Modifier.width(320.dp), // Slightly wider
+                drawerShape = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp)
             ) {
-                Column(
+                // --- Graphical Header ---
+                Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp)
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .background(Color.Black)
                 ) {
-                    // --- Header ---
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        verticalArrangement = Arrangement.Bottom,
+                        horizontalAlignment = Alignment.Start
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            // Avatar
+                        Surface(
+                            modifier = Modifier
+                                .size(80.dp) // Larger Avatar
+                                .clickable { onNavigate("profile_screen") },
+                            shape = CircleShape,
+                            color = Color.White,
+                            border = androidx.compose.foundation.BorderStroke(2.dp, Color.White),
+                            shadowElevation = 8.dp
+                        ) {
                             if (userPhotoUrl.isNotBlank()) {
                                 AsyncImage(
                                     model = userPhotoUrl,
                                     contentDescription = "Profile",
-                                    modifier = Modifier
-                                        .size(48.dp)
-                                        .clip(CircleShape)
-                                        .background(Color.LightGray),
+                                    modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop
                                 )
                             } else {
                                 Box(
-                                    modifier = Modifier
-                                        .size(48.dp)
-                                        .clip(CircleShape)
-                                        .background(AtmiyaPrimary.copy(alpha = 0.1f)),
-                                    contentAlignment = Alignment.Center
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier.fillMaxSize().background(Color.White)
                                 ) {
                                     Text(
                                         text = userName.take(1).uppercase(),
-                                        style = MaterialTheme.typography.titleMedium,
+                                        style = MaterialTheme.typography.headlineLarge,
                                         color = AtmiyaPrimary,
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
                             }
-                            Spacer(modifier = Modifier.width(12.dp))
-                            // Name & Role
-                            Column {
-                                Text(
-                                    text = userName,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = if (userRole.isNotBlank()) userRole.replaceFirstChar { it.uppercase() } else "Member",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color.Gray
-                                )
-                            }
                         }
-                        // Close Button
-                        IconButton(
-                            onClick = { scope.launch { drawerState.close() } },
-                            modifier = Modifier
-                                .size(32.dp)
-                                .background(Color(0xFFF5F5F5), CircleShape)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Close",
-                                tint = Color.Black,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(32.dp))
-
-                    // --- Main Menu Items ---
-                    val menuItems = listOf(
-                        Triple("Conversations", Icons.Default.Email, { /* TODO */ }),
-                        Triple("Wall", Icons.Default.Home, {
-                            scope.launch { drawerState.close() }
-                            Unit
-                        }),
-                        Triple("Dashboard", Icons.Default.Dashboard, {
-                            scope.launch { drawerState.close() }
-                            onNavigateToDashboard()
-                        }),
-                        Triple("Funding Calls", Icons.Default.AttachMoney, { /* TODO */ }),
-                        Triple("Mentorship", Icons.Default.School, { /* TODO */ }),
-                        Triple("Events", Icons.Default.Event, { /* TODO */ })
-                    )
-
-                    menuItems.forEach { (label, icon, onClick) ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(onClick = onClick)
-                                .padding(vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = icon,
-                                contentDescription = label,
-                                tint = Color.Black,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Text(
-                                text = label,
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.weight(1f))
-
-                    // --- Secondary Menu ---
-                    val secondaryItems = listOf(
-                        "Profile" to {
-                            scope.launch { drawerState.close() }
-                            onNavigateToProfile()
-                        },
-                        "Settings" to {
-                            scope.launch { drawerState.close() }
-                            onNavigateToSettings()
-                        },
-                        "Help" to { /* TODO */ }
-                    )
-
-                    secondaryItems.forEach { (label, onClick) ->
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
                         Text(
-                            text = label,
+                            text = userName,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = if (userRole.isNotBlank()) userRole.replaceFirstChar { it.uppercase() } else "Member",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Gray,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(onClick = onClick)
-                                .padding(vertical = 8.dp)
+                            color = Color.White.copy(alpha = 0.8f)
+                        )
+                    }
+                    
+                    // Close Button Overlay
+                    IconButton(
+                        onClick = { scope.launch { drawerState.close() } },
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(16.dp)
+                    ) {
+                        Icon(TablerIcons.X, contentDescription = "Close", tint = Color.White, modifier = Modifier.size(24.dp))
+                    }
+                }
+
+                // --- Menu Content ---
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(vertical = 16.dp)
+                        .verticalScroll(androidx.compose.foundation.rememberScrollState())
+                ) {
+                    val menuItems = listOf(
+                        Triple("Dashboard", TablerIcons.Home, "dashboard_tab"),
+                        Triple("Wall", TablerIcons.Users, "wall_tab"),
+                        Triple("Conversations", TablerIcons.MessageCircle, "conversations_list"),
+                        Triple("Funding Calls", TablerIcons.Coin, "funding_calls_list"),
+                        Triple("Mentorship", TablerIcons.School, "network"),
+                        Triple("Events", TablerIcons.CalendarEvent, "events_list"),
+                        Triple("Profile", TablerIcons.User, "profile_screen"),
+                        Triple("Settings", TablerIcons.Settings, "settings_screen"),
+                        Triple("My Ideas", TablerIcons.Bulb, "saved_ideas")
+                    )
+
+                    menuItems.forEach { (label, icon, route) ->
+                         NavigationDrawerItem(
+                            label = { Text(label, fontWeight = FontWeight.Medium) },
+                            icon = { Icon(icon, contentDescription = null, tint = AtmiyaPrimary, modifier = Modifier.size(24.dp)) },
+                            selected = false,
+                            onClick = {
+                                scope.launch { drawerState.close() }
+                                onNavigate(route)
+                            },
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = NavigationDrawerItemDefaults.colors(
+                                unselectedContainerColor = Color.Transparent,
+                                unselectedIconColor = AtmiyaPrimary,
+                                unselectedTextColor = Color.Black
+                            )
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    // --- Logout Button ---
-                    Button(
+                    Spacer(modifier = Modifier.weight(1f))
+                    Divider(modifier = Modifier.padding(vertical = 16.dp))
+                    
+                    NavigationDrawerItem(
+                        label = { Text("Log Out", fontWeight = FontWeight.Bold, color = Color.Red) },
+                        icon = { Icon(TablerIcons.Logout, contentDescription = null, tint = Color.Red, modifier = Modifier.size(24.dp)) },
+                        selected = false,
                         onClick = {
-                            scope.launch {
+                            scope.launch { 
                                 drawerState.close()
                                 onLogout()
                             }
                         },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
-                        shape = RoundedCornerShape(25.dp)
-                    ) {
-                        Text("Log Out", color = Color.White, fontWeight = FontWeight.Bold)
-                    }
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Red.copy(alpha = 0.1f))
+                    )
+                    
+                     Spacer(modifier = Modifier.height(24.dp))
                 }
             }
         },
