@@ -90,6 +90,7 @@ fun IdeaGeneratorScreen(
     viewModel: IdeaGeneratorViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showValidationErrors by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -206,11 +207,30 @@ fun IdeaGeneratorScreen(
                     ) {
                         AnimatedContent(targetState = uiState.currentStep) { step ->
                             when (step) {
-                                1 -> Step1Interests(uiState.inputs, viewModel::onSectorToggle, viewModel::onFieldChange)
-                                2 -> Step2Constraints(uiState.inputs, viewModel::onFieldChange)
-                                3 -> Step3Execution(uiState.inputs, viewModel::onFieldChange)
+                                1 -> Step1Interests(uiState.inputs, viewModel::onSectorToggle, viewModel::onFieldChange, showValidationErrors)
+                                2 -> Step2Constraints(uiState.inputs, viewModel::onFieldChange, showValidationErrors)
+                                3 -> Step3Execution(uiState.inputs, viewModel::onFieldChange, showValidationErrors)
                             }
                         }
+                    }
+
+                    // Validation Logic
+                    // Validation Logic
+
+                    fun validateStep1(): Boolean {
+                        return uiState.inputs.selectedSectors.isNotEmpty() &&
+                               uiState.inputs.skills.isNotBlank() &&
+                               uiState.inputs.problemsToSolve.isNotBlank()
+                    }
+
+                    fun validateStep2(): Boolean {
+                        return uiState.inputs.budgetRange.isNotBlank() &&
+                               uiState.inputs.timeAvailability.isNotBlank() &&
+                               uiState.inputs.geography.isNotBlank()
+                    }
+
+                    fun validateStep3(): Boolean {
+                        return uiState.inputs.preferredModel.isNotBlank()
                     }
 
                     // Navigation Buttons
@@ -221,7 +241,10 @@ fun IdeaGeneratorScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         if (uiState.currentStep > 1) {
-                            OutlinedButton(onClick = { viewModel.prevStep() }) {
+                            OutlinedButton(onClick = { 
+                                viewModel.prevStep() 
+                                showValidationErrors = false // Reset on back
+                            }) {
                                 Text("Back")
                             }
                         } else {
@@ -230,7 +253,19 @@ fun IdeaGeneratorScreen(
 
                         Button(
                             onClick = { 
-                                if (uiState.currentStep < 3) viewModel.nextStep() else viewModel.generateIdeas() 
+                                val isValid = when(uiState.currentStep) {
+                                    1 -> validateStep1()
+                                    2 -> validateStep2()
+                                    3 -> validateStep3()
+                                    else -> false
+                                }
+
+                                if (isValid) {
+                                    showValidationErrors = false
+                                    if (uiState.currentStep < 3) viewModel.nextStep() else viewModel.generateIdeas() 
+                                } else {
+                                    showValidationErrors = true
+                                }
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                         ) {
@@ -249,10 +284,16 @@ fun IdeaGeneratorScreen(
 fun Step1Interests(
     inputs: GeneratorInputs,
     onSectorToggle: (String) -> Unit,
-    onFieldChange: ((GeneratorInputs) -> GeneratorInputs) -> Unit
+    onFieldChange: ((GeneratorInputs) -> GeneratorInputs) -> Unit,
+    showErrors: Boolean = false // Added
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text("Select Sectors of Interest", fontWeight = FontWeight.Medium)
+        Column {
+            Text("Select Sectors of Interest", fontWeight = FontWeight.Medium)
+            if (showErrors && inputs.selectedSectors.isEmpty()) {
+                Text("Please select at least one sector", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            }
+        }
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -277,7 +318,14 @@ fun Step1Interests(
             placeholder = { Text("e.g. Sales, Python, Marketing") },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
-            supportingText = { Text("${inputs.skills.length}/100") },
+            supportingText = { 
+                if (showErrors && inputs.skills.isBlank()) {
+                    Text("Required", color = MaterialTheme.colorScheme.error)
+                } else {
+                    Text("${inputs.skills.length}/100") 
+                }
+            },
+            isError = showErrors && inputs.skills.isBlank(),
             singleLine = true
         )
 
@@ -288,7 +336,14 @@ fun Step1Interests(
             placeholder = { Text("e.g. Broken supply chains, Pollution") },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
-            supportingText = { Text("${inputs.problemsToSolve.length}/150") },
+            supportingText = { 
+                if (showErrors && inputs.problemsToSolve.isBlank()) {
+                    Text("Required", color = MaterialTheme.colorScheme.error)
+                } else {
+                    Text("${inputs.problemsToSolve.length}/150") 
+                }
+            },
+            isError = showErrors && inputs.problemsToSolve.isBlank(),
             minLines = 2,
             maxLines = 3
         )
@@ -299,24 +354,40 @@ fun Step1Interests(
 @Composable
 fun Step2Constraints(
     inputs: GeneratorInputs,
-    onFieldChange: ((GeneratorInputs) -> GeneratorInputs) -> Unit
+    onFieldChange: ((GeneratorInputs) -> GeneratorInputs) -> Unit,
+    showErrors: Boolean = false // Added
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text("Budget Range", fontWeight = FontWeight.Medium)
+        Column {
+            Text("Budget Range", fontWeight = FontWeight.Medium)
+             if (showErrors && inputs.budgetRange.isBlank()) {
+                Text("Please select a budget range", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            }
+        }
         SingleSelectChips(
             options = listOf("< ₹50k", "₹50k - 2L", "₹2L - 10L", "₹10L+"),
             selected = inputs.budgetRange,
             onSelect = { val str = it; onFieldChange { curr -> curr.copy(budgetRange = str) } }
         )
 
-        Text("Time Availability", fontWeight = FontWeight.Medium)
+        Column {
+            Text("Time Availability", fontWeight = FontWeight.Medium)
+            if (showErrors && inputs.timeAvailability.isBlank()) {
+                Text("Please select availability", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            }
+        }
         SingleSelectChips(
             options = listOf("Part-time/Evenings", "Full-time"),
             selected = inputs.timeAvailability,
             onSelect = { val str = it; onFieldChange { curr -> curr.copy(timeAvailability = str) } }
         )
         
-        Text("Geography", fontWeight = FontWeight.Medium)
+        Column {
+             Text("Geography", fontWeight = FontWeight.Medium)
+             if (showErrors && inputs.geography.isBlank()) {
+                Text("Please select geography", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            }
+        }
         SingleSelectChips(
             options = listOf("Local City", "Gujarat", "Pan-India", "Global"),
             selected = inputs.geography,
@@ -329,10 +400,16 @@ fun Step2Constraints(
 @Composable
 fun Step3Execution(
     inputs: GeneratorInputs,
-    onFieldChange: ((GeneratorInputs) -> GeneratorInputs) -> Unit
+    onFieldChange: ((GeneratorInputs) -> GeneratorInputs) -> Unit,
+    showErrors: Boolean = false // Added
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text("Preferred Business Model", fontWeight = FontWeight.Medium)
+        Column {
+             Text("Preferred Business Model", fontWeight = FontWeight.Medium)
+             if (showErrors && inputs.preferredModel.isBlank()) {
+                Text("Please select a business model", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            }
+        }
         SingleSelectChips(
             options = listOf("B2B", "B2C", "Marketplace", "SaaS", "Service-based"),
             selected = inputs.preferredModel,

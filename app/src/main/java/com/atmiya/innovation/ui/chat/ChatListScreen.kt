@@ -1,5 +1,7 @@
 package com.atmiya.innovation.ui.chat
 
+// Commented out as per request
+/*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -135,3 +137,4 @@ fun ChatChannelItem(
         }
     }
 }
+*/

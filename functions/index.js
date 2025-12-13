@@ -18,35 +18,90 @@ exports.notifyOnNewWallPost = functions.firestore
         }
 
         const authorName = newValue.authorName || 'Someone';
-        const postType = newValue.postType || 'Post';
+        const postType = newValue.postType || 'Post'; // generic, funding_call etc
+        const mediaType = newValue.mediaType || 'none';
+        const attachments = newValue.attachments || [];
+        const content = newValue.content || '';
+
+        let title = authorName;
+        let body = content;
+        let imageUrl = null;
+
+        // --- Formatting Logic ---
+
+        // Check for Video (Priority over Image)
+        const hasVideo = mediaType === 'video' || attachments.some(a => a.type === 'video');
+        const hasImage = mediaType === 'image' || attachments.some(a => a.type === 'image');
+
+        if (hasVideo) {
+            // C. Video Post
+            title = `${authorName} uploaded a video`;
+            body = content ? `▶️ ${content}` : `▶️ Check out this video`;
+
+            // Try to find a thumbnail
+            if (newValue.thumbnailUrl) imageUrl = newValue.thumbnailUrl;
+            else {
+                const vidAttach = attachments.find(a => a.type === 'video');
+                if (vidAttach && vidAttach.thumbnailUrl) imageUrl = vidAttach.thumbnailUrl;
+            }
+
+        } else if (hasImage) {
+            // B. Image Post
+            title = `${authorName} added a new photo`;
+            body = content ? content : "Check out this new photo.";
+
+            // Try to find image URL
+            if (newValue.mediaUrl) imageUrl = newValue.mediaUrl;
+            else {
+                const imgAttach = attachments.find(a => a.type === 'image');
+                if (imgAttach) imageUrl = imgAttach.url;
+            }
+
+        } else {
+            // A. Text Post
+            title = authorName; // Just the name
+            body = content;
+        }
+
+        // Truncate Body
+        if (body.length > 100) {
+            body = body.substring(0, 97) + '...';
+        }
+
         const timestamp = admin.firestore.FieldValue.serverTimestamp();
 
         // 1. Create Notification Document for History
         const notificationData = {
-            title: `New ${postType} by ${authorName}`,
-            body: newValue.content || 'Check out the new post on the wall!',
-            type: 'wall_post',
+            title: title,
+            body: body,
+            type: 'wall_post', // could be specific like 'wall_video' if needed by UI
             targetId: postId,
-            createdAt: timestamp
+            createdAt: timestamp,
+            imageUrl: imageUrl // Save image to history too
         };
 
         // Write to global_notifications
-        // We use .add() to auto-generate an ID
         await admin.firestore().collection('global_notifications').add(notificationData);
 
         // 2. Prepare FCM Payload
         const payload = {
             notification: {
-                title: notificationData.title,
-                body: notificationData.body,
+                title: title,
+                body: body,
             },
             data: {
                 type: 'wall_post',
                 postId: postId,
+                authorId: newValue.authorUserId || '', // Add authorId for client-side filtering
                 click_action: 'FLUTTER_NOTIFICATION_CLICK'
             },
             topic: 'all_posts'
         };
+
+        // Add Image to FCM if exists (Android/iOS support)
+        if (imageUrl) {
+            payload.notification.image = imageUrl;
+        }
 
         // 3. Send FCM message
         try {
@@ -55,6 +110,79 @@ exports.notifyOnNewWallPost = functions.firestore
             return response;
         } catch (error) {
             console.log('Error sending message:', error);
+            return null;
+        }
+    });
+
+/**
+ * Triggered when a Funding Call is updated.
+ * Notifies startups about deadline extensions or closure.
+ */
+exports.notifyOnFundingCallUpdate = functions.firestore
+    .document('fundingCalls/{callId}')
+    .onUpdate(async (change, context) => {
+        const newValue = change.after.data();
+        const oldValue = change.before.data();
+        const callId = context.params.callId;
+
+        const title = newValue.title || 'Funding Opportunity';
+        const investorName = newValue.investorName || 'Investor';
+
+        // Check for Deadline Extension
+        const oldDeadline = oldValue && oldValue.applicationDeadline ? oldValue.applicationDeadline.toDate().getTime() : 0;
+        const newDeadline = newValue && newValue.applicationDeadline ? newValue.applicationDeadline.toDate().getTime() : 0;
+
+        let notificationTitle = null;
+        let notificationBody = null;
+
+        if (newDeadline > oldDeadline) {
+            // Deadline Extended
+            notificationTitle = "Funding Deadline Extended! ⏳";
+            notificationBody = `${investorName} has extended the deadline for "${title}". Check it out!`;
+        } else if (newValue.isActive === false && (oldValue.isActive === true || oldValue.isActive === undefined)) {
+            // Call Disabled/Closed
+            // Trigger if it is now false, and previously was true or undefined (assumed active)
+            notificationTitle = "Funding Call Closed 🔒";
+            notificationBody = `The funding opportunity "${title}" by ${investorName} has been closed.`;
+        }
+
+        if (!notificationTitle) {
+            return null; // No relevant change
+        }
+
+        // Notification Payload
+        const payload = {
+            notification: {
+                title: notificationTitle,
+                body: notificationBody,
+            },
+            data: {
+                type: 'funding_call_update',
+                callId: callId,
+                click_action: 'FLUTTER_NOTIFICATION_CLICK'
+            },
+            topic: 'startups' // Assuming startups are subscribed to this topic
+        };
+
+        // Send to 'startups' topic
+        try {
+            const response = await admin.messaging().send(payload);
+            console.log('Successfully sent funding update:', response);
+
+            // Also add to global notifications for history
+            const historyData = {
+                title: notificationTitle,
+                body: notificationBody,
+                type: 'funding_call_update',
+                targetId: callId,
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                imageUrl: null
+            };
+            await admin.firestore().collection('global_notifications').add(historyData);
+
+            return response;
+        } catch (error) {
+            console.log('Error sending funding update:', error);
             return null;
         }
     });

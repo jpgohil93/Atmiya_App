@@ -1,5 +1,6 @@
 package com.atmiya.innovation.ui.dashboard
 import androidx.compose.ui.zIndex
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
@@ -93,14 +94,15 @@ fun DashboardScreen(
 ) {
     val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
     val firestoreRepo = remember { com.atmiya.innovation.repository.FirestoreRepository() }
-    var currentUser by remember { mutableStateOf<com.atmiya.innovation.data.User?>(null) }
-
-    LaunchedEffect(Unit) {
-        val uid = auth.currentUser?.uid
-        if (uid != null) {
-            currentUser = firestoreRepo.getUser(uid)
+    
+    val currentUserId = auth.currentUser?.uid
+    val currentUser by remember(currentUserId) {
+        if (currentUserId != null) {
+            firestoreRepo.getUserFlow(currentUserId)
+        } else {
+            kotlinx.coroutines.flow.flowOf(null)
         }
-    }
+    }.collectAsState(initial = null)
 
     val navController = rememberNavController()
     
@@ -154,18 +156,43 @@ fun DashboardScreen(
     val density = LocalDensity.current
     val isKeyboardOpen = WindowInsets.ime.getBottom(density) > 0
 
+    // Auto-Hide Bottom Bar Logic
+    var isPillVisible by remember { mutableStateOf(true) }
+    var interactionTrigger by remember { mutableLongStateOf(System.currentTimeMillis()) }
+
+    // Timer to hide pill after 10 seconds of inactivity
+    LaunchedEffect(interactionTrigger) {
+        isPillVisible = true
+        kotlinx.coroutines.delay(10000) // 10 seconds
+        isPillVisible = false
+    }
+
+    // Detect Scroll/Interaction
+    val nestedScrollConnection = remember {
+        object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
+             override fun onPreScroll(available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
+                interactionTrigger = System.currentTimeMillis()
+                return super.onPreScroll(available, source)
+            }
+            override suspend fun onPostFling(consumed: androidx.compose.ui.unit.Velocity, available: androidx.compose.ui.unit.Velocity): androidx.compose.ui.unit.Velocity {
+                interactionTrigger = System.currentTimeMillis()
+                return super.onPostFling(consumed, available)
+            }
+        }
+    }
+
     AppNavigationDrawer(
         drawerState = drawerState,
         user = currentUser,
         onNavigate = { route ->
+             // ... existing nav logic ...
             when(route) {
                 "dashboard_tab" -> { scope.launch { pagerState.scrollToPage(0) } }
                 "wall_tab" -> { scope.launch { pagerState.scrollToPage(1) } }
                 "profile_screen" -> { scope.launch { drawerState.close() }; navController.navigate("profile_screen") }
                 "settings_screen" -> { scope.launch { drawerState.close() }; navController.navigate("settings_screen") }
-                "conversations_list" -> { scope.launch { drawerState.close() }; navController.navigate("conversations") }
-                "funding_calls_list" -> { scope.launch { drawerState.close() }; navController.navigate("funding_calls") }
-                "events_list" -> { scope.launch { drawerState.close() }; navController.navigate("events") }
+                "funding_calls_list" -> { scope.launch { drawerState.close() }; navController.navigate("funding_calls_list") }
+                "events_list" -> { scope.launch { drawerState.close() }; navController.navigate("events_list") }
                 "network" -> { scope.launch { drawerState.close() }; navController.navigate("network_hub") }
                 else -> { scope.launch { drawerState.close() }; navController.navigate(route) }
             }
@@ -174,11 +201,6 @@ fun DashboardScreen(
     ) {
         SoftScaffold(
             topBar = {
-                // Show Top Bar only on Main Tabs (Dashboard/Wall)
-                // Or maybe show on all screens? Usually inner screens have their own top bar (Back button)
-                // The requirements say "missing from where we can access edit profile...". 
-                // That implies standard dashboard. Inner screens usually have their own back button top bar.
-                // So let's keep CommonTopBar primarily for "main_tabs".
                 if (currentRoute == "main_tabs") {
                    CommonTopBar(
                         onOpenDrawer = { scope.launch { drawerState.open() } },
@@ -189,12 +211,18 @@ fun DashboardScreen(
                 }
             }
         ) { paddingValues ->
-            Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .nestedScroll(nestedScrollConnection) // Attach scroll listener
+            ) {
                 NavHost(
                     navController = navController,
                     startDestination = "main_tabs",
                     modifier = Modifier.fillMaxSize()
                 ) {
+                    // ... (NavHost content remains same) ...
                     // Main Tabs Route containing the Pager
                     composable("main_tabs") {
                         HorizontalPager(
@@ -230,6 +258,7 @@ fun DashboardScreen(
                                     onNavigateToProfile = { navController.navigate("profile_screen") },
                                     onNavigateToSettings = { navController.navigate("settings_screen") },
                                     onNavigateToDashboard = { coroutineScope.launch { pagerState.animateScrollToPage(0) } },
+                                    onNavigateToFundingCall = { id -> navController.navigate("funding_call/$id") }, // Added
                                     onLogout = onLogout,
                                     onOpenDrawer = { scope.launch { drawerState.open() } }
                                 )
@@ -441,6 +470,32 @@ fun DashboardScreen(
                         )
                     }
 
+                    composable("network_hub") {
+                        NetworkScreen(
+                            role = role,
+                            onMentorClick = { mentorId -> navController.navigate("mentor_detail/$mentorId") },
+                            onInvestorClick = { investorId -> navController.navigate("investor_detail/$investorId") }
+                        )
+                    }
+
+                    composable("startups_list") {
+                        com.atmiya.innovation.ui.dashboard.listing.StartupListingScreen(
+                            onBack = { navController.popBackStack() },
+                            onStartupClick = { startupId -> navController.navigate("startup_detail/$startupId") }
+                        )
+                    }
+
+                    composable(
+                        "startup_detail/{startupId}",
+                        arguments = listOf(navArgument("startupId") { type = NavType.StringType })
+                    ) { backStackEntry ->
+                        val startupId = backStackEntry.arguments?.getString("startupId") ?: return@composable
+                        com.atmiya.innovation.ui.dashboard.StartupDetailScreen(
+                            startupId = startupId,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+
                     composable(
                         "mentor_detail/{mentorId}",
                          arguments = listOf(navArgument("mentorId") { type = NavType.StringType })
@@ -489,7 +544,8 @@ fun DashboardScreen(
                         val postId = backStackEntry.arguments?.getString("postId") ?: return@composable
                         WallPostDetailScreen(
                             postId = postId,
-                            onBack = { navController.popBackStack() }
+                            onBack = { navController.popBackStack() },
+                            onFundingCallClick = { callId -> navController.navigate("funding_call/$callId") }
                         )
                     }
 
@@ -522,11 +578,16 @@ fun DashboardScreen(
                 }
                 
                 // Bottom Bar - Only Visible on Main Tabs AND Keyboard Closed
-                if (currentRoute == "main_tabs" && !isKeyboardOpen) {
+                // Wrapped in AnimatedVisibility
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = currentRoute == "main_tabs" && !isKeyboardOpen && isPillVisible,
+                    enter = androidx.compose.animation.slideInVertically(initialOffsetY = { it * 2 }),
+                    exit = androidx.compose.animation.slideOutVertically(targetOffsetY = { it * 2 }),
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                ) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .align(Alignment.BottomCenter)
                             .padding(bottom = 24.dp)
                             .padding(horizontal = 48.dp) // Indent for floating look
                     ) {
@@ -559,7 +620,11 @@ fun DashboardScreen(
                                     val selected = pagerState.currentPage == index
                                     Tab(
                                         selected = selected,
-                                        onClick = { coroutineScope.launch { pagerState.animateScrollToPage(index) } },
+                                        onClick = { 
+                                            // Reset timer on click too
+                                            interactionTrigger = System.currentTimeMillis()
+                                            coroutineScope.launch { pagerState.animateScrollToPage(index) } 
+                                        },
                                         modifier = Modifier.clip(RoundedCornerShape(50)).height(56.dp)
                                     ) {
                                         Row(

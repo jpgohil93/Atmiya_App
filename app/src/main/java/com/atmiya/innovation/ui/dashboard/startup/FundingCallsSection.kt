@@ -8,12 +8,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import compose.icons.TablerIcons
-import compose.icons.tablericons.MapPin
-import compose.icons.tablericons.InfoCircle
-import compose.icons.tablericons.ArrowRight
-import compose.icons.tablericons.Calendar
-import compose.icons.tablericons.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,15 +25,21 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.atmiya.innovation.data.FundingCall
 import com.atmiya.innovation.repository.FirestoreRepository
+import com.atmiya.innovation.ui.components.NetworkCard
+import com.atmiya.innovation.ui.components.InfoRow
+import com.atmiya.innovation.ui.components.PillBadge
+import com.atmiya.innovation.ui.components.SoftCard
 import com.atmiya.innovation.ui.theme.AtmiyaPrimary
 import com.atmiya.innovation.ui.theme.AtmiyaSecondary
 import com.atmiya.innovation.ui.theme.AtmiyaAccent
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.Timestamp
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
+import compose.icons.TablerIcons
+import compose.icons.tablericons.*
 
 @Composable
 fun FundingCallsSection(
@@ -55,17 +55,6 @@ fun FundingCallsSection(
             .fillMaxWidth()
             .padding(vertical = 16.dp)
     ) {
-        // DEBUG: Create Test Call Button if empty
-        if (!isLoading && allCalls.isEmpty() && recommendedCalls.isEmpty()) {
-            Button(
-                onClick = onCreateTestCall,
-                modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = AtmiyaSecondary)
-            ) {
-                Text("DEBUG: Create Test Funding Call")
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-        }
         // --- Recommended Section ---
         if (recommendedCalls.isNotEmpty() || isLoading) {
             SectionHeader(
@@ -84,11 +73,15 @@ fun FundingCallsSection(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(recommendedCalls) { call ->
-                        FundingCallCard(
-                            call = call,
-                            isRecommended = true,
-                            onClick = { onCallClick(call.id) }
-                        )
+                        // For recommended horizontal list, we might want a slightly more compact version
+                        // But for now, let's use the new card style but ensure width is constrained
+                        Box(modifier = Modifier.width(320.dp)) {
+                             FundingCallCard(
+                                call = call,
+                                isRecommended = true,
+                                onClick = { onCallClick(call.id) }
+                            )
+                        }
                     }
                 }
             }
@@ -178,333 +171,105 @@ fun FundingCallCard(
     isRecommended: Boolean,
     onClick: () -> Unit
 ) {
-    // Animation States
-    var isPressed by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.97f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
-        label = "scale"
-    )
-    
     // Fetch Investor Details
     val repository = remember { FirestoreRepository() }
+    val auth = remember { com.google.firebase.auth.FirebaseAuth.getInstance() }
+    val currentUser = auth.currentUser
+    val isOwner = currentUser?.uid == call.investorId
+    
     var investorProfilePhoto by remember { mutableStateOf<String?>(null) }
-    var investorLocation by remember { mutableStateOf<String?>(null) }
     
     LaunchedEffect(call.investorId) {
         if (call.investorId.isNotEmpty()) {
             try {
                 val user = repository.getUser(call.investorId)
                 investorProfilePhoto = user?.profilePhotoUrl
-                investorLocation = user?.city
             } catch (e: Exception) {
                 // Ignore
             }
         }
     }
-    
-    // Gradient Background (Red Accent)
-    val gradientColors = if (isRecommended) {
-        listOf(
-            AtmiyaPrimary.copy(alpha = 0.1f),
-            AtmiyaAccent.copy(alpha = 0.05f) // Red accent
-        )
-    } else {
-        listOf(
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-            MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
-        )
-    }
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .widthIn(max = if (isRecommended) 340.dp else 600.dp)
-            .scale(scale)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .background(Brush.linearGradient(gradientColors))
-                .padding(16.dp)
-        ) {
-            Column {
-                // Header: Investor Info + Location
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Investor Avatar
-                        if (investorProfilePhoto != null) {
-                            AsyncImage(
-                                model = investorProfilePhoto,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.White),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(CircleShape)
-                                    .background(AtmiyaAccent.copy(alpha = 0.1f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = call.investorName.firstOrNull()?.uppercase() ?: "I",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = AtmiyaAccent,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = call.investorName,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Surface(
-                                    color = AtmiyaAccent.copy(alpha = 0.1f),
-                                    shape = RoundedCornerShape(4.dp),
-                                    border = androidx.compose.foundation.BorderStroke(0.5.dp, AtmiyaAccent.copy(alpha = 0.3f))
-                                ) {
-                                    Text(
-                                        text = "Investor",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = AtmiyaAccent,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
-                                    )
-                                }
-                            }
-                            if (!investorLocation.isNullOrEmpty()) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        TablerIcons.MapPin,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(12.dp),
-                                        tint = Color.Gray
-                                    )
-                                    Spacer(modifier = Modifier.width(2.dp))
-                                    Text(
-                                        text = investorLocation!!,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = Color.Gray
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    
-                    // Posted Date
-                    if (call.createdAt != null) {
-                        val dateFormat = SimpleDateFormat("dd MMM", Locale.getDefault())
-                        Text(
-                            text = "Posted ${dateFormat.format(call.createdAt.toDate())}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.Gray
-                        )
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Title
-                Text(
-                    text = call.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                
-                Spacer(modifier = Modifier.height(12.dp))
-                
-                // Key Stats Row (Funding & Timer)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Funding Amount
-                    Column {
-                        Text(
-                            text = "Total Funding",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.Gray
-                        )
-                        val formattedAmount = try {
-                            val amount = call.maxTicketAmount.toLongOrNull() ?: 0L
-                            java.text.NumberFormat.getCurrencyInstance(java.util.Locale("en", "IN")).format(amount)
-                        } catch (e: Exception) {
-                            "₹${call.maxTicketAmount}"
-                        }
-                        Text(
-                            text = formattedAmount,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = AtmiyaAccent // Red
-                        )
-                    }
-                    
-                    // Timer
-                    if (call.applicationDeadline != null) {
-                        CardTimer(deadline = call.applicationDeadline)
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Footer: Sectors + Arrow
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Sector Chips
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        call.sectors.take(2).forEach { sector ->
-                            Surface(
-                                color = MaterialTheme.colorScheme.surface,
-                                shape = RoundedCornerShape(8.dp),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-                            ) {
-                                Text(
-                                    text = sector,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                    
-                    Icon(
-                        imageVector = TablerIcons.ArrowRight,
-                        contentDescription = "View Details",
-                        tint = AtmiyaAccent, // Red
-                        modifier = Modifier.size(20.dp)
+    NetworkCard(
+        imageModel = investorProfilePhoto ?: "",
+        name = call.investorName,
+        roleOrTitle = call.title, // e.g. "Seed Round for Fintech"
+        badges = {
+            if (call.sectors.isNotEmpty()) {
+                call.sectors.take(3).forEach { sector ->
+                    PillBadge(
+                        text = sector,
+                        backgroundColor = Color(0xFFF3E5F5), // Light Purple
+                        contentColor = Color(0xFF7B1FA2)
                     )
                 }
             }
-        }
-    }
-}
-
-@Composable
-fun CardTimer(deadline: Timestamp) {
-    var timeLeft by remember { mutableStateOf("") }
-    
-    LaunchedEffect(deadline) {
-        while (true) {
-            val diff = deadline.toDate().time - System.currentTimeMillis()
-            if (diff <= 0) {
-                timeLeft = "Closed"
-                break
+            if (call.stages.isNotEmpty()) {
+                PillBadge(
+                     text = call.stages.first(),
+                     backgroundColor = Color(0xFFE3F2FD), // Light Blue
+                     contentColor = Color(0xFF1976D2)
+                )
             }
-            val days = TimeUnit.MILLISECONDS.toDays(diff)
-            val hours = TimeUnit.MILLISECONDS.toHours(diff) % 24
-            val minutes = TimeUnit.MILLISECONDS.toMinutes(diff) % 60
-            timeLeft = String.format("%dd %02dh %02dm", days, hours, minutes)
-            delay(60000) // Update every minute for list view to save resources
-        }
-    }
+        },
+        infoContent = {
+            // Sectors Row
+            val sectorsText = if (call.sectors.isNotEmpty()) call.sectors.take(3).joinToString(", ") else "General"
+            InfoRow(label = "Sectors", value = sectorsText)
+            
+            // Typical Check (Ticket Size)
+            val ticketStr = try {
+                 val min = call.minTicketAmount.toLongOrNull() ?: 0L
+                 "Ticket: > ${formatAmountSimple(min)}"
+            } catch (e: Exception) {
+                "Ticket: ${call.minTicketAmount}"
+            }
+             
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Typical Check", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                PillBadge(text = ticketStr)
+            }
 
-    Surface(
-        color = AtmiyaAccent.copy(alpha = 0.1f),
-        shape = RoundedCornerShape(8.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, AtmiyaAccent.copy(alpha = 0.2f))
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = TablerIcons.InfoCircle,
-                contentDescription = null,
-                modifier = Modifier.size(12.dp),
-                tint = AtmiyaAccent
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = timeLeft,
-                style = MaterialTheme.typography.labelSmall,
-                color = AtmiyaAccent,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
+            // Investment Type (Equity)
+            val equityStr = if (call.minEquity != null) "Equity ${call.minEquity}% - ${call.maxEquity}%" else "Equity"
+            InfoRow(label = "Investment Type", value = equityStr)
+            
+            // Posted Time
+            val timeAgo = remember(call.createdAt) {
+                call.createdAt?.toDate()?.let { date ->
+                    val diff = System.currentTimeMillis() - date.time
+                    val days = TimeUnit.MILLISECONDS.toDays(diff)
+                    val hours = TimeUnit.MILLISECONDS.toHours(diff)
+                    when {
+                        hours < 1 -> "Just now"
+                        hours < 24 -> "${hours}h ago"
+                        days < 7 -> "${days}d ago"
+                        else -> java.text.SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(date)
+                    }
+                } ?: ""
+            }
+            if (timeAgo.isNotEmpty()) {
+                InfoRow(label = "Posted", value = timeAgo)
+            }
+        },
+        primaryButtonText = if (isOwner) "Review Opportunity" else "View Opportunity",
+        onPrimaryClick = onClick,
+        secondaryButtonText = if (isOwner) null else "Connect", // Or "Apply"
+        onSecondaryClick = if (isOwner) { {} } else { onClick } // Navigate to detail for applying
+    )
 }
 
-@Composable
-fun DeadlineBadge(deadline: Timestamp?) {
-    if (deadline == null) return
-    
-    val daysLeft = remember(deadline) {
-        val diff = deadline.toDate().time - System.currentTimeMillis()
-        TimeUnit.MILLISECONDS.toDays(diff)
-    }
-    
-    val (color, text) = when {
-        daysLeft < 0 -> Color.Gray to "Closed"
-        daysLeft < 3 -> Color.Red to "$daysLeft days left"
-        daysLeft < 7 -> Color(0xFFFFA000) to "$daysLeft days left" // Amber
-        else -> Color(0xFF4CAF50) to "$daysLeft days left" // Green
-    }
-    
-    // Pulse animation for urgent deadlines
-    val infiniteTransition = rememberInfiniteTransition(label = "urgency_pulse")
-    val alpha by if (daysLeft in 0..2) {
-        infiniteTransition.animateFloat(
-            initialValue = 0.6f,
-            targetValue = 1f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(800, easing = LinearEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "alpha"
-        )
-    } else {
-        remember { mutableFloatStateOf(1f) }
-    }
-
-    Surface(
-        color = color.copy(alpha = 0.1f),
-        shape = RoundedCornerShape(12.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.3f))
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = TablerIcons.Calendar,
-                contentDescription = null,
-                modifier = Modifier.size(12.dp),
-                tint = color.copy(alpha = alpha)
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = text,
-                style = MaterialTheme.typography.labelSmall,
-                color = color.copy(alpha = alpha),
-                fontWeight = FontWeight.Bold
-            )
-        }
+fun formatAmountSimple(amount: Long): String {
+    return when {
+         amount >= 10000000 -> "${String.format("%.0f", amount / 10000000.0)}Cr"
+        amount >= 100000 -> "${String.format("%.0f", amount / 100000.0)}L"
+        else -> java.text.NumberFormat.getInstance().format(amount)
     }
 }
 
@@ -538,7 +303,7 @@ fun FundingCallShimmer() {
             .fillMaxWidth()
             .height(180.dp),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+        colors = CardDefaults.cardColors(containerColor = Color.White) // Shimmer on white card
     ) {
         Box(
             modifier = Modifier
@@ -553,41 +318,14 @@ fun FundingCallsSummaryCard(
     count: Int,
     onClick: () -> Unit
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.02f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "scale"
-    )
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(120.dp)
-            .padding(horizontal = 20.dp, vertical = 8.dp)
-            .scale(if (count > 0) scale else 1f)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(24.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+    SoftCard(
+        modifier = Modifier.fillMaxWidth().height(120.dp),
+        onClick = onClick,
+        backgroundColor = AtmiyaPrimary // Use Primary or Gradient
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            AtmiyaPrimary,
-                            AtmiyaAccent // Red Gradient
-                        )
-                    )
-                )
-        ) {
-            // Background Pattern/Icon
-            Icon(
+        Box(modifier = Modifier.fillMaxSize()) {
+             // ... pattern ...
+             Icon(
                 imageVector = TablerIcons.InfoCircle,
                 contentDescription = null,
                 modifier = Modifier
@@ -599,13 +337,10 @@ fun FundingCallsSummaryCard(
             )
 
             Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(24.dp),
+                modifier = Modifier.fillMaxSize(), // Padding is in SoftCard
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Icon Circle
-                Box(
+                 Box(
                     modifier = Modifier
                         .size(56.dp)
                         .clip(CircleShape)
@@ -629,41 +364,13 @@ fun FundingCallsSummaryCard(
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (count > 0) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(Color.White)
-                                    .padding(horizontal = 8.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = "$count New",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = AtmiyaAccent
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                        }
-                        Text(
-                            text = if (count > 0) "Opportunities waiting" else "Check back soon",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White.copy(alpha = 0.9f)
-                        )
-                    }
+                     Text(
+                        text = if (count > 0) "$count Opportunities" else "Check back soon",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.9f)
+                    )
                 }
-                
-                Spacer(modifier = Modifier.weight(1f))
-                
-                Icon(
-                    imageVector = TablerIcons.ArrowRight,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
+             }
         }
     }
 }

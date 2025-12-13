@@ -149,6 +149,7 @@ data class FundingCall(
     val locationPreference: String? = null,
     val applicationDeadline: Timestamp? = null,
     val attachments: List<Map<String, String>> = emptyList(), // [{type: "pdf", name: "deck.pdf", url: "..."}]
+    @get:com.google.firebase.firestore.PropertyName("isActive")
     val isActive: Boolean = true,
     val createdAt: Timestamp? = null,
     val createdByUserId: String = ""

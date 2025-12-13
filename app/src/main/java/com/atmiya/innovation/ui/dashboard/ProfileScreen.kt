@@ -2,23 +2,13 @@ package com.atmiya.innovation.ui.dashboard
 
 import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import compose.icons.TablerIcons
-import compose.icons.tablericons.Pencil
-import compose.icons.tablericons.Logout
-import compose.icons.tablericons.Settings
-import compose.icons.tablericons.CircleCheck
-import compose.icons.tablericons.Share
-import compose.icons.tablericons.List
-import compose.icons.tablericons.ArrowLeft
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.ExitToApp
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Save
@@ -27,9 +17,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -38,16 +28,20 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.atmiya.innovation.repository.FirestoreRepository
 import com.atmiya.innovation.repository.StorageRepository
+import com.atmiya.innovation.ui.components.DetailRow
+import com.atmiya.innovation.ui.components.SectionHeader
 import com.atmiya.innovation.ui.theme.AtmiyaPrimary
 import com.atmiya.innovation.ui.theme.AtmiyaSecondary
 import com.google.firebase.auth.FirebaseAuth
+import compose.icons.TablerIcons
+import compose.icons.tablericons.*
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     onLogout: () -> Unit,
-    onEditProfile: () -> Unit = {}, // Deprecated, kept for signature compatibility
+    onEditProfile: () -> Unit = {},
     onBack: () -> Unit
 ) {
     val auth = FirebaseAuth.getInstance()
@@ -81,7 +75,6 @@ fun ProfileScreen(
     // Investor Fields
     var investorFirm by remember { mutableStateOf("") }
     var investorTicketMin by remember { mutableStateOf("") }
-    // var investorTicketMax by remember { mutableStateOf("") } // Removed
     var investorSectors by remember { mutableStateOf("") } // Comma separated
     var investorStages by remember { mutableStateOf("") }
     var investorType by remember { mutableStateOf("") }
@@ -120,7 +113,6 @@ fun ProfileScreen(
                         if (investor != null) {
                             investorFirm = investor.firmName
                             investorTicketMin = investor.ticketSizeMin
-                            // investorTicketMax = investor.ticketSizeMax
                             investorSectors = investor.sectorsOfInterest.joinToString(", ")
                             investorStages = investor.preferredStages.joinToString(", ")
                             investorType = investor.investmentType
@@ -146,7 +138,7 @@ fun ProfileScreen(
         }
     }
     
-    // Image Picker
+    // Image Picker Logic (Same as before)
     val cropImageLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = com.canhub.cropper.CropImageContract()
     ) { result ->
@@ -200,9 +192,9 @@ fun ProfileScreen(
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
                     .padding(bottom = 80.dp)
-                    .imePadding() // Essential for scrolling when keyboard is open
+                    .imePadding()
             ) {
-                // --- Top Banner & Photo (Same Look) ---
+                // --- Hero Section (Premium Look) ---
                 Box(
                     modifier = Modifier.fillMaxWidth().height(420.dp)
                 ) {
@@ -216,22 +208,32 @@ fun ProfileScreen(
                     } else {
                         Box(
                             modifier = Modifier.fillMaxSize()
-                                .background(Brush.verticalGradient(
-                                    colors = listOf(Color(0xFFEEEEEE), Color(0xFFDDDDDD))
-                                ))
+                                .background(AtmiyaPrimary.copy(alpha=0.1f))
                         ) {
                              Text(
                                 text = if (userName.isNotEmpty()) userName.take(1).uppercase() else "A",
                                 style = MaterialTheme.typography.displayLarge,
-                                color = Color.Gray.copy(alpha = 0.5f),
-                                modifier = Modifier.align(Alignment.Center)
+                                color = AtmiyaPrimary,
+                                modifier = Modifier.align(Alignment.Center),
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
-                    // Gradient
-                    Box(modifier = Modifier.fillMaxSize().background(
-                        Brush.verticalGradient(colors = listOf(Color.Transparent, Color.Black.copy(alpha=0.7f)))
-                    ))
+                    
+                    // Smooth Gradient (3-stop fade)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colorStops = arrayOf(
+                                        0.0f to Color.Transparent,
+                                        0.6f to Color.Transparent,
+                                        1.0f to Color.White // Seamless blend to background
+                                    )
+                                )
+                            )
+                    )
                     
                     // Buttons: Back & Edit Photo
                     Row(
@@ -242,19 +244,19 @@ fun ProfileScreen(
                             onClick = onBack,
                             colors = IconButtonDefaults.iconButtonColors(containerColor = Color.Black.copy(alpha=0.3f))
                         ) {
-                            Icon(TablerIcons.ArrowLeft, contentDescription = "Back", tint = Color.White, modifier = Modifier.size(28.dp))
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                         }
                         if (isEditing) {
                             IconButton(
                                 onClick = { imagePickerLauncher.launch("image/*") },
-                                colors = IconButtonDefaults.iconButtonColors(containerColor = Color.Black.copy(alpha = 0.3f))
+                                colors = IconButtonDefaults.iconButtonColors(containerColor = AtmiyaSecondary)
                             ) {
-                                Icon(TablerIcons.Pencil, contentDescription = "Edit Photo", tint = Color.White, modifier = Modifier.size(24.dp))
+                                Icon(TablerIcons.Pencil, contentDescription = "Edit Photo", tint = Color.White, modifier = Modifier.size(20.dp))
                             }
                         }
                     }
                     
-                    // Header Info
+                    // Header Info Overlay
                     Column(
                         modifier = Modifier.align(Alignment.BottomStart).padding(24.dp)
                     ) {
@@ -275,17 +277,16 @@ fun ProfileScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
                                     text = userName.ifEmpty { "User Name" },
-                                    style = MaterialTheme.typography.headlineMedium.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 28.sp
+                                    style = MaterialTheme.typography.displaySmall.copy(
+                                        fontWeight = FontWeight.Bold
                                     ),
-                                    color = Color.White
+                                    color = Color(0xFF1F2937) // Dark Text on White Gradient
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Icon(
-                                    TablerIcons.CircleCheck, 
+                                    Icons.Outlined.CheckCircle, 
                                     contentDescription = "Verified", 
-                                    tint = Color(0xFF29B6F6), // Blue
+                                    tint = AtmiyaSecondary, 
                                     modifier = Modifier.size(24.dp)
                                 )
                             }
@@ -293,65 +294,63 @@ fun ProfileScreen(
                         
                          Text(
                             text = displayRole,
-                            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
-                            color = Color.White.copy(alpha = 0.9f)
+                            style = MaterialTheme.typography.titleMedium,
+                            color = AtmiyaPrimary,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 }
                 
                 // --- Content Fields ---
-                Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Column(modifier = Modifier.padding(24.dp)) {
                     
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                         Text("Basic Info", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = AtmiyaPrimary)
-                    }
+                    SectionHeader("Basic Info")
                     
-                    ProfileField(label = "Email Address", value = userEmail, isEditing = isEditing) { userEmail = it }
-                    ProfileField(label = "City", value = userCity, isEditing = isEditing) { userCity = it }
-                    ProfileField(label = "Region", value = userRegion, isEditing = isEditing) { userRegion = it }
-                    ProfileField(label = "About", value = userBio, isEditing = isEditing, minLines = 3) { userBio = it }
+                    ProfileField(label = "Email Address", value = userEmail, isEditing = isEditing, icon = TablerIcons.Mail) { userEmail = it }
+                    ProfileField(label = "City", value = userCity, isEditing = isEditing, icon = TablerIcons.MapPin) { userCity = it }
+                    ProfileField(label = "Region", value = userRegion, isEditing = isEditing, icon = TablerIcons.World) { userRegion = it }
+                    ProfileField(label = "About", value = userBio, isEditing = isEditing, minLines = 3, icon = TablerIcons.InfoCircle) { userBio = it }
                     
-                    Divider(color = Color.LightGray.copy(alpha=0.5f), thickness = 1.dp)
+                    Spacer(modifier = Modifier.height(24.dp))
+                    HorizontalDivider(color = Color.LightGray.copy(alpha=0.3f))
+                    Spacer(modifier = Modifier.height(24.dp))
                     
-                    Text("Role Details", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = AtmiyaPrimary)
+                    SectionHeader("Role Details")
                     
                     // Role Specific
                      when (userRole) {
                         "startup" -> {
-                            ProfileField(label = "Startup Name", value = startupName, isEditing = isEditing) { startupName = it }
-                            ProfileField(label = "Sector", value = startupSector, isEditing = isEditing) { startupSector = it }
-                            ProfileField(label = "Stage", value = startupStage, isEditing = isEditing) { startupStage = it }
-                            ProfileField(label = "Funding Ask", value = startupFundingAsk, isEditing = isEditing) { startupFundingAsk = it }
+                            ProfileField(label = "Startup Name", value = startupName, isEditing = isEditing, icon = TablerIcons.Home) { startupName = it }
+                            ProfileField(label = "Sector", value = startupSector, isEditing = isEditing, icon = TablerIcons.Hash) { startupSector = it }
+                            ProfileField(label = "Stage", value = startupStage, isEditing = isEditing, icon = TablerIcons.ChartBar) { startupStage = it }
+                            ProfileField(label = "Funding Ask", value = startupFundingAsk, isEditing = isEditing, icon = TablerIcons.CurrencyRupee) { startupFundingAsk = it }
                         }
                         "investor" -> {
-                            ProfileField(label = "Firm Name", value = investorFirm, isEditing = isEditing) { investorFirm = it }
-                            ProfileField(label = "Ticket Size", value = investorTicketMin, isEditing = isEditing) { investorTicketMin = it }
-                            ProfileField(label = "Sectors (Comma sep)", value = investorSectors, isEditing = isEditing) { investorSectors = it }
-                            ProfileField(label = "Preferred Stages (Comma sep)", value = investorStages, isEditing = isEditing) { investorStages = it }
-                            ProfileField(label = "Investment Style", value = investorType, isEditing = isEditing) { investorType = it }
+                            ProfileField(label = "Firm Name", value = investorFirm, isEditing = isEditing, icon = TablerIcons.Building) { investorFirm = it }
+                            ProfileField(label = "Ticket Size (Min)", value = investorTicketMin, isEditing = isEditing, icon = TablerIcons.Coin) { investorTicketMin = it }
+                            ProfileField(label = "Sectors (Comma sep)", value = investorSectors, isEditing = isEditing, icon = TablerIcons.ChartPie) { investorSectors = it }
+                            ProfileField(label = "Preferred Stages (Comma sep)", value = investorStages, isEditing = isEditing, icon = TablerIcons.Bulb) { investorStages = it }
+                            ProfileField(label = "Investment Style", value = investorType, isEditing = isEditing, icon = TablerIcons.Briefcase) { investorType = it }
                         }
                         "mentor" -> {
-                            ProfileField(label = "Job Title", value = mentorTitle, isEditing = isEditing) { mentorTitle = it }
-                            ProfileField(label = "Organization", value = mentorOrg, isEditing = isEditing) { mentorOrg = it }
-                            ProfileField(label = "Expertise (Comma sep)", value = mentorExpertise, isEditing = isEditing) { mentorExpertise = it }
+                            ProfileField(label = "Job Title", value = mentorTitle, isEditing = isEditing, icon = TablerIcons.Id) { mentorTitle = it }
+                            ProfileField(label = "Organization", value = mentorOrg, isEditing = isEditing, icon = TablerIcons.Building) { mentorOrg = it }
+                            ProfileField(label = "Expertise (Comma sep)", value = mentorExpertise, isEditing = isEditing, icon = TablerIcons.Certificate) { mentorExpertise = it }
                         }
                     }
                     
-                    if (isEditing) {
-                        Spacer(modifier = Modifier.height(32.dp))
-                    } else {
-                         // Logout at bottom when viewing
-                         Spacer(modifier = Modifier.height(24.dp))
-                    // Logout Option
-                    TextButton(
-                        onClick = onLogout,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.textButtonColors(contentColor = AtmiyaSecondary)
-                    ) {
-                        Icon(TablerIcons.Logout, contentDescription = null, modifier = Modifier.size(24.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Logout")
-                    }
+                    if (!isEditing) {
+                         Spacer(modifier = Modifier.height(48.dp))
+                         // Logout Option
+                         TextButton(
+                             onClick = onLogout,
+                             modifier = Modifier.fillMaxWidth().height(50.dp),
+                             colors = ButtonDefaults.textButtonColors(contentColor = Color.Red.copy(alpha=0.8f))
+                         ) {
+                             Icon(TablerIcons.Logout, contentDescription = null, modifier = Modifier.size(20.dp))
+                             Spacer(modifier = Modifier.width(8.dp))
+                             Text("Logout", fontSize = 16.sp)
+                         }
                     }
                 }
             }
@@ -360,7 +359,7 @@ fun ProfileScreen(
              FloatingActionButton(
                 onClick = {
                     if (isEditing) {
-                        // SAVE
+                        // SAVE Logic
                         if (user != null) {
                             scope.launch {
                                 isSaving = true
@@ -416,7 +415,8 @@ fun ProfileScreen(
                     .align(Alignment.BottomEnd)
                     .padding(24.dp),
                 containerColor = if (isEditing) AtmiyaPrimary else AtmiyaSecondary,
-                contentColor = Color.White
+                contentColor = Color.White,
+                shape = CircleShape
             ) {
                  if (isSaving) {
                      CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
@@ -429,9 +429,10 @@ fun ProfileScreen(
             if (isEditing) {
                  SmallFloatingActionButton(
                     onClick = { isEditing = false },
-                    modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 90.dp, end = 28.dp),
-                    containerColor = Color.Gray,
-                    contentColor = Color.White
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 90.dp, end = 32.dp),
+                    containerColor = Color(0xFFE5E7EB),
+                    contentColor = Color(0xFF4B5563),
+                    shape = CircleShape
                 ) {
                     Icon(Icons.Outlined.Close, contentDescription = "Cancel")
                 }
@@ -446,6 +447,7 @@ fun ProfileField(
     value: String,
     isEditing: Boolean,
     minLines: Int = 1,
+    icon: ImageVector? = null,
     onValueChange: (String) -> Unit
 ) {
     if (isEditing) {
@@ -453,17 +455,17 @@ fun ProfileField(
             value = value,
             onValueChange = onValueChange,
             label = { Text(label) },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(vertical=4.dp),
             minLines = minLines,
+            leadingIcon = if (icon != null) { { Icon(icon, contentDescription=null, tint=AtmiyaSecondary) } } else null,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = AtmiyaSecondary,
                 focusedLabelColor = AtmiyaSecondary
-            )
+            ),
+            shape = RoundedCornerShape(12.dp)
         )
     } else {
-        Column(modifier = Modifier.padding(vertical = 8.dp)) {
-            Text(text = label, style = MaterialTheme.typography.labelMedium, color = Color.Gray)
-            Text(text = value.ifEmpty { "-" }, style = MaterialTheme.typography.bodyLarge, color = AtmiyaPrimary)
-        }
+        // Reuse shared DetailRow for consistent viewing experience
+        DetailRow(label = label, value = value, icon = icon)
     }
 }

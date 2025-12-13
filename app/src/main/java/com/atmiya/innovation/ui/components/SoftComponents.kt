@@ -96,7 +96,8 @@ fun SoftTextField(
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     isError: Boolean = false,
     minLines: Int = 1,
-    readOnly: Boolean = false
+    readOnly: Boolean = false,
+    enabled: Boolean = true
 ) {
     OutlinedTextField(
         value = value,
@@ -104,6 +105,7 @@ fun SoftTextField(
         label = { Text(label) },
         placeholder = { Text(placeholder) },
         modifier = modifier.fillMaxWidth(),
+        enabled = enabled,
         shape = RoundedCornerShape(16.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedContainerColor = MaterialTheme.colorScheme.surface,
@@ -216,19 +218,24 @@ data class BentoItem(
 fun BentoGrid(
     items: List<BentoItem>,
     modifier: Modifier = Modifier,
-    header: @Composable () -> Unit = {}
+    header: @Composable () -> Unit = {},
+    footer: @Composable () -> Unit = {}
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         modifier = modifier.fillMaxSize().padding(16.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(bottom = 100.dp) // Built-in padding for Floating Pill
     ) {
         item(span = { GridItemSpan(2) }) {
             header()
         }
         items(items, span = { item -> GridItemSpan(item.span) }) { item ->
             BentoCard(item)
+        }
+        item(span = { GridItemSpan(2) }) {
+            footer()
         }
     }
 }

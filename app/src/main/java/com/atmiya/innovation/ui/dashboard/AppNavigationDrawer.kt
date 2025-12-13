@@ -127,17 +127,23 @@ fun AppNavigationDrawer(
                         .padding(vertical = 16.dp)
                         .verticalScroll(androidx.compose.foundation.rememberScrollState())
                 ) {
-                    val menuItems = listOf(
-                        Triple("Dashboard", TablerIcons.Home, "dashboard_tab"),
+                    val allMenuItems = listOf(
                         Triple("Wall", TablerIcons.Users, "wall_tab"),
-                        Triple("Conversations", TablerIcons.MessageCircle, "conversations_list"),
+                        Triple("Dashboard", TablerIcons.Home, "dashboard_tab"),
+                        // Triple("Conversations", TablerIcons.MessageCircle, "conversations_list"),
                         Triple("Funding Calls", TablerIcons.Coin, "funding_calls_list"),
+                        Triple("My Ideas", TablerIcons.Bulb, "saved_ideas"),
                         Triple("Mentorship", TablerIcons.School, "network"),
                         Triple("Events", TablerIcons.CalendarEvent, "events_list"),
                         Triple("Profile", TablerIcons.User, "profile_screen"),
-                        Triple("Settings", TablerIcons.Settings, "settings_screen"),
-                        Triple("My Ideas", TablerIcons.Bulb, "saved_ideas")
+                        Triple("Settings", TablerIcons.Settings, "settings_screen")
                     )
+
+                    val menuItems = if (userRole.equals("startup", ignoreCase = true)) {
+                        allMenuItems
+                    } else {
+                        allMenuItems.filter { it.third != "saved_ideas" }
+                    }
 
                     menuItems.forEach { (label, icon, route) ->
                          NavigationDrawerItem(

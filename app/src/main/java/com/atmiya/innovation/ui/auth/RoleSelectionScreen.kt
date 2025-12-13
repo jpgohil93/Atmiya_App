@@ -14,6 +14,13 @@ import androidx.compose.ui.unit.sp
 import com.atmiya.innovation.ui.theme.AtmiyaPrimary
 import com.atmiya.innovation.ui.theme.AtmiyaSecondary
 import com.atmiya.innovation.ui.theme.AtmiyaAccent
+import androidx.compose.foundation.border
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.vector.ImageVector
+import compose.icons.TablerIcons
+import compose.icons.tablericons.Rocket
+import compose.icons.tablericons.ChartLine
+import compose.icons.tablericons.School
 
 @Composable
 fun RoleSelectionScreen(
@@ -40,14 +47,16 @@ fun RoleSelectionScreen(
             RoleCard(
                 title = "EDP Startup",
                 description = "Early Stage / Idea / Prototype",
-                color = AtmiyaPrimary,
+                color = Color(0xFFE3F2FD),
+                icon = TablerIcons.Rocket,
                 onClick = { onRoleSelected("startup", "edp") }
             )
             Spacer(modifier = Modifier.height(16.dp))
             RoleCard(
                 title = "Accelerator",
                 description = "Growth Stage / Revenue / Operational",
-                color = AtmiyaPrimary,
+                color = Color(0xFFE3F2FD),
+                icon = TablerIcons.Rocket,
                 onClick = { onRoleSelected("startup", "accelerator") }
             )
         }
@@ -71,7 +80,8 @@ fun RoleSelectionScreen(
             RoleCard(
                 title = "Startup",
                 description = "I have an idea or a running business.",
-                color = AtmiyaPrimary,
+                color = Color(0xFFE3F2FD),
+                icon = TablerIcons.Rocket,
                 onClick = { showStartupOptions = true }
             )
             
@@ -80,7 +90,8 @@ fun RoleSelectionScreen(
             RoleCard(
                 title = "Investor",
                 description = "I want to fund innovative startups.",
-                color = AtmiyaSecondary,
+                color = Color(0xFFFFF3E0),
+                icon = TablerIcons.ChartLine,
                 onClick = { onRoleSelected("investor", null) }
             )
 
@@ -89,7 +100,8 @@ fun RoleSelectionScreen(
             RoleCard(
                 title = "Mentor",
                 description = "I want to guide and teach.",
-                color = AtmiyaAccent,
+                color = Color(0xFFE8F5E9),
+                icon = TablerIcons.School,
                 textColor = Color.Black,
                 onClick = { onRoleSelected("mentor", null) }
             )
@@ -102,34 +114,66 @@ fun RoleCard(
     title: String,
     description: String,
     color: Color,
-    textColor: Color = Color.White,
+    icon: ImageVector? = null,
+    textColor: Color = Color.Black,
+    isSelected: Boolean = false,
     onClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .wrapContentHeight() // Allow dynamic height
-            .clickable { onClick() },
+            .wrapContentHeight()
+            .padding(vertical = 8.dp)
+            .clickable { onClick() }
+            .border(
+                width = if (isSelected) 2.dp else 0.dp,
+                color = if (isSelected) AtmiyaPrimary else Color.Transparent,
+                shape = RoundedCornerShape(16.dp)
+            ),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = color)
+        colors = CardDefaults.cardColors(containerColor = color),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 4.dp else 0.dp)
     ) {
-        Column(
+        Row(
             modifier = Modifier
-                .fillMaxWidth() // Changed from fillMaxSize
-                .padding(24.dp), // Increased padding
-            verticalArrangement = Arrangement.Center
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Start
         ) {
-            Text(
-                text = title,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = textColor
-            )
-            Text(
-                text = description,
-                fontSize = 14.sp,
-                color = textColor.copy(alpha = 0.8f)
-            )
+            if (icon != null) {
+                // Icon Box
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .background(Color.White.copy(alpha = 0.5f), shape = RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(32.dp),
+                        tint = textColor.copy(alpha = 0.8f)
+                    )
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = textColor
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = textColor.copy(alpha = 0.7f),
+                    lineHeight = 20.sp
+                )
+            }
         }
     }
 }

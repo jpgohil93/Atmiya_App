@@ -32,8 +32,8 @@ fun NetworkCard(
     infoContent: @Composable ColumnScope.() -> Unit = {},
     primaryButtonText: String,
     onPrimaryClick: () -> Unit,
-    secondaryButtonText: String,
-    onSecondaryClick: () -> Unit
+    secondaryButtonText: String? = null,
+    onSecondaryClick: () -> Unit = {}
 ) {
     Surface(
         modifier = Modifier
@@ -153,9 +153,15 @@ fun NetworkCard(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    val primaryModifier = if (secondaryButtonText != null) {
+                        Modifier.weight(1f).height(40.dp)
+                    } else {
+                        Modifier.fillMaxWidth().height(40.dp)
+                    }
+
                     Button(
                         onClick = onPrimaryClick,
-                        modifier = Modifier.weight(1f).height(40.dp),
+                        modifier = primaryModifier,
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color.Black, 
@@ -165,16 +171,18 @@ fun NetworkCard(
                         Text(text = primaryButtonText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
 
-                    OutlinedButton(
-                        onClick = onSecondaryClick,
-                        modifier = Modifier.weight(1f).height(40.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        border = BorderStroke(1.dp, Color.Black),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = Color.Black
-                        )
-                    ) {
-                        Text(text = secondaryButtonText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    if (secondaryButtonText != null) {
+                        OutlinedButton(
+                            onClick = onSecondaryClick,
+                            modifier = Modifier.weight(1f).height(40.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, Color.Black),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = Color.Black
+                            )
+                        ) {
+                            Text(text = secondaryButtonText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
     }

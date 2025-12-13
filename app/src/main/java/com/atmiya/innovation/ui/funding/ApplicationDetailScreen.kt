@@ -2,6 +2,8 @@ package com.atmiya.innovation.ui.funding
 
 import android.content.Intent
 import android.net.Uri
+import compose.icons.TablerIcons
+import compose.icons.tablericons.CurrencyRupee
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -97,7 +99,7 @@ fun ApplicationDetailScreen(
                     Spacer(modifier = Modifier.height(24.dp))
 
                     // Details
-                    DetailItem("Funding Ask", "₹${app.fundingAsk}")
+                    DetailItem("Funding Ask", "₹${com.atmiya.innovation.utils.CurrencyUtils.formatIndianRupee(app.fundingAsk)}", TablerIcons.CurrencyRupee)
                     DetailItem("Stage", app.startupStage)
                     DetailItem("Contact", "${app.startupEmail}\n${app.startupPhone}")
                     DetailItem("Location", "${app.city}, ${app.state}")
@@ -211,9 +213,17 @@ fun ApplicationDetailScreen(
 }
 
 @Composable
-fun DetailItem(label: String, value: String) {
+fun DetailItem(label: String, value: String, icon: androidx.compose.ui.graphics.vector.ImageVector? = null) {
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+        if (icon != null) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(icon, contentDescription = null, tint = AtmiyaPrimary, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(label, style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+            }
+        } else {
+            Text(label, style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+        }
         Text(value, style = MaterialTheme.typography.bodyLarge)
     }
 }

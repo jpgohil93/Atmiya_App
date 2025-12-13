@@ -93,6 +93,7 @@ fun WallScreen(
     onNavigateToProfile: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToDashboard: () -> Unit, // Added callback
+    onNavigateToFundingCall: (String) -> Unit, // Added
     onLogout: () -> Unit,
     onOpenDrawer: () -> Unit
 ) {
@@ -231,6 +232,9 @@ fun WallScreen(
                                     },
                                     onDelete = {
                                         viewModel.deletePost(post.id)
+                                    },
+                                    onFundingCallClick = { callId ->
+                                        onNavigateToFundingCall(callId)
                                     }
                                 )
                                 HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f), thickness = 8.dp)
@@ -535,7 +539,8 @@ fun PostCard(
     onLike: () -> Unit,
     onVote: (String) -> Unit,
     onConnect: () -> Unit,
-    onDelete: () -> Unit // Added callback
+    onDelete: () -> Unit, // Added callback
+    onFundingCallClick: (String) -> Unit // Added
 ) {
     val repository = remember { FirestoreRepository() }
     val context = LocalContext.current
@@ -607,21 +612,37 @@ fun PostCard(
                 }
 
                 // Delete Option (Three Dots)
+                // Delete Option (Three Dots)
                 if (post.authorUserId == currentUserId) {
                     Box {
                         var expanded by remember { mutableStateOf(false) }
+                        var showDeleteDialog by remember { mutableStateOf(false) }
+
+                        if (showDeleteDialog) {
+                            IOSAlertDialog(
+                                onDismissRequest = { showDeleteDialog = false },
+                                onConfirm = {
+                                    showDeleteDialog = false
+                                    onDelete()
+                                },
+                                title = "Delete Post?",
+                                message = "Are you sure you want to delete this post? This action cannot be undone."
+                            )
+                        }
+
                         IconButton(onClick = { expanded = true }) {
                             Icon(TablerIcons.DotsVertical, contentDescription = "More", tint = Color.Gray, modifier = Modifier.size(20.dp))
                         }
                         DropdownMenu(
                             expanded = expanded,
-                            onDismissRequest = { expanded = false }
+                            onDismissRequest = { expanded = false },
+                            modifier = Modifier.background(Color.White)
                         ) {
                             DropdownMenuItem(
-                                text = { Text("Delete Post", color = Color.Red) },
+                                text = { Text("Delete", color = Color.Red, fontWeight = FontWeight.Normal) },
                                 onClick = {
                                     expanded = false
-                                    onDelete()
+                                    showDeleteDialog = true
                                 },
                                 leadingIcon = {
                                     Icon(TablerIcons.Trash, contentDescription = null, tint = Color.Red, modifier = Modifier.size(20.dp))
@@ -639,6 +660,46 @@ fun PostCard(
                     Spacer(modifier = Modifier.height(12.dp))
                     PollSection(post = post, currentUserId = currentUserId, onVote = onVote)
                 }
+            } else if (post.postType == "funding_call") {
+                 // Funding Call Post UI
+                 Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                     if (post.content.isNotBlank()) {
+                        Text(
+                            text = getAnnotatedString(post.content), 
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+                    
+                    // Funding Call Preview Card
+                    SoftCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { post.fundingCallId?.let { onFundingCallClick(it) } }
+                            .padding(16.dp)
+                    ) {
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(TablerIcons.Coin, contentDescription = null, tint = AtmiyaPrimary, modifier = Modifier.size(24.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Funding Opportunity", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = AtmiyaPrimary)
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            if (!post.sector.isNullOrBlank()) {
+                                Text("Sector: ${post.sector}", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Button(
+                                onClick = { post.fundingCallId?.let { onFundingCallClick(it) } },
+                                colors = ButtonDefaults.buttonColors(containerColor = AtmiyaPrimary),
+                                shape = RoundedCornerShape(50),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("View details")
+                            }
+                        }
+                    }
+                 }
             } else {
                 if (post.content.isNotBlank()) {
                     Text(
@@ -1167,7 +1228,11 @@ fun InlineCommentsSection(
     val context = LocalContext.current
     var isPosting by remember { mutableStateOf(false) }
     val auth = FirebaseAuth.getInstance()
-    val userPhoto = auth.currentUser?.photoUrl
+    // Fetch current user details for correct photo
+    val currentUserProfile by produceState<com.atmiya.innovation.data.User?>(initialValue = null, currentUserId) {
+        value = repository.getUser(currentUserId)
+    }
+    val userPhoto = currentUserProfile?.profilePhotoUrl
 
     Column(modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp)) {
         // Header
@@ -1275,49 +1340,7 @@ fun InlineCommentsSection(
         val displayComments = comments.takeLast(5).reversed()
         
         displayComments.forEach { comment ->
-            Row(
-                modifier = Modifier.padding(vertical = 12.dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                AsyncImage(
-                    model = comment.authorPhotoUrl,
-                    contentDescription = null,
-                    modifier = Modifier.size(32.dp).clip(CircleShape).background(Color.Gray),
-                    contentScale = ContentScale.Crop
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            comment.authorName.ifBlank { "Unknown User" }, 
-                            fontWeight = FontWeight.Bold, 
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            formatTimestampIST(comment.createdAt), 
-                            style = MaterialTheme.typography.labelSmall, 
-                            color = Color.Gray
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(comment.text, style = MaterialTheme.typography.bodyMedium)
-                    
-                    // Actions
-                    Row(modifier = Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(TablerIcons.Heart, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.Gray)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Like", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                        
-                        Spacer(modifier = Modifier.width(16.dp))
-                        
-                        // Reply Icon (using generic if Reply not found, but usually it is)
-                        // Using AutoMirrored.Filled.Reply if available, or just a text for safety if icon is missing
-                        // Let's try standard Reply
-                        Text("Reply", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                    }
-                }
-            }
+            CommentItem(comment = comment, repository = repository)
         }
         
         if (comments.size > 5) {
@@ -1365,6 +1388,69 @@ fun VideoPlayerWithPreview(videoUrl: String, thumbnailUrl: String?) {
                 tint = Color.White,
                 modifier = Modifier.size(64.dp)
             )
+        }
+    }
+}
+
+@Composable
+fun CommentItem(
+    comment: com.atmiya.innovation.data.Comment,
+    repository: FirestoreRepository
+) {
+    var userProfile by remember { mutableStateOf<com.atmiya.innovation.data.User?>(null) }
+    
+    // Fetch user details if missing in comment object
+    LaunchedEffect(comment.authorUserId) {
+        if (comment.authorName.isBlank() || comment.authorName == "Unknown User" || comment.authorName == "User") {
+            try {
+                userProfile = repository.getUser(comment.authorUserId)
+            } catch (e: Exception) {
+                // Ignore
+            }
+        }
+    }
+
+    val displayName = userProfile?.name?.takeIf { it.isNotBlank() } ?: comment.authorName.takeIf { it.isNotBlank() } ?: "Unknown User"
+    val displayPhoto = userProfile?.profilePhotoUrl ?: comment.authorPhotoUrl
+
+    Row(
+        modifier = Modifier.padding(vertical = 12.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        coil.compose.AsyncImage(
+            model = displayPhoto,
+            contentDescription = null,
+            modifier = Modifier.size(32.dp).clip(CircleShape).background(Color.Gray),
+            contentScale = ContentScale.Crop
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    displayName, 
+                    fontWeight = FontWeight.Bold, 
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    formatTimestampIST(comment.createdAt), 
+                    style = MaterialTheme.typography.labelSmall, 
+                    color = Color.Gray
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(comment.text, style = MaterialTheme.typography.bodyMedium)
+            
+            // Actions
+            Row(modifier = Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(TablerIcons.Heart, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.Gray)
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Like", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                
+                Spacer(modifier = Modifier.width(16.dp))
+                
+                Text("Reply", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+            }
         }
     }
 }

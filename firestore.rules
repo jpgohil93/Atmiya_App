@@ -60,6 +60,12 @@ service cloud.firestore {
       allow update: if isAuthenticated(); // DEBUG: Relaxed for Force Sync Tool
     }
 
+    // --- Global Notifications ---
+    match /global_notifications/{notificationId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Only Admin SDK (Cloud Functions) can write
+    }
+
     // --- Wall Posts ---
     match /wallPosts/{postId} {
       allow read: if isAuthenticated();

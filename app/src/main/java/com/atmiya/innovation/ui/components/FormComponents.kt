@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import androidx.compose.ui.text.font.FontWeight
 import com.atmiya.innovation.ui.theme.AtmiyaPrimary
 
 @Composable
@@ -181,6 +182,106 @@ fun StepIndicator(step: Int, title: String, isActive: Boolean, isCompleted: Bool
             style = MaterialTheme.typography.bodySmall,
             color = if (isActive) AtmiyaPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
             fontWeight = if (isActive) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MultiSelectDropdownField(
+    label: String,
+    options: List<String>,
+    selectedOptions: List<String>,
+    onOptionSelected: (String) -> Unit, // Callback when an option is toggled
+    errorMessage: String? = null
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    val displayText = if (selectedOptions.isEmpty()) "" else selectedOptions.joinToString(", ")
+
+    Column {
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = !expanded }
+        ) {
+            OutlinedTextField(
+                value = displayText,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text(label) },
+                placeholder = { Text("Select $label") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                isError = errorMessage != null,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(),
+                shape = RoundedCornerShape(16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedBorderColor = AtmiyaPrimary,
+                    unfocusedBorderColor = Color.Transparent,
+                    errorBorderColor = MaterialTheme.colorScheme.error
+                )
+            )
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+            ) {
+                options.forEach { option ->
+                    val isSelected = selectedOptions.contains(option)
+                    DropdownMenuItem(
+                        text = { 
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Checkbox(
+                                    checked = isSelected,
+                                    onCheckedChange = null // Handled by onClick
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(option)
+                            }
+                        },
+                        onClick = {
+                            onOptionSelected(option)
+                            // Don't close the menu to allow multiple selections
+                        },
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
+                    )
+                }
+            }
+        }
+        if (errorMessage != null) {
+            Text(
+                text = errorMessage,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun BackToLoginButton(onClick: () -> Unit) {
+    TextButton(onClick = onClick) {
+        Text(
+            text = "Back to Login",
+            color = MaterialTheme.colorScheme.error,
+            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.bodyLarge
+        )
+    }
+}
+
+@Composable
+fun SimpleBackButton(onClick: () -> Unit, enabled: Boolean = true) {
+    TextButton(onClick = onClick, enabled = enabled) {
+        Text(
+            text = "Back",
+            color = Color.Black,
+            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.bodyLarge
         )
     }
 }

@@ -13,8 +13,8 @@ import javax.inject.Singleton
 @Singleton
 class IdeaGeneratorRepository {
 
-    // Ideally this key should be in BuildConfig or secure storage
-    private val apiKey = "AIzaSyCPIMO09xrujmVdn0bFkHAY7SAzspfLHGg" 
+    // Key is now securely loaded from local.properties via BuildConfig
+    private val apiKey = com.atmiya.innovation.BuildConfig.GEMINI_API_KEY 
 
     private val generativeModel = GenerativeModel(
         modelName = "gemini-2.5-flash",

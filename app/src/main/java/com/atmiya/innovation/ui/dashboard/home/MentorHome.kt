@@ -12,6 +12,12 @@ import com.atmiya.innovation.ui.components.BentoCardType
 import com.atmiya.innovation.ui.components.BentoGrid
 import com.atmiya.innovation.ui.components.BentoItem
 import com.google.firebase.auth.FirebaseAuth
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.launch
 
 @Composable
@@ -38,6 +44,14 @@ fun MentorHome(
             icon = Icons.Default.Home,
             span = 2,
             onClick = { onNavigate("network") }
+        ),
+        BentoItem(
+            type = BentoCardType.FEATURE,
+            title = "Startups Directory",
+            subtitle = "Explore all registered startups",
+            icon = Icons.Default.Search,
+            span = 2,
+            onClick = { onNavigate("startups_list") }
         ),
         BentoItem(
             type = BentoCardType.FEATURE,
@@ -70,5 +84,28 @@ fun MentorHome(
         )
     )
 
-    BentoGrid(items = items)
+    // Viral GIF Logic
+    var viralGifUrl by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        try {
+            val gsReference = com.google.firebase.storage.FirebaseStorage.getInstance()
+                .getReferenceFromUrl("gs://atmiya-eacdf.firebasestorage.app/Date 04122025 Viral (1080 x 300 px).gif")
+            val uri = gsReference.downloadUrl.await()
+            viralGifUrl = uri.toString()
+        } catch (e: Exception) {
+            // Ignore
+        }
+    }
+
+    BentoGrid(
+        items = items,
+        footer = {
+            if (viralGifUrl != null) {
+                com.atmiya.innovation.ui.components.ViralGifBanner(
+                     gifUrl = viralGifUrl!!,
+                     modifier = Modifier.fillMaxWidth().wrapContentHeight()
+                )
+            }
+        }
+    )
 }

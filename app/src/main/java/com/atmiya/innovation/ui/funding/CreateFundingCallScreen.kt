@@ -5,7 +5,6 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -15,14 +14,12 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material3.*
+import androidx.compose.foundation.clickable
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,9 +32,7 @@ import com.atmiya.innovation.data.FundingCall
 import com.atmiya.innovation.data.WallPost
 import com.atmiya.innovation.repository.FirestoreRepository
 import com.atmiya.innovation.repository.StorageRepository
-import com.atmiya.innovation.ui.components.SoftButton
-import com.atmiya.innovation.ui.components.SoftScaffold
-import com.atmiya.innovation.ui.components.SoftTextField
+import com.atmiya.innovation.ui.components.*
 import com.atmiya.innovation.ui.theme.AtmiyaPrimary
 import com.atmiya.innovation.ui.theme.AtmiyaSecondary
 import com.google.firebase.Timestamp
@@ -77,10 +72,6 @@ fun CreateFundingCallScreen(
 
     // Attachments
     val attachments = remember { mutableStateListOf<Pair<Uri, String>>() } // Uri, Name
-    // For existing attachments (Update mode) - we might need a separate list or handle differently.
-    // Simplifying: Edit mode only supports adding NEW attachments or keeping old ones implies we need to track existing ones.
-    // For now, let's assume valid MVP edit is updating text fields. Handling mixed local/remote attachments is complex.
-    // Let's basic-support text updates first. 
 
     var isUploading by remember { mutableStateOf(false) }
     var isLoadingInitial by remember { mutableStateOf(callId != null) }
@@ -88,9 +79,10 @@ fun CreateFundingCallScreen(
     // Load Data if Edit Mode
     LaunchedEffect(callId) {
         if (callId != null) {
-            val call: FundingCall? = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                .collection("fundingCalls").document(callId).get().await()
-                .toObject(FundingCall::class.java)
+            try {
+                val snapshot = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                    .collection("fundingCalls").document(callId).get().await()
+                val call = snapshot.toObject(FundingCall::class.java)
             
                 call?.let { c ->
                     title = c.title
@@ -108,7 +100,11 @@ fun CreateFundingCallScreen(
                     selectedStages.clear()
                     selectedStages.addAll(c.stages)
                 }
-            isLoadingInitial = false
+            } catch (e: Exception) {
+                Toast.makeText(context, "Error loading call", Toast.LENGTH_SHORT).show()
+            } finally {
+                isLoadingInitial = false
+            }
         }
     }
 
@@ -145,108 +141,186 @@ fun CreateFundingCallScreen(
                     .padding(innerPadding)
                     .padding(16.dp)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                // Basic Info
-                SectionHeader("Basic Information")
-                SoftTextField(value = title, onValueChange = { title = it }, label = "Title (e.g., Seed Round for Fintech)")
-                SoftTextField(value = description, onValueChange = { description = it }, label = "Description", minLines = 4)
-
-                // Financials
-                SectionHeader("Financials & Equity")
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SoftTextField(
-                        value = minTicket, 
-                        onValueChange = { if (it.all { char -> char.isDigit() }) minTicket = it }, 
-                        label = "Min Ticket (₹)", 
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f)
-                    )
-                    SoftTextField(
-                        value = maxTicket, 
-                        onValueChange = { if (it.all { char -> char.isDigit() }) maxTicket = it }, 
-                        label = "Max Ticket (₹)", 
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SoftTextField(
-                        value = minEquity, 
-                        onValueChange = { if (it.all { char -> char.isDigit() || char == '.' }) minEquity = it }, 
-                        label = "Min Equity (%)", 
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f)
-                    )
-                    SoftTextField(
-                        value = maxEquity, 
-                        onValueChange = { if (it.all { char -> char.isDigit() || char == '.' }) maxEquity = it }, 
-                        label = "Max Equity (%)", 
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f)
-                    )
+                // Basic Info Card
+                SoftCard(modifier = Modifier.fillMaxWidth()) {
+                    SectionHeader("Basic Information")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    SoftTextField(value = title, onValueChange = { title = it }, label = "Title (e.g., Seed Round for Fintech)")
+                    Spacer(modifier = Modifier.height(12.dp))
+                    SoftTextField(value = description, onValueChange = { description = it }, label = "Description", minLines = 4)
                 }
 
-                // Target Profile
-                SectionHeader("Target Profile")
-                Text("Sectors", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(allSectors) { sector ->
-                        FilterChip(
-                            selected = selectedSectors.contains(sector),
-                            onClick = { 
-                                if (selectedSectors.contains(sector)) selectedSectors.remove(sector) 
-                                else selectedSectors.add(sector) 
-                            },
-                            label = { Text(sector) }
+                // Financials Card
+                SoftCard(modifier = Modifier.fillMaxWidth()) {
+                    SectionHeader("Financials & Equity")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SoftTextField(
+                            value = minTicket, 
+                            onValueChange = { if (it.all { char -> char.isDigit() }) minTicket = it }, 
+                            label = "Min Ticket (₹)", 
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f)
+                        )
+                        SoftTextField(
+                            value = maxTicket, 
+                            onValueChange = { if (it.all { char -> char.isDigit() }) maxTicket = it }, 
+                            label = "Max Ticket (₹)", 
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f)
                         )
                     }
-                }
-                
-                Text("Stages", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(allStages) { stage ->
-                        FilterChip(
-                            selected = selectedStages.contains(stage),
-                            onClick = { 
-                                if (selectedStages.contains(stage)) selectedStages.remove(stage) 
-                                else selectedStages.add(stage) 
-                            },
-                            label = { Text(stage) }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SoftTextField(
+                            value = minEquity, 
+                            onValueChange = { if (it.all { char -> char.isDigit() || char == '.' }) minEquity = it }, 
+                            label = "Min Equity (%)", 
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f)
+                        )
+                        SoftTextField(
+                            value = maxEquity, 
+                            onValueChange = { if (it.all { char -> char.isDigit() || char == '.' }) maxEquity = it }, 
+                            label = "Max Equity (%)", 
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f)
                         )
                     }
                 }
 
-                SoftTextField(value = location, onValueChange = { location = it }, label = "Location Preference (Optional)")
-                SoftTextField(value = deadline, onValueChange = { deadline = it }, label = "Application Deadline (YYYY-MM-DD)")
+                // Target Profile Card
+                SoftCard(modifier = Modifier.fillMaxWidth()) {
+                    SectionHeader("Target Profile")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text("Sectors", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(allSectors) { sector ->
+                            FilterChip(
+                                selected = selectedSectors.contains(sector),
+                                onClick = { 
+                                    if (selectedSectors.contains(sector)) selectedSectors.remove(sector) 
+                                    else selectedSectors.add(sector) 
+                                },
+                                label = { Text(sector) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = AtmiyaPrimary.copy(alpha = 0.1f),
+                                    selectedLabelColor = AtmiyaPrimary
+                                )
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Stages", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(allStages) { stage ->
+                            FilterChip(
+                                selected = selectedStages.contains(stage),
+                                onClick = { 
+                                    if (selectedStages.contains(stage)) selectedStages.remove(stage) 
+                                    else selectedStages.add(stage) 
+                                },
+                                label = { Text(stage) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = AtmiyaSecondary.copy(alpha = 0.1f),
+                                    selectedLabelColor = AtmiyaSecondary
+                                )
+                            )
+                        }
+                    }
 
-                // Attachments
-                SectionHeader("Attachments (PDF/PPT)")
-                OutlinedButton(
-                    onClick = { docPicker.launch(arrayOf("application/pdf", "application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation")) },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Outlined.Add, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Add Document")
-                }
-                
-                attachments.forEachIndexed { index, (uri, name) ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth().background(Color.Gray.copy(alpha = 0.1f), RoundedCornerShape(8.dp)).padding(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(name, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                        IconButton(onClick = { attachments.removeAt(index) }) {
-                            Icon(Icons.Outlined.Close, contentDescription = "Remove")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    SoftTextField(value = location, onValueChange = { location = it }, label = "Location Preference (Optional)")
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    // Date Picker
+                    var showDatePicker by remember { mutableStateOf(false) }
+                    val datePickerState = rememberDatePickerState()
+                    
+                    Box {
+                        SoftTextField(
+                             value = deadline, 
+                             onValueChange = { }, // Read Only
+                             label = "Application Deadline (YYYY-MM-DD)",
+                             modifier = Modifier.clickable { showDatePicker = true }, // Making the whole field clickable might be tricky with SoftTextField internals, wrapping in Box with matchParentSize clickable is safer or just passing Enabled=false and handling click on Box.
+                             // Actually SoftTextField might consume touch.
+                             // Let's use OutlinedTextField directly for more control or an overlay.
+                             enabled = false // Disable direct editing
+                        )
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clickable { showDatePicker = true }
+                        )
+                    }
+
+                    if (showDatePicker) {
+                        DatePickerDialog(
+                            onDismissRequest = { showDatePicker = false },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    datePickerState.selectedDateMillis?.let { millis ->
+                                        val dateFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+                                        deadline = dateFormat.format(java.util.Date(millis))
+                                    }
+                                    showDatePicker = false
+                                }) {
+                                    Text("OK", color = AtmiyaPrimary)
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showDatePicker = false }) {
+                                    Text("Cancel", color = AtmiyaPrimary)
+                                }
+                            }
+                        ) {
+                            DatePicker(state = datePickerState)
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                // Attachments Card
+                SoftCard(modifier = Modifier.fillMaxWidth()) {
+                    SectionHeader("Attachments (PDF/PPT)")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedButton(
+                        onClick = { docPicker.launch(arrayOf("application/pdf", "application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation")) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Outlined.Add, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Add Document")
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    attachments.forEachIndexed { index, (uri, name) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color.Gray.copy(alpha = 0.05f), RoundedCornerShape(8.dp))
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(name, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                            IconButton(onClick = { attachments.removeAt(index) }) {
+                                Icon(Icons.Outlined.Close, contentDescription = "Remove", tint = Color.Gray)
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+                }
 
-                // Submit
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Submit Button
                 SoftButton(
                     onClick = {
                         if (validateInputs(title, description, minTicket, maxTicket, selectedSectors, selectedStages)) {
@@ -264,8 +338,6 @@ fun CreateFundingCallScreen(
                                         mapOf("name" to name, "url" to url, "type" to if (isPdf) "pdf" else "ppt")
                                     }
                                     
-                                    // TODO: Merge with existing attachments if editing
-
                                     val dateFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
                                     val parsedDate = try {
                                         dateFormat.parse(deadline)
@@ -290,16 +362,14 @@ fun CreateFundingCallScreen(
                                         maxEquity = maxEquity,
                                         locationPreference = location,
                                         applicationDeadline = deadlineTimestamp,
-                                        attachments = uploadedAttachments, // Simplified: Overwrites or just new ones. In real edit, merge.
+                                        attachments = uploadedAttachments,
                                         isActive = true,
-                                        createdAt = if (callId != null) Timestamp.now() else currentTimestamp // Preserve original creation? ideally. Here simplified.
+                                        createdAt = if (callId != null) Timestamp.now() else currentTimestamp
                                     )
                                     
-                                    // Create or Update
-                                    repository.createFundingCall(finalCall) // createFundingCall usually uses set() so it overwrites/updates.
+                                    repository.createFundingCall(finalCall)
 
                                     if (callId == null) {
-                                        // Only post to wall if NEW
                                         val wallPost = WallPost(
                                             id = UUID.randomUUID().toString(),
                                             authorUserId = user.uid,
@@ -331,10 +401,11 @@ fun CreateFundingCallScreen(
                         }
                     },
                     text = if (isUploading) (if (callId == null) "Creating..." else "Updating...") else (if (callId == null) "Publish Funding Call" else "Update Funding Call"),
-                    icon = if (callId == null) Icons.AutoMirrored.Outlined.Send else Icons.Outlined.Add, // Or Edit icon
-                    isLoading = isUploading,
-                    modifier = Modifier.fillMaxWidth().height(50.dp)
+                    icon = if (callId == null) Icons.AutoMirrored.Outlined.Send else Icons.Filled.Add,
+                    isLoading = isUploading
                 )
+                
+                Spacer(modifier = Modifier.height(24.dp))
             }
         }
     }
@@ -346,8 +417,7 @@ fun SectionHeader(title: String) {
         text = title,
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.Bold,
-        color = AtmiyaPrimary,
-        modifier = Modifier.padding(top = 8.dp)
+        color = AtmiyaPrimary
     )
 }
 

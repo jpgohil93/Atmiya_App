@@ -20,6 +20,9 @@ import compose.icons.tablericons.Eye
 import compose.icons.tablericons.EyeOff
 import compose.icons.tablericons.Id
 import compose.icons.tablericons.Upload
+import compose.icons.tablericons.Rocket
+import compose.icons.tablericons.ChartLine
+import compose.icons.tablericons.School
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,6 +38,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.atmiya.innovation.data.*
 import com.atmiya.innovation.repository.FirestoreRepository
 import com.atmiya.innovation.repository.StorageRepository
@@ -116,8 +120,8 @@ fun SignupScreen(
     // Investor
     var firmName by remember { mutableStateOf("") }
     var ticketSize by remember { mutableStateOf<String?>(null) }
-    var investmentSectors by remember { mutableStateOf("") } // Multi-select or text
-    var preferredStages by remember { mutableStateOf("") }
+    var investmentSectors by remember { mutableStateOf<List<String>>(emptyList()) } // Multi-select
+    var preferredStages by remember { mutableStateOf<List<String>>(emptyList()) }
     var investmentStyle by remember { mutableStateOf("") }
     
     // Mentor
@@ -335,8 +339,8 @@ fun SignupScreen(
                             city = city,
                             bio = bio,
                             profilePhotoUrl = photoUrl,
-                            sectorsOfInterest = if (investmentSectors.isNotBlank()) listOf(investmentSectors) else emptyList(),
-                            preferredStages = if (preferredStages.isNotBlank()) listOf(preferredStages) else emptyList()
+                            sectorsOfInterest = investmentSectors,
+                            preferredStages = preferredStages
                         )
                         firestoreRepository.createInvestor(investor)
                     }
@@ -383,9 +387,7 @@ fun SignupScreen(
                         ) 
                     },
                     actions = {
-                        TextButton(onClick = onLogout) {
-                            Text("Back to Login", color = MaterialTheme.colorScheme.error)
-                        }
+                        BackToLoginButton(onClick = onLogout)
                     },
                     colors = TopAppBarDefaults.smallTopAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
                 )
@@ -402,9 +404,7 @@ fun SignupScreen(
             if (currentStep > 1) {
                 SoftCard(modifier = Modifier.fillMaxWidth(), radius = 0.dp, elevation = 16.dp) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        TextButton(onClick = { currentStep-- }, enabled = !isLoading) {
-                            Text("Back")
-                        }
+                        SimpleBackButton(onClick = { currentStep-- }, enabled = !isLoading)
 
                         SoftButton(
                             onClick = {
@@ -421,7 +421,7 @@ fun SignupScreen(
                                     4 -> {
                                         isValid = when (selectedRole) {
                                             "startup" -> startupName.isNotBlank() && startupSector != null && startupStage != null && pitchDeckUri != null
-                                            "investor" -> firmName.isNotBlank()
+                                            "investor" -> firmName.isNotBlank() && investmentSectors.isNotEmpty() && preferredStages.isNotEmpty()
                                             "mentor" -> expertiseArea != null && experienceYears.isNotBlank()
                                             else -> false
                                         }
@@ -523,65 +523,109 @@ fun SignupScreen(
                 2 -> {
                     // Step 2: Role Selection
                     Text("Select your Role", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Choose the profile that best fits you.", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
                     Spacer(modifier = Modifier.height(24.dp))
                     
+                    // Startup Card
                     RoleCard(
                         title = "Startup", 
                         description = "I have an idea or business", 
-                        color = if (selectedRole == "startup") AtmiyaPrimary else Color.Gray,
-                        onClick = { selectedRole = "startup" }
+                        color = Color(0xFFE3F2FD), // Pastel Blue
+                        icon = TablerIcons.Rocket,
+                        textColor = Color.Black,
+                        isSelected = selectedRole == "startup",
+                        onClick = { 
+                            selectedRole = "startup"
+                            if (selectedTrack == null) selectedTrack = "EDP" // Default to EDP if not set
+                        }
                     )
                     
                     // Startup Type Selection (Visible only if Startup selected)
-                    if (selectedRole == "startup") {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text("Select Startup Type", fontWeight = FontWeight.Bold)
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    FilterChip(
-                                        selected = selectedTrack == "EDP",
-                                        onClick = { selectedTrack = "EDP" },
-                                        label = { Text("EDP (Idea)") },
-                                        leadingIcon = if (selectedTrack == "EDP") {
-                                            { Icon(TablerIcons.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                                        } else null
+                    androidx.compose.animation.AnimatedVisibility(visible = selectedRole == "startup") {
+                        Column(modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 16.dp)) {
+                            Text("Select Program Type:", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            // EDP Option
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { selectedTrack = "EDP" }
+                                    .background(
+                                        if (selectedTrack == "EDP") AtmiyaPrimary.copy(alpha = 0.1f) else Color.Transparent, 
+                                        RoundedCornerShape(8.dp)
                                     )
-                                    FilterChip(
-                                        selected = selectedTrack == "ACC",
-                                        onClick = { selectedTrack = "ACC" },
-                                        label = { Text("Accelerator") },
-                                        leadingIcon = if (selectedTrack == "ACC") {
-                                            { Icon(TablerIcons.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                                        } else null
+                                    .border(
+                                        1.dp, 
+                                        if (selectedTrack == "EDP") AtmiyaPrimary else Color.LightGray, 
+                                        RoundedCornerShape(8.dp)
                                     )
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = selectedTrack == "EDP",
+                                    onClick = { selectedTrack = "EDP" },
+                                    colors = RadioButtonDefaults.colors(selectedColor = AtmiyaPrimary)
+                                )
+                                Column {
+                                    Text("EDP (Idea Stage)", fontWeight = FontWeight.SemiBold)
+                                    Text("For new ideas & prototypes", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                                 }
-                                if (showErrors && selectedTrack == null) {
-                                    Text("Required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                            }
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            // Accelerator Option
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { selectedTrack = "ACC" }
+                                    .background(
+                                        if (selectedTrack == "ACC") AtmiyaPrimary.copy(alpha = 0.1f) else Color.Transparent, 
+                                        RoundedCornerShape(8.dp)
+                                    )
+                                    .border(
+                                        1.dp, 
+                                        if (selectedTrack == "ACC") AtmiyaPrimary else Color.LightGray, 
+                                        RoundedCornerShape(8.dp)
+                                    )
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = selectedTrack == "ACC",
+                                    onClick = { selectedTrack = "ACC" },
+                                    colors = RadioButtonDefaults.colors(selectedColor = AtmiyaPrimary)
+                                )
+                                Column {
+                                    Text("Accelerator (Growth)", fontWeight = FontWeight.SemiBold)
+                                    Text("For existing businesses", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                                 }
                             }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
+                    // Investor Card
                     RoleCard(
                         title = "Investor", 
                         description = "I want to fund startups", 
-                        color = if (selectedRole == "investor") AtmiyaSecondary else Color.Gray,
+                        color = Color(0xFFFFF3E0), // Pastel Orange
+                        icon = TablerIcons.ChartLine,
+                        textColor = Color.Black,
+                        isSelected = selectedRole == "investor",
                         onClick = { selectedRole = "investor" }
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
                     
+                    // Mentor Card
                     RoleCard(
                         title = "Mentor", 
                         description = "I want to guide", 
-                        color = if (selectedRole == "mentor") AtmiyaAccent else Color.Gray,
-                        textColor = if (selectedRole == "mentor") Color.Black else Color.White,
+                        color = Color(0xFFE8F5E9), // Pastel Green
+                        icon = TablerIcons.School,
+                        textColor = Color.Black,
+                        isSelected = selectedRole == "mentor",
                         onClick = { selectedRole = "mentor" }
                     )
                     
@@ -627,9 +671,9 @@ fun SignupScreen(
                             Spacer(modifier = Modifier.height(16.dp))
                             ValidatedTextField(founderNames, { founderNames = it }, "Founder Name(s)")
                             Spacer(modifier = Modifier.height(16.dp))
-                            DropdownField("Sector", listOf("AgriTech", "HealthTech", "FinTech", "EdTech", "CleanTech", "Other"), startupSector, { startupSector = it }, if (showErrors && startupSector == null) "Required" else null)
+                            DropdownField("Sector", AppConstants.SECTOR_OPTIONS, startupSector, { startupSector = it }, if (showErrors && startupSector == null) "Required" else null)
                             Spacer(modifier = Modifier.height(16.dp))
-                            DropdownField("Stage", listOf("Idea", "Prototype", "Early Revenue", "Growth"), startupStage, { startupStage = it }, if (showErrors && startupStage == null) "Required" else null)
+                            DropdownField("Stage", AppConstants.STAGE_OPTIONS, startupStage, { startupStage = it }, if (showErrors && startupStage == null) "Required" else null)
                             
                             Spacer(modifier = Modifier.height(24.dp))
                             Text("Pitch Material", style = MaterialTheme.typography.titleMedium)
@@ -702,9 +746,33 @@ fun SignupScreen(
                             Spacer(modifier = Modifier.height(16.dp))
                             DropdownField("Ticket Size", listOf("< 10L", "10L - 50L", "50L - 2Cr", "> 2Cr"), ticketSize, { ticketSize = it }, null)
                             Spacer(modifier = Modifier.height(16.dp))
-                            ValidatedTextField(investmentSectors, { investmentSectors = it }, "Sectors of Interest")
+                            MultiSelectDropdownField(
+                                label = "Sectors of Interest",
+                                options = AppConstants.SECTOR_OPTIONS,
+                                selectedOptions = investmentSectors,
+                                onOptionSelected = { option ->
+                                    if (investmentSectors.contains(option)) {
+                                        investmentSectors -= option
+                                    } else {
+                                        investmentSectors += option
+                                    }
+                                },
+                                errorMessage = if (showErrors && investmentSectors.isEmpty()) "Required" else null
+                            )
                             Spacer(modifier = Modifier.height(16.dp))
-                            ValidatedTextField(preferredStages, { preferredStages = it }, "Preferred Stages (Idea, Seed, etc.)")
+                            MultiSelectDropdownField(
+                                label = "Preferred Stages",
+                                options = AppConstants.STAGE_OPTIONS,
+                                selectedOptions = preferredStages,
+                                onOptionSelected = { option ->
+                                    if (preferredStages.contains(option)) {
+                                        preferredStages -= option
+                                    } else {
+                                        preferredStages += option
+                                    }
+                                },
+                                errorMessage = if (showErrors && preferredStages.isEmpty()) "Required" else null
+                            )
                             Spacer(modifier = Modifier.height(16.dp))
                             ValidatedTextField(investmentStyle, { investmentStyle = it }, "Investment Style (Equity/Debt)")
                             Spacer(modifier = Modifier.height(16.dp))

@@ -41,6 +41,22 @@ class FirestoreRepository {
         return user
     }
 
+    fun getUserFlow(uid: String): Flow<User?> = callbackFlow {
+        val listener = db.collection("users").document(uid).addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                log("getUserFlow ERROR: ${error.message}")
+                trySend(null)
+                return@addSnapshotListener
+            }
+            if (snapshot != null && snapshot.exists()) {
+                trySend(snapshot.toObject<User>())
+            } else {
+                trySend(null)
+            }
+        }
+        awaitClose { listener.remove() }
+    }
+
     suspend fun updateUser(uid: String, data: Map<String, Any>) {
         db.collection("users").document(uid).update(data).await()
     }
@@ -514,7 +530,7 @@ class FirestoreRepository {
         // Admin sees all, even inactive (unless filtered otherwise in UI, but here we fetch base)
         // Others see only active
         if (!isAdmin) {
-            query = query.whereEqualTo("active", true)
+            query = query.whereEqualTo("isActive", true)
         }
 
         if (filterType == "my_calls" && userId != null) {
@@ -616,6 +632,12 @@ class FirestoreRepository {
         val start = System.currentTimeMillis()
         db.collection("fundingCalls").document(call.id).set(call).await()
         logPerf("createFundingCall", System.currentTimeMillis() - start)
+    }
+
+    suspend fun updateFundingCall(callId: String, updates: Map<String, Any>) {
+        val start = System.currentTimeMillis()
+        db.collection("fundingCalls").document(callId).update(updates).await()
+        logPerf("updateFundingCall", System.currentTimeMillis() - start)
     }
 
     suspend fun applyToFundingCall(application: FundingApplication) {

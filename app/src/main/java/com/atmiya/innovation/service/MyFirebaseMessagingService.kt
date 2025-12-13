@@ -21,12 +21,20 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         val body = remoteMessage.notification?.body ?: ""
         val data = remoteMessage.data
         
-        val type = data["type"] // "funding_call", "wall_post", "mentor_video"
+        val type = data["type"] // "funding_call", "wall_post", "mentor_video", "funding_call_update"
         val id = when(type) {
             "funding_call" -> data["fundingCallId"]
+            "funding_call_update" -> data["callId"] // Handle Cloud Function payload
             "wall_post" -> data["postId"]
             "mentor_video" -> data["videoId"]
             else -> null
+        }
+        
+        // Prevent Self-Notification
+        val authorId = data["authorId"]
+        val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+        if (authorId != null && currentUserId != null && authorId == currentUserId) {
+            return // Stop here, do not show notification
         }
 
         sendNotification(title, body, type, id)
@@ -41,7 +49,9 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
         
         if (type != null && id != null) {
-            intent.putExtra("navigation_destination", type)
+            // Map 'funding_call_update' to 'funding_call' effectively for Dashboard navigation
+            val destType = if (type == "funding_call_update") "funding_call" else type
+            intent.putExtra("navigation_destination", destType)
             intent.putExtra("navigation_id", id)
         }
         

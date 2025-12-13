@@ -1,5 +1,7 @@
 package com.atmiya.innovation.ui.chat
 
+// Commented out as per request
+/*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -120,7 +122,7 @@ fun ChatDetailScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically
             ) {
                 // Input Field Background
                 Surface(
@@ -244,3 +246,4 @@ fun MessageBubble(message: ChatMessage) {
         }
     }
 }
+*/

@@ -4,38 +4,35 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import compose.icons.TablerIcons
-import compose.icons.tablericons.ArrowLeft
-import compose.icons.tablericons.PlayerPlay
-import compose.icons.tablericons.Star
-import compose.icons.tablericons.InfoCircle
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.atmiya.innovation.data.Startup
 import com.atmiya.innovation.repository.FirestoreRepository
 import com.atmiya.innovation.ui.theme.AtmiyaPrimary
 import com.atmiya.innovation.ui.theme.AtmiyaSecondary
-import com.atmiya.innovation.ui.components.CommonListingCard
-import com.atmiya.innovation.data.User // Assuming we pull 'Startup' users here
-import androidx.compose.ui.unit.sp
-
-// Define Startup Model roughly if separate or just use User
+import compose.icons.TablerIcons
+import compose.icons.tablericons.ArrowLeft
+import compose.icons.tablericons.Bookmark
+import compose.icons.tablericons.Filter
 import kotlinx.coroutines.launch
-import com.atmiya.innovation.data.Startup
-
-import com.google.accompanist.swiperefresh.SwipeRefresh
-import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,131 +46,263 @@ fun StartupListingScreen(
     val scope = rememberCoroutineScope()
     val currentUser = auth.currentUser
 
-    var connectionStatusMap by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
-    var isLoading by remember { mutableStateOf(true) }
+    // -- State --
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedFilter by remember { mutableStateOf("All") }
+    val filterOptions = listOf("All", "FinTech", "EdTech", "HealthTech", "AgriTech", "SaaS")
 
-    var key by remember { mutableStateOf(0) }
-    val startupsFlow = remember(key) { repository.getStartupsFlow() }
-    val startups by startupsFlow.collectAsState(initial = emptyList())
-
-    // Connection Logic - Fetching this once on mount for now
-    LaunchedEffect(currentUser) {
-        try {
-            if (currentUser != null) {
-                // We should ideally use flows here too for connection status updates, 
-                // but prioritizing the list update first.
-                val accepted = repository.getAcceptedConnections(currentUser.uid)
-                val sentPending = repository.getSentConnectionRequests(currentUser.uid)
-                val map = mutableMapOf<String, String>()
-                accepted.forEach { 
-                    val otherId = if (it.senderId == currentUser.uid) it.receiverId else it.senderId
-                    map[otherId] = "connected"
-                }
-                sentPending.forEach { map[it.receiverId] = "pending_sent" }
-                connectionStatusMap = map
-            }
-        } catch (e: Exception) {
-            // Handle error
-        } finally {
-            isLoading = false
-        }
-    }
+    val startupsFlow = remember { repository.getStartupsFlow() }
+    val allStartups by startupsFlow.collectAsState(initial = emptyList())
     
-    LaunchedEffect(currentUser) {
-        if (currentUser != null) {
-            repository.getConnectionRequests(currentUser.uid).collect { requests ->
-                 val receivedMap = requests.associate { it.senderId to "pending_received" }
-                 connectionStatusMap = connectionStatusMap + receivedMap
-            }
+    // Filter startups based on search and selection
+    val filteredStartups = remember(allStartups, searchQuery, selectedFilter) {
+        allStartups.filter { startup ->
+            val matchesSearch = startup.startupName.contains(searchQuery, ignoreCase = true) || 
+                                startup.description.contains(searchQuery, ignoreCase = true)
+            val matchesFilter = if (selectedFilter == "All") true else startup.sector.contains(selectedFilter, ignoreCase = true)
+            matchesSearch && matchesFilter
         }
     }
-
-    var isRefreshing by remember { mutableStateOf(false) }
 
     Scaffold(
+        containerColor = Color(0xFFF8F9FA), // Soft gray background
         topBar = {
-            TopAppBar(
-                title = { Text("Startups", fontWeight = FontWeight.Bold, color = AtmiyaPrimary) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(TablerIcons.ArrowLeft, contentDescription = "Back", tint = AtmiyaPrimary, modifier = Modifier.size(28.dp))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White // White
-                )
-            )
-        },
-        containerColor = Color.White
-    ) { padding ->
-         SwipeRefresh(
-            state = rememberSwipeRefreshState(isRefreshing),
-            onRefresh = {
-                scope.launch {
-                    isRefreshing = true
-                    key++
-                    kotlinx.coroutines.delay(1000)
-                    isRefreshing = false
-                }
-            },
-            modifier = Modifier.fillMaxSize().padding(padding)
-        ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // DEBUG SECTION
-                // Debug info removed as per request
-
-                items(startups) { startup ->
-                    val status = if (currentUser?.uid == startup.uid) "self" else connectionStatusMap[startup.uid] ?: "none"
-                    StartupCard(
-                        startup = startup, 
-                        connectionStatus = status,
-                        onClick = { onStartupClick(startup.uid) },
-                        onConnect = {
-                            if (currentUser != null) {
-                                if (status == "connected") {
-                                    onChatClick(startup.uid, startup.startupName)
-                                } else {
-                                    scope.launch {
-                                        connectionStatusMap = connectionStatusMap + (startup.uid to "pending_sent")
-                                        val sender = repository.getUser(currentUser.uid)
-                                        if (sender != null) {
-                                            repository.sendConnectionRequest(sender, startup.uid)
-                                        }
-                                    }
-                                }
-                            }
+            Column(modifier = Modifier.background(Color.White)) {
+                TopAppBar(
+                    title = { 
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Explore Startups", fontWeight = FontWeight.Bold, fontSize = 24.sp)
                         }
-                    )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(TablerIcons.ArrowLeft, contentDescription = "Back", modifier = Modifier.size(24.dp))
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                )
+                
+                // Search Bar
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Search startups, sectors...", color = Color.Gray) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedContainerColor = Color(0xFFF3F4F6),
+                        focusedContainerColor = Color.White,
+                        unfocusedBorderColor = Color.Transparent,
+                        focusedBorderColor = AtmiyaPrimary
+                    ),
+                    singleLine = true
+                )
+
+                // Filter Chips
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(filterOptions) { filter ->
+                        FilterChip(
+                            selected = selectedFilter == filter,
+                            onClick = { selectedFilter = filter },
+                            label = { Text(filter) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = AtmiyaPrimary.copy(alpha = 0.1f),
+                                selectedLabelColor = AtmiyaPrimary
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = selectedFilter == filter,
+                                borderColor = if (selectedFilter == filter) AtmiyaPrimary else Color.Transparent
+                            )
+                        )
+                    }
                 }
+            }
+        }
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                Text(
+                    "${filteredStartups.size} Startups Found", 
+                    style = MaterialTheme.typography.labelLarge,
+                    color = AtmiyaPrimary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            items(filteredStartups) { startup ->
+                ModernStartupCard(
+                    startup = startup,
+                    onClick = { onStartupClick(startup.uid) }
+                )
             }
         }
     }
 }
 
 @Composable
-fun StartupCard(
-    startup: Startup, 
-    connectionStatus: String,
-    onClick: () -> Unit,
-    onConnect: () -> Unit
+fun ModernStartupCard(
+    startup: Startup,
+    onClick: () -> Unit
 ) {
-    val tags = listOf(startup.sector, startup.stage).filter { it.isNotBlank() }
-    
-    CommonListingCard(
-        imageModel = startup.logoUrl,
-        title = startup.startupName,
-        subtitle = startup.description.ifBlank { "No description" },
-        tags = tags,
-        metricValue = startup.fundingAsk.ifBlank { "N/A" },
-        metricLabel = "Asking",
-        footerValue = "Investment Opportunity",
-        footerIcon = TablerIcons.PlayerPlay,
-        connectionStatus = connectionStatus,
-        onConnectAction = onConnect,
-        onClick = onClick
-    )
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .shadow(elevation = 2.dp, shape = RoundedCornerShape(16.dp), spotColor = Color(0x1A000000)),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Logo
+                if (!startup.logoUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = startup.logoUrl,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFF3F4F6)),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFE0E7FF)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            startup.startupName.take(1).uppercase(),
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = AtmiyaPrimary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                // Title & Subtitle
+                val repository = remember { FirestoreRepository() }
+                var founderName by remember { mutableStateOf("") }
+                
+                LaunchedEffect(startup.uid) {
+                    val user = repository.getUser(startup.uid)
+                    if (user != null) {
+                        founderName = user.name
+                    }
+                }
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = startup.startupName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    if (founderName.isNotBlank()) {
+                         Text(
+                            text = founderName,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color(0xFF1F2937),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                         if (startup.sector.isNotBlank()) {
+                             Text(
+                                 text = startup.sector,
+                                 style = MaterialTheme.typography.bodySmall,
+                                 color = Color.Gray
+                             )
+                             if (startup.stage.isNotBlank()) {
+                                 Text(" • ", color = Color.Gray)
+                             }
+                         }
+                         if (startup.stage.isNotBlank()) {
+                             Text(
+                                 text = startup.stage,
+                                 style = MaterialTheme.typography.bodySmall,
+                                 color = Color.Gray
+                             )
+                         }
+                    }
+                }
+                
+                IconButton(onClick = { /* TODO: Save/Bookmark */ }) {
+                    Icon(TablerIcons.Bookmark, contentDescription = "Save", tint = Color.LightGray)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Description Snippet
+            if (startup.description.isNotBlank()) {
+                Text(
+                    text = startup.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF4B5563), // Cool gray
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            
+            // Footer (Tags & Action)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Determine status tag (mock logic for demo, can be actual status)
+                val statusText = if (startup.fundingAsk.isNotBlank()) "Raising" else "Bootstrapped"
+                val statusColor = if (startup.fundingAsk.isNotBlank()) Color(0xFF10B981) else Color(0xFF6366F1) // Green vs Indigo
+                
+                Surface(
+                    color = statusColor.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = statusText,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = statusColor,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                
+                Button(
+                    onClick = onClick,
+                    shape = RoundedCornerShape(50),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF111827), // Dark Almost Black
+                        contentColor = Color.White
+                    ),
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+                    modifier = Modifier.height(36.dp)
+                ) {
+                    Text("View Profile", style = MaterialTheme.typography.labelMedium)
+                }
+            }
+        }
+    }
 }

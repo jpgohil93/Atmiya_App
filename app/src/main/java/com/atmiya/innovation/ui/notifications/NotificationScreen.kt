@@ -46,6 +46,11 @@ fun NotificationScreen(
     var notifications by remember { mutableStateOf<List<NotificationItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
+    // Local Preferences for "Clearing" notifications
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val prefs = remember { context.getSharedPreferences("notification_prefs", android.content.Context.MODE_PRIVATE) }
+    var clearedTimestamp by remember { mutableStateOf(prefs.getLong("cleared_timestamp", 0L)) }
+
     LaunchedEffect(Unit) {
         // Real-time listener
         db.collection("global_notifications")
@@ -72,6 +77,11 @@ fun NotificationScreen(
                 }
             }
     }
+    
+    // Filter locally based on cleared timestamp
+    val filteredNotifications = notifications.filter { 
+        (it.createdAt?.toDate()?.time ?: 0L) > clearedTimestamp 
+    }
 
     Scaffold(
         topBar = {
@@ -80,6 +90,17 @@ fun NotificationScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    if (filteredNotifications.isNotEmpty()) {
+                        TextButton(onClick = {
+                            val now = System.currentTimeMillis()
+                            prefs.edit().putLong("cleared_timestamp", now).apply()
+                            clearedTimestamp = now
+                        }) {
+                            Text("Clear All")
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -92,12 +113,12 @@ fun NotificationScreen(
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
-        } else if (notifications.isEmpty()) {
+        } else if (filteredNotifications.isEmpty()) {
              Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.Default.Notifications, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(64.dp))
                     Spacer(Modifier.height(16.dp))
-                    Text("No notifications yet", style = MaterialTheme.typography.bodyLarge, color = Color.Gray)
+                    Text("No new notifications", style = MaterialTheme.typography.bodyLarge, color = Color.Gray)
                 }
             }
         } else {
@@ -106,7 +127,7 @@ fun NotificationScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(notifications) { item ->
+                items(filteredNotifications) { item ->
                     NotificationCard(item) {
                         onNotificationClick(item.type, item.targetId)
                     }

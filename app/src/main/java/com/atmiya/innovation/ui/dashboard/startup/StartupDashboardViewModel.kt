@@ -8,6 +8,7 @@ import com.atmiya.innovation.data.FundingCall
 import com.atmiya.innovation.repository.FirestoreRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.joinAll
@@ -48,6 +49,10 @@ class StartupDashboardViewModel(
     private val _isLoadingCalls = MutableStateFlow(false)
     val isLoadingCalls: StateFlow<Boolean> = _isLoadingCalls.asStateFlow()
 
+    // Viral Video State
+    private val _viralVideoUrl = MutableStateFlow<String?>(null)
+    val viralVideoUrl: StateFlow<String?> = _viralVideoUrl.asStateFlow()
+
     init {
         refresh()
     }
@@ -72,9 +77,24 @@ class StartupDashboardViewModel(
             val videosJob = launch { fetchFeaturedVideos() }
             val eventsJob = launch { fetchAIFEvents() }
             val callsJob = launch { fetchFundingCalls(userSector) }
+            val viralVideoJob = launch { fetchViralVideo() }
             
-            joinAll(videosJob, eventsJob, callsJob)
+            joinAll(videosJob, eventsJob, callsJob, viralVideoJob)
             _isRefreshing.value = false
+        }
+    }
+    
+    private suspend fun fetchViralVideo() {
+        try {
+            // Source: gs://atmiya-eacdf.firebasestorage.app/Date 04122025 Viral.gif
+            val gsReference = com.google.firebase.storage.FirebaseStorage.getInstance()
+                .getReferenceFromUrl("gs://atmiya-eacdf.firebasestorage.app/Date 04122025 Viral (1080 x 300 px).gif")
+            
+            val uri = gsReference.downloadUrl.await()
+            _viralVideoUrl.value = uri.toString()
+        } catch (e: Exception) {
+            android.util.Log.e("StartupViewModel", "Error fetching viral gif", e)
+             _viralVideoUrl.value = null
         }
     }
 

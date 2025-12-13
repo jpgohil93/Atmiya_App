@@ -46,6 +46,7 @@ import com.atmiya.innovation.ui.generator.IdeaGeneratorEntryCard
 import com.atmiya.innovation.data.FundingCall
 import com.atmiya.innovation.repository.FirestoreRepository
 import com.atmiya.innovation.ui.components.SoftCard
+import com.atmiya.innovation.ui.components.ViralGifBanner
 import com.atmiya.innovation.ui.theme.AtmiyaPrimary
 import com.atmiya.innovation.ui.theme.AtmiyaSecondary
 import com.google.accompanist.swiperefresh.SwipeRefresh
@@ -68,6 +69,7 @@ fun StartupDashboardScreen(
     val eventDebugInfo by viewModel.eventDebugInfo.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val fundingCalls by viewModel.fundingCalls.collectAsState()
+    val viralVideoUrl by viewModel.viralVideoUrl.collectAsState()
     
     var userName by remember { mutableStateOf("Startup") }
     var userPhotoUrl by remember { mutableStateOf<String?>(null) }
@@ -163,6 +165,16 @@ fun StartupDashboardScreen(
                         modifier = Modifier.padding(horizontal = 20.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
+                        // Startups Directory Card
+                        DashboardCard(
+                            title = "Registered Startups",
+                            subtitle = "Explore innovative ventures",
+                            imageResId = com.atmiya.innovation.R.drawable.ic_startups,
+                            modifier = Modifier.fillMaxWidth(),
+                            onClick = { onNavigate("startups_list") }
+                        )
+
+                        // Row 1
                         // Row 1
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                             DashboardCard(
@@ -231,6 +243,23 @@ fun StartupDashboardScreen(
                              onNavigate("news_detail/$encodedUrl")
                         }
                     )
+                }
+
+                if (viralVideoUrl != null) {
+                    item {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .wrapContentHeight()
+                                .background(Color.Transparent)
+                        ) {
+                            ViralGifBanner(
+                                gifUrl = viralVideoUrl!!,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
                 }
 
                 item {

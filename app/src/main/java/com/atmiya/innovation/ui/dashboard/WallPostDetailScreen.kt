@@ -3,6 +3,7 @@ package com.atmiya.innovation.ui.dashboard
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,7 +23,8 @@ import kotlinx.coroutines.tasks.await
 @Composable
 fun WallPostDetailScreen(
     postId: String,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onFundingCallClick: (String) -> Unit
 ) {
     val repository = remember { FirestoreRepository() }
     val auth = FirebaseAuth.getInstance()
@@ -72,7 +74,29 @@ fun WallPostDetailScreen(
             }
         } else if (post == null) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Post not found.")
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = Color.Gray,
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        "This content is no longer available.",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "It may have been deleted by the author.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray
+                    )
+                    Spacer(Modifier.height(24.dp))
+                    Button(onClick = onBack) {
+                        Text("Go Back")
+                    }
+                }
             }
         } else {
             val safePost = post ?: return@SoftScaffold // Extra safety
@@ -116,7 +140,8 @@ fun WallPostDetailScreen(
                                   android.widget.Toast.makeText(context, "Failed to delete post", android.widget.Toast.LENGTH_SHORT).show()
                              }
                         }
-                    }
+                    },
+                    onFundingCallClick = onFundingCallClick
                 )
             }
         }
