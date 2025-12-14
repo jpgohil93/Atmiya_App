@@ -29,7 +29,7 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 
 @Composable
-fun MentorVideoScreen(role: String) {
+fun MentorVideoScreen(role: String, mentorId: String? = null) {
     val repository = remember { FirestoreRepository() }
     val auth = FirebaseAuth.getInstance()
     val scope = rememberCoroutineScope()
@@ -40,9 +40,9 @@ fun MentorVideoScreen(role: String) {
     var isLoading by remember { mutableStateOf(true) }
 
     // Fetch videos
-    LaunchedEffect(Unit) {
+    LaunchedEffect(mentorId) {
         try {
-            videos = repository.getMentorVideos()
+            videos = repository.getMentorVideos(mentorId)
         } catch (e: Exception) {
             Toast.makeText(context, "Error fetching videos", Toast.LENGTH_SHORT).show()
         } finally {

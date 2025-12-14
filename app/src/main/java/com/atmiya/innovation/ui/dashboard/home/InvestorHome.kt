@@ -7,10 +7,9 @@ import androidx.compose.material.icons.filled.Info // Replaced Campaign
 import androidx.compose.material.icons.filled.List // Replaced Assignment/Forum
 import androidx.compose.material.icons.filled.Settings // Replaced Tune
 import androidx.compose.runtime.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import com.atmiya.innovation.repository.FirestoreRepository
-import com.atmiya.innovation.ui.components.BentoCardType
-import com.atmiya.innovation.ui.components.BentoGrid
-import com.atmiya.innovation.ui.components.BentoItem
 import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,14 +18,20 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.launch
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.ui.text.font.FontWeight
 
 @Composable
 fun InvestorHome(
+    isTabVisible: Boolean = true,
     onNavigate: (String) -> Unit
 ) {
     val repository = remember { FirestoreRepository() }
     val auth = FirebaseAuth.getInstance()
     var userName by remember { mutableStateOf("Investor") }
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         val user = auth.currentUser
@@ -36,59 +41,9 @@ fun InvestorHome(
         }
     }
 
-    val items = listOf(
-        BentoItem(
-            type = BentoCardType.HERO,
-            title = "Welcome, $userName",
-            subtitle = "Discover the next big thing",
-            icon = Icons.Default.Star,
-            span = 2,
-            onClick = { onNavigate("funding") }
-        ),
-        BentoItem(
-            type = BentoCardType.FEATURE,
-            title = "Startups Directory",
-            subtitle = "Explore all registered startups",
-            icon = Icons.Default.Search,
-            span = 2,
-            onClick = { onNavigate("startups_list") }
-        ),
-        BentoItem(
-            type = BentoCardType.FEATURE,
-            title = "My Funding Calls",
-            subtitle = "Manage your calls",
-            icon = Icons.Default.Info,
-            onClick = { onNavigate("funding") }
-        ),
-        BentoItem(
-            type = BentoCardType.FEATURE,
-            title = "Applications",
-            subtitle = "Review startups",
-            icon = Icons.Default.List,
-            badge = "New", // Placeholder until logic implemented
-            onClick = { onNavigate("funding") }
-        ),
-        BentoItem(
-            type = BentoCardType.FEATURE,
-            title = "Community Wall",
-            subtitle = "See what's happening",
-            icon = Icons.Default.List,
-            span = 2,
-            onClick = { onNavigate("wall") }
-        ),
-        BentoItem(
-            type = BentoCardType.UTILITY,
-            title = "Preferences",
-            icon = Icons.Default.Settings,
-            onClick = { onNavigate("profile") }
-        ),
-        BentoItem(
-            type = BentoCardType.UTILITY,
-            title = "Profile",
-            icon = Icons.Default.Person,
-            onClick = { onNavigate("profile") }
-        )
-    )
+    // Video Slider State
+    val viewModel = remember { com.atmiya.innovation.ui.dashboard.startup.StartupDashboardViewModel() }
+    val videosState by viewModel.featuredVideos.collectAsState()
 
     // Viral GIF Logic
     var viralGifUrl by remember { mutableStateOf<String?>(null) }
@@ -96,22 +51,132 @@ fun InvestorHome(
         try {
             val gsReference = com.google.firebase.storage.FirebaseStorage.getInstance()
                 .getReferenceFromUrl("gs://atmiya-eacdf.firebasestorage.app/Date 04122025 Viral (1080 x 300 px).gif")
-            val uri = gsReference.downloadUrl.await()
-            viralGifUrl = uri.toString()
+            val downloadUrl = gsReference.downloadUrl.await()
+            viralGifUrl = downloadUrl.toString()
         } catch (e: Exception) {
             // Ignore
         }
     }
 
-    BentoGrid(
-        items = items,
-        footer = {
-            if (viralGifUrl != null) {
-                com.atmiya.innovation.ui.components.ViralGifBanner(
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp)
+    ) {
+        // 1. Hero Video
+        item {
+            com.atmiya.innovation.ui.dashboard.SharedDashboardHeader(
+                videosState = videosState,
+                isVisible = isTabVisible,
+                onVideoClick = { videoId ->
+                    onNavigate("video_detail/$videoId")
+                }
+            )
+        }
+
+        // 2. Accelerate Your Growth (Custom Layout)
+        item {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Accelerate Your Growth",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
+            )
+
+            Column(
+                modifier = Modifier.padding(horizontal = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                 // Registered Startups
+                 com.atmiya.innovation.ui.dashboard.DashboardCard(
+                    title = "Registered Startups",
+                    subtitle = "Explore innovative ventures",
+                    imageResId = com.atmiya.innovation.R.drawable.ic_startups,
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { onNavigate("startups_list") }
+                )
+
+                // Row 1: My Funding Calls + Applications
+                Row(
+                     horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                     // Partner Card (My Funding Calls)
+                     com.atmiya.innovation.ui.dashboard.DashboardCard(
+                        title = "My Funding Calls",
+                        subtitle = "Manage your calls",
+                        modifier = Modifier.weight(1f),
+                        imageResId = com.atmiya.innovation.R.drawable.ic_my_funding_calls,
+                        onClick = { onNavigate("funding") }
+                    )
+                    
+                    // Applications (Moved here)
+                    com.atmiya.innovation.ui.dashboard.DashboardCard(
+                        title = "Applications",
+                        subtitle = "Review startups",
+                        modifier = Modifier.weight(1f),
+                        imageResId = com.atmiya.innovation.R.drawable.ic_applications,
+                        onClick = { onNavigate("funding") }
+                    )
+                }
+
+                // Row 2: Events + Smart Questions
+                Row(
+                     horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Events (Moved here)
+                    com.atmiya.innovation.ui.dashboard.DashboardCard(
+                        title = "Events",
+                        subtitle = "Upcoming events",
+                        imageResId = com.atmiya.innovation.R.drawable.ic_events,
+                        modifier = Modifier.weight(1f),
+                        onClick = { onNavigate("events_list") }
+                    )
+
+                    // Smart Questions (Updated)
+                    com.atmiya.innovation.ui.dashboard.DashboardCard(
+                        title = "Smart Questions",
+                        subtitle = "AI Due Diligence", 
+                        modifier = Modifier.weight(1f),
+                        imageResId = com.atmiya.innovation.R.drawable.ic_smart_questions,
+                        onClick = {
+                            android.widget.Toast.makeText(
+                                context,
+                                "Select a startup to Ask Anything", 
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                            onNavigate("startups_list") 
+                        }
+                    )
+                }
+            }
+        }
+        
+        // 4. News Section
+        item {
+             com.atmiya.innovation.ui.dashboard.news.DashboardNewsSection(
+                 onViewAllClick = { onNavigate("news_list") },
+                 onNewsClick = { url -> 
+                     // Handle generic news click, maybe open webview or browser
+                 }
+             )
+        }
+        
+        // 5. Viral Banner
+        if (viralGifUrl != null) {
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                // Reuse ViralGifBanner logic or import it
+                // Assuming ViralGifBanner is in components package
+                 com.atmiya.innovation.ui.components.ViralGifBanner(
                      gifUrl = viralGifUrl!!,
                      modifier = Modifier.fillMaxWidth().wrapContentHeight()
                 )
             }
         }
-    )
+        
+        item {
+             Spacer(modifier = Modifier.height(30.dp))
+        }
+    }
 }

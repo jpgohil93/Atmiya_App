@@ -260,7 +260,7 @@ fun FundingCallCard(
         },
         primaryButtonText = if (isOwner) "Review Opportunity" else "View Opportunity",
         onPrimaryClick = onClick,
-        secondaryButtonText = if (isOwner) null else "Connect", // Or "Apply"
+        secondaryButtonText = if (isOwner) null else "Connect Now", // Or "Apply"
         onSecondaryClick = if (isOwner) { {} } else { onClick } // Navigate to detail for applying
     )
 }

@@ -135,7 +135,7 @@ fun InvestorCard(user: Investor, onClick: () -> Unit) {
         },
         primaryButtonText = "View Profile",
         onPrimaryClick = onClick,
-        secondaryButtonText = "Connect",
+        secondaryButtonText = "Connect Now",
         onSecondaryClick = { /* Handle Connect */ onClick() }
     )
 }

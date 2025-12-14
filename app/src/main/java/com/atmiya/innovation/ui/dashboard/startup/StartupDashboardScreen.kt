@@ -131,15 +131,13 @@ fun StartupDashboardScreen(
                 
                 // 3. Featured Videos (Hero Slider)
                 item {
-                    Column(modifier = Modifier.padding(top = 0.dp)) { // Adjust for overlap
-                        HeroVideoSlider(
-                            videosState = videosState,
-                            isVisible = isTabVisible && isVideoVisible,
-                            onVideoClick = { videoId ->
-                                onNavigate("video_detail/$videoId")
-                            }
-                        )
-                    }
+                    com.atmiya.innovation.ui.dashboard.SharedDashboardHeader(
+                        videosState = videosState,
+                        isVisible = isTabVisible && isVideoVisible,
+                        onVideoClick = { videoId ->
+                            onNavigate("video_detail/$videoId")
+                        }
+                    )
                 }
                 
                 // Idea Generator Entry
@@ -150,55 +148,28 @@ fun StartupDashboardScreen(
                     )
                 }
                 
-                // 4. Accelerate Your Growth Grid
+                // 4. Accelerate Your Growth
                 item {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "Accelerate Your Growth",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
-                    )
-                    
-                    Column(
-                        modifier = Modifier.padding(horizontal = 20.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        // Startups Directory Card
-                        DashboardCard(
-                            title = "Registered Startups",
-                            subtitle = "Explore innovative ventures",
-                            imageResId = com.atmiya.innovation.R.drawable.ic_startups,
-                            modifier = Modifier.fillMaxWidth(),
-                            onClick = { onNavigate("startups_list") }
-                        )
-
-
-
-                        // Row 1
-                        // Row 1
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                            DashboardCard(
+                    com.atmiya.innovation.ui.dashboard.SharedGrowthSection(
+                        onNavigate = onNavigate,
+                        partnerCard = {
+                            com.atmiya.innovation.ui.dashboard.DashboardCard(
                                 title = "Funding Calls",
                                 subtitle = "Serve funds & grants",
                                 modifier = Modifier.weight(1f),
                                 imageResId = R.drawable.ic_funding_calls,
                                 onClick = { onNavigate("funding_calls_list") }
                             )
-                            
-                            DashboardCard(
-                                title = "Events",
-                                subtitle = "Upcoming events",
-                                modifier = Modifier.weight(1f),
-                                imageResId = R.drawable.ic_events,
-                                onClick = { onNavigate("events_list") }
-                            )
                         }
-                        
-                        // Row 2
+                    )
+                    
+                    Column(
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Row 2 (Now Row 1 of Grid)
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                            DashboardCard(
+                            com.atmiya.innovation.ui.dashboard.DashboardCard(
                                 title = "Mentors",
                                 subtitle = "Engagement mentors",
                                 modifier = Modifier.weight(1f),
@@ -206,7 +177,7 @@ fun StartupDashboardScreen(
                                 onClick = { onNavigate("mentors_list") }
                             )
                             
-                            DashboardCard(
+                            com.atmiya.innovation.ui.dashboard.DashboardCard(
                                 title = "Investors",
                                 subtitle = "Connect with investors",
                                 modifier = Modifier.weight(1f),
@@ -217,7 +188,7 @@ fun StartupDashboardScreen(
                         
                         // Row 3
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                            DashboardCard(
+                            com.atmiya.innovation.ui.dashboard.DashboardCard(
                                 title = "Incubators",
                                 subtitle = "Growth incubating",
                                 modifier = Modifier.weight(1f),
@@ -225,7 +196,7 @@ fun StartupDashboardScreen(
                                 onClick = { onNavigate("incubators_list") }
                             )
                             
-                            DashboardCard(
+                            com.atmiya.innovation.ui.dashboard.DashboardCard(
                                 title = "Governance",
                                 subtitle = "Government Policy",
                                 modifier = Modifier.weight(1f),
@@ -236,7 +207,7 @@ fun StartupDashboardScreen(
 
                         // Row 4
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                            DashboardCard(
+                            com.atmiya.innovation.ui.dashboard.DashboardCard(
                                 title = "Runway Calculator",
                                 subtitle = "Survival & Planning",
                                 modifier = Modifier.weight(1f),
@@ -244,11 +215,11 @@ fun StartupDashboardScreen(
                                 onClick = { onNavigate("runway_calculator") }
                             )
                             
-                            DashboardCard(
+                            com.atmiya.innovation.ui.dashboard.DashboardCard(
                                 title = "Pitch Generator",
                                 subtitle = "AI-powered drafts",
                                 modifier = Modifier.weight(1f),
-                                imageResId = R.drawable.ic_outreach, // Ensure this drawable exists or use a fallback
+                                imageResId = R.drawable.ic_outreach,
                                 onClick = { onNavigate("outreach_generator") }
                             )
                         }
@@ -291,78 +262,4 @@ fun StartupDashboardScreen(
     }
 }
 
-@Composable
-fun DashboardCard(
-    title: String,
-    subtitle: String,
-    modifier: Modifier = Modifier,
-    imageResId: Int? = null,
-    onClick: () -> Unit,
-    content: @Composable BoxScope.() -> Unit = {}
-) {
-    Surface(
-        modifier = modifier
-            .height(180.dp)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(24.dp),
-        color = Color.White,
-        shadowElevation = 2.dp,
-        tonalElevation = 2.dp
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Image area (takes top ~65% of card)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(0.65f)
-                    .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-            ) {
-                if (imageResId != null) {
-                    Image(
-                        painter = painterResource(id = imageResId),
-                        contentDescription = title,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        content()
-                    }
-                }
-            }
-            
-            // Text area with solid white background (takes bottom ~35%)
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(0.35f)
-                    .background(Color.White)
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        letterSpacing = 0.5.sp
-                    ),
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF263238), // Dark Blue Grey for premium look
-                    fontSize = 17.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF78909C), // Softer Blue Grey
-                    fontSize = 12.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-        }
-    }
-}
+

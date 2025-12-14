@@ -44,7 +44,7 @@ class OutreachRepository {
     private val apiKey = BuildConfig.GEMINI_API_KEY
 
     private val generativeModel = GenerativeModel(
-        modelName = "gemini-2.5-flash",
+        modelName = "gemini-2.5-flash-lite",
         apiKey = apiKey
     )
 

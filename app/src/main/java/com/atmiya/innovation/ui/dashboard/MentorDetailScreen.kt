@@ -258,7 +258,7 @@ fun MentorDetailScreen(
                              colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF111827)),
                              modifier = Modifier.height(50.dp)
                          ) {
-                             Text("Request Now", fontSize = 16.sp)
+                             Text("Connect Now", fontSize = 16.sp)
                          }
                      }
                 }

@@ -43,6 +43,10 @@ import compose.icons.tablericons.Link
 import compose.icons.tablericons.BrandFacebook
 import compose.icons.tablericons.BrandTwitter
 import compose.icons.tablericons.BrandLinkedin
+import com.atmiya.innovation.ui.dashboard.smartquestions.SmartQuestionsSheet
+import com.google.firebase.auth.FirebaseAuth
+import compose.icons.tablericons.Bulb
+import compose.icons.tablericons.Activity
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,6 +58,15 @@ fun StartupDetailScreen(
     var startup by remember { mutableStateOf<Startup?>(null) }
     var user by remember { mutableStateOf<User?>(null) }
     var isLoading by remember { mutableStateOf(true) }
+    
+    // Smart Questions State
+
+    // Smart Questions State
+    var showSmartQuestions by remember { mutableStateOf(false) }
+    var showDiagnosis by remember { mutableStateOf(false) } // Added for Startup Diagnosis
+    var viewerRole by remember { mutableStateOf("") }
+
+    val auth = FirebaseAuth.getInstance()
 
     LaunchedEffect(startupId) {
         try {
@@ -62,6 +75,15 @@ fun StartupDetailScreen(
             val u = repository.getUser(startupId)
             startup = s
             user = u
+            
+            // Fetch Viewer Role
+            val currentUser = auth.currentUser
+            if (currentUser != null) {
+                val viewer = repository.getUser(currentUser.uid)
+                if (viewer != null) {
+                    viewerRole = viewer.role
+                }
+            }
         } catch (e: Exception) {
             // Handle error
         } finally {
@@ -272,32 +294,81 @@ fun StartupDetailScreen(
                 }
 
                 // --- Floating CTA ---
-                Surface(
+                // --- Floating CTA Section ---
+                Column(
                     modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
-                    shadowElevation = 16.dp,
-                    color = Color.White,
-                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                    horizontalAlignment = Alignment.End // Align FAB to right
                 ) {
-                     Row(
-                         modifier = Modifier.padding(24.dp),
-                         verticalAlignment = Alignment.CenterVertically
-                     ) {
-                         Column(modifier = Modifier.weight(1f)) {
-                             Text("Interested?", style = MaterialTheme.typography.labelLarge, color = Color.Gray)
-                             Text("Connect with them", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                         }
-                         Button(
-                             onClick = { /* Handle Connect Logic */ },
-                             shape = RoundedCornerShape(50),
-                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF111827)),
-                             modifier = Modifier.height(50.dp)
-                         ) {
-                             Text("Connect Now", fontSize = 16.sp)
-                         }
-                     }
+                    
+                    // Smart Questions Entry Point (Investor Only)
+                    if (viewerRole == "investor") {
+                        ExtendedFloatingActionButton(
+                            onClick = { showSmartQuestions = true },
+                            modifier = Modifier.padding(end = 24.dp, bottom = 12.dp),
+                            containerColor = Color.Black,
+                            contentColor = Color.White,
+                            icon = { Icon(TablerIcons.Bulb, contentDescription = null) },
+                            text = { Text("Generate Smart Questions", fontWeight = FontWeight.Bold) }
+                        )
+                    }
+
+                    // Diagnosis Mode Entry Point (Mentor Only)
+                    if (viewerRole == "mentor") {
+                        ExtendedFloatingActionButton(
+                            onClick = { showDiagnosis = true },
+                            modifier = Modifier.padding(end = 24.dp, bottom = 12.dp),
+                            containerColor = AtmiyaPrimary, // Brand Blue
+                            contentColor = Color.White,
+                            icon = { Icon(TablerIcons.Activity, contentDescription = null) },
+                            text = { Text("Run Startup Diagnosis") }
+                        )
+                    }
+
+                    // Connect Bar
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shadowElevation = 16.dp,
+                        color = Color.White,
+                        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(24.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Interested?", style = MaterialTheme.typography.labelLarge, color = Color.Gray)
+                                Text("Connect with them", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            }
+                            Button(
+                                onClick = { /* Handle Connect Logic */ },
+                                shape = RoundedCornerShape(50),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF111827)),
+                                modifier = Modifier.height(50.dp)
+                            ) {
+                                Text("Connect Now", fontSize = 16.sp)
+                            }
+                        }
+                    }
                 }
             }
+            }
         }
+
+
+
+    if (showSmartQuestions && startup != null) {
+        SmartQuestionsSheet(
+            startup = startup!!,
+            pitchSummary = startup!!.description.ifBlank { "A startup in ${startup!!.sector} sector at ${startup!!.stage} stage." },
+            onDismiss = { showSmartQuestions = false }
+        )
+    }
+
+    if (showDiagnosis && startup != null) {
+        com.atmiya.innovation.ui.dashboard.diagnosis.DiagnosisModeSheet(
+            startup = startup!!,
+            onDismiss = { showDiagnosis = false }
+        )
     }
 }
 

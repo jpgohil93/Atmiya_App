@@ -17,7 +17,7 @@ class IdeaGeneratorRepository {
     private val apiKey = com.atmiya.innovation.BuildConfig.GEMINI_API_KEY 
 
     private val generativeModel = GenerativeModel(
-        modelName = "gemini-2.5-flash",
+        modelName = "gemini-2.5-flash-lite",
         apiKey = apiKey,
         generationConfig = com.google.ai.client.generativeai.type.generationConfig {
             maxOutputTokens = 8192

@@ -248,8 +248,14 @@ fun DashboardScreen(
                                             isTabVisible = pagerState.currentPage == 0,
                                             onNavigate = onNavigateToRoute
                                         )
-                                        "investor" -> com.atmiya.innovation.ui.dashboard.home.InvestorHome(onNavigate = onNavigateToRoute)
-                                        "mentor" -> com.atmiya.innovation.ui.dashboard.home.MentorHome(onNavigate = onNavigateToRoute)
+                                        "investor" -> com.atmiya.innovation.ui.dashboard.home.InvestorHome(
+                                            isTabVisible = pagerState.currentPage == 0,
+                                            onNavigate = onNavigateToRoute
+                                        )
+                                        "mentor" -> com.atmiya.innovation.ui.dashboard.home.MentorHome(
+                                            isTabVisible = pagerState.currentPage == 0,
+                                            onNavigate = onNavigateToRoute
+                                        )
                                         "admin" -> com.atmiya.innovation.ui.dashboard.home.AdminHome(onNavigate = onNavigateToRoute)
                                         else -> Text("Unknown Role", modifier = Modifier.padding(16.dp))
                                     }
@@ -459,7 +465,8 @@ fun DashboardScreen(
                     composable("mentors_list") {
                         com.atmiya.innovation.ui.dashboard.listing.MentorListingScreen(
                             onBack = { navController.popBackStack() },
-                            onMentorClick = { mentorId -> navController.navigate("mentor_detail/$mentorId") }
+                            onMentorClick = { mentorId -> navController.navigate("mentor_detail/$mentorId") },
+                            onWatchVideosClick = { mentorId -> navController.navigate("mentor_videos_list/$mentorId") }
                         )
                     }
 
@@ -474,7 +481,8 @@ fun DashboardScreen(
                         NetworkScreen(
                             role = role,
                             onMentorClick = { mentorId -> navController.navigate("mentor_detail/$mentorId") },
-                            onInvestorClick = { investorId -> navController.navigate("investor_detail/$investorId") }
+                            onInvestorClick = { investorId -> navController.navigate("investor_detail/$investorId") },
+                            onWatchVideosClick = { mentorId -> navController.navigate("mentor_videos_list/$mentorId") }
                         )
                     }
 
@@ -535,6 +543,17 @@ fun DashboardScreen(
                              videoId = videoId,
                              onBack = { navController.popBackStack() }
                          )
+                    }
+
+                    composable(
+                        "mentor_videos_list/{mentorId}",
+                        arguments = listOf(navArgument("mentorId") { type = NavType.StringType })
+                    ) { backStackEntry ->
+                        val mentorId = backStackEntry.arguments?.getString("mentorId")
+                        MentorVideoScreen(
+                            role = role,
+                            mentorId = mentorId
+                        )
                     }
 
                     composable(
@@ -681,7 +700,8 @@ sealed class Screen(val route: String, val icon: ImageVector) {
 fun NetworkScreen(
     role: String,
     onMentorClick: (String) -> Unit,
-    onInvestorClick: (String) -> Unit
+    onInvestorClick: (String) -> Unit,
+    onWatchVideosClick: (String) -> Unit
 ) {
     Column {
         var selectedTab by androidx.compose.runtime.saveable.rememberSaveable { mutableIntStateOf(0) }
@@ -716,7 +736,8 @@ fun NetworkScreen(
             )
             1 -> com.atmiya.innovation.ui.dashboard.listing.MentorListingScreen(
                 onBack = {},
-                onMentorClick = onMentorClick
+                onMentorClick = onMentorClick,
+                onWatchVideosClick = onWatchVideosClick
             )
         }
     }
