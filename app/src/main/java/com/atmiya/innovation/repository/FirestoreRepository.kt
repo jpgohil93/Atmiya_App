@@ -1124,4 +1124,27 @@ class FirestoreRepository {
         return "none"
     }
 
+
+    // --- Feedback ---
+
+    suspend fun addFeedback(feedback: Feedback) {
+        val start = System.currentTimeMillis()
+        db.collection("feedback").document(feedback.id).set(feedback).await()
+        logPerf("addFeedback", System.currentTimeMillis() - start)
+    }
+
+    fun getFeedbackFlow(): Flow<List<Feedback>> = callbackFlow {
+        val listener = db.collection("feedback")
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                val list = snapshot?.documents?.mapNotNull { it.toObject<Feedback>()?.copy(id = it.id) } ?: emptyList()
+                trySend(list)
+            }
+        awaitClose { listener.remove() }
+    }
+
 }

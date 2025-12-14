@@ -54,7 +54,7 @@ class IdeaGeneratorViewModel(
             } catch (e: Exception) {
                 e.printStackTrace()
                 android.util.Log.e("IdeaGenVM", "Generation failed", e)
-                _uiState.update { it.copy(isLoading = false, error = "Failed: ${e.message ?: "Unknown Error"}") }
+                _uiState.update { it.copy(isLoading = false, error = "We couldn't generate ideas right now. Please try again later.") }
             }
         }
     }
@@ -63,7 +63,7 @@ class IdeaGeneratorViewModel(
         viewModelScope.launch {
             val uid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
             if (uid == null) {
-                _uiState.update { it.copy(error = "User not logged in") }
+                _uiState.update { it.copy(error = "Please log in to save ideas") }
                 return@launch
             }
             
@@ -73,7 +73,7 @@ class IdeaGeneratorViewModel(
                 // Optional: Show success message via a one-off event or snackbar (using error field for now for simplicity, or add a message field)
                 _uiState.update { it.copy(error = "Idea saved successfully!") } // Re-using error field as "message" for now, ideally separate
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = "Failed to save: ${e.message}") }
+                _uiState.update { it.copy(error = "Failed to save idea. Please try again.") }
             }
         }
     }

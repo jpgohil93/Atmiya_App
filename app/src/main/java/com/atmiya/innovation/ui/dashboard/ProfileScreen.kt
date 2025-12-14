@@ -60,6 +60,7 @@ fun ProfileScreen(
     var profileImageUrl by remember { mutableStateOf<String?>(null) }
     var userName by remember { mutableStateOf("") }
     var userEmail by remember { mutableStateOf("") }
+    var userPhone by remember { mutableStateOf("") } // Added Phone
     var userCity by remember { mutableStateOf("") }
     var userRegion by remember { mutableStateOf("") }
     var userBio by remember { mutableStateOf("") } // About/Description
@@ -71,6 +72,13 @@ fun ProfileScreen(
     var startupSector by remember { mutableStateOf("") }
     var startupStage by remember { mutableStateOf("") }
     var startupFundingAsk by remember { mutableStateOf("") }
+    var startupFounderNames by remember { mutableStateOf("") } // Added
+    var startupOrg by remember { mutableStateOf("") } // Added
+    var startupSupportNeeded by remember { mutableStateOf("") } // Added
+    var startupWebsite by remember { mutableStateOf("") } // Added
+    var startupSocial by remember { mutableStateOf("") } // Added
+    var startupPitchDeckUrl by remember { mutableStateOf<String?>(null) } // Added
+    var startupLogoUrl by remember { mutableStateOf<String?>(null) } // Added
     
     // Investor Fields
     var investorFirm by remember { mutableStateOf("") }
@@ -78,11 +86,14 @@ fun ProfileScreen(
     var investorSectors by remember { mutableStateOf("") } // Comma separated
     var investorStages by remember { mutableStateOf("") }
     var investorType by remember { mutableStateOf("") }
+    var investorWebsite by remember { mutableStateOf("") } // Added
     
     // Mentor Fields
     var mentorTitle by remember { mutableStateOf("") }
     var mentorOrg by remember { mutableStateOf("") }
     var mentorExpertise by remember { mutableStateOf("") } // Comma separated
+    var mentorExperience by remember { mutableStateOf("") } // Added
+    var mentorTopics by remember { mutableStateOf("") } // Added
 
     // Initial Load
     LaunchedEffect(user) {
@@ -92,6 +103,7 @@ fun ProfileScreen(
                 profileImageUrl = userProfile.profilePhotoUrl
                 userName = userProfile.name
                 userEmail = userProfile.email
+                userPhone = userProfile.phoneNumber // Loaded
                 userCity = userProfile.city
                 userRegion = userProfile.region
                 userRole = userProfile.role
@@ -104,6 +116,13 @@ fun ProfileScreen(
                             startupSector = startup.sector
                             startupStage = startup.stage
                             startupFundingAsk = startup.fundingAsk
+                            startupFounderNames = startup.founderNames
+                            startupOrg = startup.organization
+                            startupSupportNeeded = startup.supportNeeded
+                            startupWebsite = startup.website
+                            startupSocial = startup.socialLinks
+                            startupPitchDeckUrl = startup.pitchDeckUrl
+                            startupLogoUrl = startup.logoUrl
                             userBio = startup.description
                             displayRole = "Startup"
                         }
@@ -116,6 +135,7 @@ fun ProfileScreen(
                             investorSectors = investor.sectorsOfInterest.joinToString(", ")
                             investorStages = investor.preferredStages.joinToString(", ")
                             investorType = investor.investmentType
+                            investorWebsite = investor.website
                             userBio = investor.bio
                             displayRole = "Investor"
                         }
@@ -126,6 +146,8 @@ fun ProfileScreen(
                             mentorTitle = mentor.title
                             mentorOrg = mentor.organization
                             mentorExpertise = mentor.expertiseAreas.joinToString(", ")
+                            mentorExperience = mentor.experienceYears
+                            mentorTopics = mentor.topicsToTeach.joinToString(", ")
                             userBio = mentor.bio
                             displayRole = "Mentor"
                         }
@@ -138,7 +160,7 @@ fun ProfileScreen(
         }
     }
     
-    // Image Picker Logic (Same as before)
+    // Image Picker Logic (Profile Photo)
     val cropImageLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = com.canhub.cropper.CropImageContract()
     ) { result ->
@@ -152,21 +174,21 @@ fun ProfileScreen(
                         profileImageUrl = url
                         firestoreRepository.updateUser(user.uid, mapOf("profilePhotoUrl" to url))
                         
-                        // Sync to Role Collection
+                        // Sync to Role Collection for Profile Photo
                         when (userRole) {
-                            "startup" -> firestoreRepository.updateStartup(user.uid, mapOf("logoUrl" to url))
                             "investor" -> firestoreRepository.updateInvestor(user.uid, mapOf("profilePhotoUrl" to url))
                             "mentor" -> firestoreRepository.updateMentor(user.uid, mapOf("profilePhotoUrl" to url))
                         }
                         
                         Toast.makeText(context, "Profile Photo Updated", Toast.LENGTH_SHORT).show()
                     } catch (e: Exception) {
-                        Toast.makeText(context, "Upload Failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Profile photo upload failed. Please try again.", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
         }
     }
+    
     val imagePickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
     ) { uri: android.net.Uri? ->
@@ -180,6 +202,45 @@ fun ProfileScreen(
             cropImageLauncher.launch(
                 com.canhub.cropper.CropImageContractOptions(uri, cropOptions)
             )
+        }
+    }
+
+    // Startup Logo Launcher
+    val logoLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
+    ) { uri: android.net.Uri? ->
+        if (uri != null && user != null) {
+            scope.launch {
+                try {
+                    Toast.makeText(context, "Uploading Logo...", Toast.LENGTH_SHORT).show()
+                    val url = storageRepository.uploadStartupLogo(context, user.uid, uri)
+                    startupLogoUrl = url
+                    firestoreRepository.updateStartup(user.uid, mapOf("logoUrl" to url))
+                    Toast.makeText(context, "Logo Updated", Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Logo Upload Failed", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    // Pitch Deck Launcher
+    val pitchDeckLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
+    ) { uri: android.net.Uri? ->
+        if (uri != null && user != null) {
+            scope.launch {
+                try {
+                    Toast.makeText(context, "Uploading Pitch Deck...", Toast.LENGTH_SHORT).show()
+                    val isPdf = context.contentResolver.getType(uri)?.contains("pdf") == true
+                    val url = storageRepository.uploadPitchDeck(context, user.uid, uri, isPdf)
+                    startupPitchDeckUrl = url
+                    firestoreRepository.updateStartup(user.uid, mapOf("pitchDeckUrl" to url))
+                    Toast.makeText(context, "Pitch Deck Updated", Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Pitch Deck Upload Failed", Toast.LENGTH_SHORT).show()
+                }
+            }
         }
     }
 
@@ -307,6 +368,9 @@ fun ProfileScreen(
                     SectionHeader("Basic Info")
                     
                     ProfileField(label = "Email Address", value = userEmail, isEditing = isEditing, icon = TablerIcons.Mail) { userEmail = it }
+                    if (userPhone.isNotEmpty()) {
+                        ProfileField(label = "Mobile Number", value = userPhone, isEditing = false, icon = TablerIcons.Phone) { }
+                    }
                     ProfileField(label = "City", value = userCity, isEditing = isEditing, icon = TablerIcons.MapPin) { userCity = it }
                     ProfileField(label = "Region", value = userRegion, isEditing = isEditing, icon = TablerIcons.World) { userRegion = it }
                     ProfileField(label = "About", value = userBio, isEditing = isEditing, minLines = 3, icon = TablerIcons.InfoCircle) { userBio = it }
@@ -321,9 +385,77 @@ fun ProfileScreen(
                      when (userRole) {
                         "startup" -> {
                             ProfileField(label = "Startup Name", value = startupName, isEditing = isEditing, icon = TablerIcons.Home) { startupName = it }
+                            ProfileField(label = "Founder Name(s)", value = startupFounderNames, isEditing = isEditing, icon = TablerIcons.Users) { startupFounderNames = it }
+                            ProfileField(label = "Organization/College", value = startupOrg, isEditing = isEditing, icon = TablerIcons.Building) { startupOrg = it }
                             ProfileField(label = "Sector", value = startupSector, isEditing = isEditing, icon = TablerIcons.Hash) { startupSector = it }
                             ProfileField(label = "Stage", value = startupStage, isEditing = isEditing, icon = TablerIcons.ChartBar) { startupStage = it }
                             ProfileField(label = "Funding Ask", value = startupFundingAsk, isEditing = isEditing, icon = TablerIcons.CurrencyRupee) { startupFundingAsk = it }
+                            ProfileField(label = "Support Needed", value = startupSupportNeeded, isEditing = isEditing, icon = TablerIcons.Help) { startupSupportNeeded = it }
+                            ProfileField(label = "Website", value = startupWebsite, isEditing = isEditing, icon = TablerIcons.World) { startupWebsite = it }
+                            ProfileField(label = "Social Links", value = startupSocial, isEditing = isEditing, icon = TablerIcons.BrandLinkedin) { startupSocial = it }
+                            
+                            Spacer(modifier = Modifier.height(16.dp))
+                            SectionHeader("Company Assets")
+                            
+                            // Logo Field
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(TablerIcons.Photo, contentDescription = null, tint = Color(0xFF9CA3AF))
+                                    Spacer(modifier = Modifier.width(16.dp))
+                                    Column {
+                                        Text("Startup Logo", style = MaterialTheme.typography.bodyMedium)
+                                        if (startupLogoUrl != null) {
+                                            Text("Uploaded", style = MaterialTheme.typography.bodySmall, color = AtmiyaPrimary)
+                                        } else {
+                                            Text("No logo uploaded", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                        }
+                                    }
+                                }
+                                if (isEditing) {
+                                    Button(
+                                        onClick = { logoLauncher.launch("image/*") },
+                                        colors = ButtonDefaults.buttonColors(containerColor = AtmiyaSecondary)
+                                    ) {
+                                        Text("Upload")
+                                    }
+                                }
+                            }
+                            
+                            // Pitch Deck Field
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(TablerIcons.Presentation, contentDescription = null, tint = Color(0xFF9CA3AF))
+                                    Spacer(modifier = Modifier.width(16.dp))
+                                    Column {
+                                        Text("Pitch Deck", style = MaterialTheme.typography.bodyMedium)
+                                        if (startupPitchDeckUrl != null) {
+                                            Text("Uploaded", style = MaterialTheme.typography.bodySmall, color = AtmiyaPrimary)
+                                        } else {
+                                            Text("No deck uploaded", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                        }
+                                    }
+                                }
+                                if (isEditing) {
+                                    Button(
+                                        onClick = { pitchDeckLauncher.launch("application/pdf") },
+                                        colors = ButtonDefaults.buttonColors(containerColor = AtmiyaSecondary)
+                                    ) {
+                                        Text("Upload")
+                                    }
+                                }
+                            }
                         }
                         "investor" -> {
                             ProfileField(label = "Firm Name", value = investorFirm, isEditing = isEditing, icon = TablerIcons.Building) { investorFirm = it }
@@ -331,11 +463,14 @@ fun ProfileScreen(
                             ProfileField(label = "Sectors (Comma sep)", value = investorSectors, isEditing = isEditing, icon = TablerIcons.ChartPie) { investorSectors = it }
                             ProfileField(label = "Preferred Stages (Comma sep)", value = investorStages, isEditing = isEditing, icon = TablerIcons.Bulb) { investorStages = it }
                             ProfileField(label = "Investment Style", value = investorType, isEditing = isEditing, icon = TablerIcons.Briefcase) { investorType = it }
+                            ProfileField(label = "Website / LinkedIn", value = investorWebsite, isEditing = isEditing, icon = TablerIcons.World) { investorWebsite = it }
                         }
                         "mentor" -> {
                             ProfileField(label = "Job Title", value = mentorTitle, isEditing = isEditing, icon = TablerIcons.Id) { mentorTitle = it }
                             ProfileField(label = "Organization", value = mentorOrg, isEditing = isEditing, icon = TablerIcons.Building) { mentorOrg = it }
+                            ProfileField(label = "Experience (Years)", value = mentorExperience, isEditing = isEditing, icon = TablerIcons.Clock) { mentorExperience = it }
                             ProfileField(label = "Expertise (Comma sep)", value = mentorExpertise, isEditing = isEditing, icon = TablerIcons.Certificate) { mentorExpertise = it }
+                            ProfileField(label = "Topics to Teach", value = mentorTopics, isEditing = isEditing, icon = TablerIcons.Book) { mentorTopics = it }
                         }
                     }
                     
@@ -378,7 +513,12 @@ fun ProfileScreen(
                                             "sector" to startupSector,
                                             "stage" to startupStage,
                                             "fundingAsk" to startupFundingAsk,
-                                            "description" to userBio
+                                            "description" to userBio,
+                                            "founderNames" to startupFounderNames,
+                                            "organization" to startupOrg,
+                                            "supportNeeded" to startupSupportNeeded,
+                                            "website" to startupWebsite,
+                                            "socialLinks" to startupSocial
                                         ))
                                         "investor" -> firestoreRepository.updateInvestor(user.uid, mapOf(
                                             "name" to userName,
@@ -387,6 +527,7 @@ fun ProfileScreen(
                                             "sectorsOfInterest" to investorSectors.split(",").map{it.trim()},
                                             "preferredStages" to investorStages.split(",").map{it.trim()},
                                             "investmentType" to investorType,
+                                            "website" to investorWebsite,
                                             "bio" to userBio
                                         ))
                                         "mentor" -> firestoreRepository.updateMentor(user.uid, mapOf(
@@ -394,13 +535,15 @@ fun ProfileScreen(
                                             "title" to mentorTitle,
                                             "organization" to mentorOrg,
                                             "expertiseAreas" to mentorExpertise.split(",").map{it.trim()},
+                                            "experienceYears" to mentorExperience,
+                                            "topicsToTeach" to mentorTopics.split(",").map{it.trim()},
                                             "bio" to userBio
                                         ))
                                     }
                                     Toast.makeText(context, "Profile Saved", Toast.LENGTH_SHORT).show()
                                     isEditing = false
                                 } catch(e: Exception) {
-                                    Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                                    Toast.makeText(context, "Failed to load profile. Please refresh.", Toast.LENGTH_LONG).show()
                                 } finally {
                                     isSaving = false
                                 }

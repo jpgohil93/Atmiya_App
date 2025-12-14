@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -97,7 +98,8 @@ fun SoftTextField(
     isError: Boolean = false,
     minLines: Int = 1,
     readOnly: Boolean = false,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    visualTransformation: VisualTransformation = VisualTransformation.None
 ) {
     OutlinedTextField(
         value = value,
@@ -121,7 +123,8 @@ fun SoftTextField(
         isError = isError,
         minLines = minLines,
         readOnly = readOnly,
-        singleLine = minLines == 1
+        singleLine = minLines == 1,
+        visualTransformation = visualTransformation
     )
 }
 

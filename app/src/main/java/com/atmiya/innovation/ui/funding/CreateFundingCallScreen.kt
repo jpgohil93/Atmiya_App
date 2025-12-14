@@ -391,7 +391,7 @@ fun CreateFundingCallScreen(
                                     Toast.makeText(context, if (callId == null) "Funding Call Created!" else "Funding Call Updated!", Toast.LENGTH_LONG).show()
                                     onCallCreated()
                                 } catch (e: Exception) {
-                                    Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                                    Toast.makeText(context, "Failed to save funding call. Please try again.", Toast.LENGTH_LONG).show()
                                 } finally {
                                     isUploading = false
                                 }

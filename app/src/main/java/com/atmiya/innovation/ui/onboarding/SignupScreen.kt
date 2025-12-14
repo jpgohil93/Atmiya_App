@@ -218,7 +218,7 @@ fun SignupScreen(
 
                 override fun onVerificationFailed(e: com.google.firebase.FirebaseException) {
                     isLoading = false
-                    Toast.makeText(context, "Verification Failed: ${e.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, "Verification failed. Please check your credentials.", Toast.LENGTH_LONG).show()
                 }
 
                 override fun onCodeSent(vId: String, token: PhoneAuthProvider.ForceResendingToken) {
@@ -362,7 +362,7 @@ fun SignupScreen(
                 onSignupComplete(selectedRole ?: "startup")
                 
             } catch (e: Exception) {
-                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "Signup failed. Please try again.", Toast.LENGTH_LONG).show()
             } finally {
                 isLoading = false
             }
@@ -737,7 +737,19 @@ fun SignupScreen(
                             Spacer(modifier = Modifier.height(24.dp))
                             Text("Preferences", style = MaterialTheme.typography.titleMedium)
                             Spacer(modifier = Modifier.height(8.dp))
-                            ValidatedTextField(fundingAsk, { fundingAsk = it }, "Funding Requirement (Range/Amount)")
+                            ValidatedTextField(
+                                value = fundingAsk,
+                                onValueChange = { 
+                                    val filtered = it.filter { char -> char.isDigit() }
+                                    val num = filtered.toLongOrNull()
+                                    if (filtered.isEmpty() || (num != null && num <= 1000000000L)) {
+                                        fundingAsk = filtered
+                                    }
+                                  }, 
+                                label = "Funding Requirement (Range/Amount)",
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                visualTransformation = IndianRupeeVisualTransformation()
+                            )
                             Spacer(modifier = Modifier.height(16.dp))
                             ValidatedTextField(supportNeeded, { supportNeeded = it }, "Type of Support Needed")
                         }

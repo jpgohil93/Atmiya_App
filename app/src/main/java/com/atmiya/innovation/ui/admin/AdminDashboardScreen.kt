@@ -20,10 +20,11 @@ fun AdminDashboardScreen(
     onNavigate: (String) -> Unit
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Users", "Funding", "Import", "Verify")
+    val tabs = listOf("Users", "Funding", "Import", "Verify", "Feedback")
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TabRow(
+
+        ScrollableTabRow(
             selectedTabIndex = selectedTab,
             containerColor = AtmiyaPrimary,
             contentColor = Color.White,
@@ -32,7 +33,8 @@ fun AdminDashboardScreen(
                     Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
                     color = AtmiyaSecondary
                 )
-            }
+            },
+            edgePadding = 0.dp
         ) {
             tabs.forEachIndexed { index, title ->
                 Tab(
@@ -92,6 +94,7 @@ fun AdminDashboardScreen(
                     }
                 }
             }
+            4 -> FeedbackListingScreen()
         }
     }
 }

@@ -166,7 +166,7 @@ fun NetworkHubScreen(
                             }
                         } catch (e: Exception) {
                             android.util.Log.e("NetworkHub", "CRASH in onChatClick", e)
-                            Toast.makeText(context, "CRASH: ${e.message}", Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, "An unexpected error occurred. Please try again.", Toast.LENGTH_LONG).show()
                         }
                     }
                 )

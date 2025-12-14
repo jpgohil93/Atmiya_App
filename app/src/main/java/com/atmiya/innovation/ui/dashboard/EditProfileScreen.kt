@@ -201,7 +201,7 @@ fun EditProfileScreen(
                                 Toast.makeText(context, "Profile Updated", Toast.LENGTH_SHORT).show()
                                 onBack()
                             } catch(e: Exception) {
-                                Toast.makeText(context, "Error saving: ${e.message}", Toast.LENGTH_LONG).show()
+                                Toast.makeText(context, "Failed to update profile. Please try again.", Toast.LENGTH_LONG).show()
                             } finally {
                                 isSaving = false
                             }

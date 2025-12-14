@@ -66,14 +66,15 @@ class NewsRepository {
 
         for (i in 0 until jsonArray.length()) {
             val item = jsonArray.getJSONObject(i)
-            // Skip removed articles
-            if (item.optString("title") == "[Removed]") continue
+            val url = item.optString("url")
+            // Skip removed articles and known bad domains
+            if (item.optString("title") == "[Removed]" || url.contains("europesays.com")) continue
 
             articles.add(
                 NewsArticle(
                     title = item.optString("title"),
                     description = item.optString("description"),
-                    url = item.optString("url"),
+                    url = url,
                     imageUrl = item.optString("urlToImage").takeIf { it.isNotEmpty() && it != "null" },
                     sourceName = item.optJSONObject("source")?.optString("name") ?: "News",
                     publishedAt = item.optString("publishedAt")
@@ -98,11 +99,15 @@ class NewsRepository {
 
         for (i in 0 until jsonArray.length()) {
             val item = jsonArray.getJSONObject(i)
+            val url = item.optString("url")
+            // Filter out known bad sources or broken redirects
+            if (url.contains("europesays.com") || url.contains("removed.com")) continue
+
             articles.add(
                 NewsArticle(
                     title = item.optString("title"),
                     description = item.optString("description"),
-                    url = item.optString("url"),
+                    url = url,
                     imageUrl = item.optString("image").takeIf { it.isNotEmpty() && it != "null" },
                     sourceName = item.optJSONObject("source")?.optString("name") ?: "News",
                     publishedAt = item.optString("publishedAt")

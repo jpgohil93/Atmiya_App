@@ -44,6 +44,9 @@ data class Startup(
     val demoVideoUrl: String? = null, // Added
     val revenue: String = "",
     val description: String = "",
+    val founderNames: String = "",
+    val organization: String = "", // For student startups
+    val supportNeeded: String = "",
     // Verification
     val isVerified: Boolean = false,
     val verifiedByAdminId: String? = null,
@@ -61,6 +64,7 @@ data class Investor(
     // val ticketSizeMax: String = "",
     val investmentType: String = "",
     val city: String = "",
+    val website: String = "", // LinkedIn or Website
     val bio: String = "",
     val profilePhotoUrl: String? = null,
     val isDeleted: Boolean = false // Added for filtering
@@ -300,4 +304,14 @@ data class Incubator(
     val contactEmail: String = "",
     val approvedFunding: String = "5.0 Cr", // Mock data field
     val remainingFunding: String = "2.0 Cr" // Mock data field
+)
+
+// --- Feedback ---
+data class Feedback(
+    val id: String = "",
+    val userId: String = "",
+    val userName: String = "",
+    val userPhone: String = "",
+    val message: String = "",
+    val createdAt: Timestamp? = null
 )

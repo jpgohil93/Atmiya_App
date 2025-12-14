@@ -558,6 +558,12 @@ fun DashboardScreen(
                             }
                         )
                     }
+                    
+                    composable("outreach_generator") {
+                        com.atmiya.innovation.ui.generator.OutreachGeneratorScreen(
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
 
                      composable(
                         "news_detail/{url}",
@@ -571,6 +577,12 @@ fun DashboardScreen(
                         val decodedUrl = java.net.URLDecoder.decode(url, java.nio.charset.StandardCharsets.UTF_8.toString())
                         NewsWebViewScreen(
                             url = decodedUrl,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+
+                    composable("runway_calculator") {
+                        com.atmiya.innovation.ui.dashboard.startup.RunwayCalculatorScreen(
                             onBack = { navController.popBackStack() }
                         )
                     }

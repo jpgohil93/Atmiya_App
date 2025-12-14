@@ -91,7 +91,7 @@ fun ApplyProposalScreen(
                     pitchDeckUrl = url
                     Toast.makeText(context, "Deck Uploaded", Toast.LENGTH_SHORT).show()
                 } catch (e: Exception) {
-                    Toast.makeText(context, "Upload Failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Document upload failed. Please try again.", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -195,7 +195,7 @@ fun ApplyProposalScreen(
                                     Toast.makeText(context, "Proposal Submitted Successfully!", Toast.LENGTH_LONG).show()
                                     onSuccess()
                                 } catch (e: Exception) {
-                                    Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                                    Toast.makeText(context, "Submission failed. Please check your connection.", Toast.LENGTH_LONG).show()
                                 } finally {
                                     isSubmitting = false
                                 }

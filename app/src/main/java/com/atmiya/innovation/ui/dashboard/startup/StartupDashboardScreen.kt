@@ -174,6 +174,8 @@ fun StartupDashboardScreen(
                             onClick = { onNavigate("startups_list") }
                         )
 
+
+
                         // Row 1
                         // Row 1
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -229,6 +231,25 @@ fun StartupDashboardScreen(
                                 modifier = Modifier.weight(1f),
                                 imageResId = R.drawable.ic_governance,
                                 onClick = { onNavigate("governance") }
+                            )
+                        }
+
+                        // Row 4
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                            DashboardCard(
+                                title = "Runway Calculator",
+                                subtitle = "Survival & Planning",
+                                modifier = Modifier.weight(1f),
+                                imageResId = R.drawable.ic_runway_calculator,
+                                onClick = { onNavigate("runway_calculator") }
+                            )
+                            
+                            DashboardCard(
+                                title = "Pitch Generator",
+                                subtitle = "AI-powered drafts",
+                                modifier = Modifier.weight(1f),
+                                imageResId = R.drawable.ic_outreach, // Ensure this drawable exists or use a fallback
+                                onClick = { onNavigate("outreach_generator") }
                             )
                         }
                     }

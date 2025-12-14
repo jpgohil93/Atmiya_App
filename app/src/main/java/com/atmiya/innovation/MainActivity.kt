@@ -98,7 +98,6 @@ class MainActivity : ComponentActivity() {
                                                 // Update local state
                                                 selectedRole = "admin"
                                                 currentScreen = "dashboard"
-                                                android.widget.Toast.makeText(this@MainActivity, "DEBUG: You are now an Admin", android.widget.Toast.LENGTH_LONG).show()
                                             } else {
                                                 android.util.Log.d("SessionCheck", "Navigating to Dashboard. Role: ${user.role}")
                                                 selectedRole = user.role
