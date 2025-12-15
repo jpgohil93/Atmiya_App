@@ -238,7 +238,7 @@ fun ProfileDetailScreen(
                             
                             SectionTitle("Contact Info")
                             ContactRow(Icons.Default.Email, u.email)
-                            ContactRow(Icons.Default.Phone, "+91 98765 43210") // Placeholder
+                            if (u.phoneNumber.isNotBlank()) ContactRow(Icons.Default.Phone, com.atmiya.innovation.utils.StringUtils.formatPhoneNumber(u.phoneNumber))
                             
                             Spacer(modifier = Modifier.height(24.dp))
                             

@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -63,6 +64,7 @@ fun FundingCallDetailScreen(
     var currentUser by remember { mutableStateOf<User?>(null) }
     var currentStartup by remember { mutableStateOf<Startup?>(null) } // Added
     var hasApplied by remember { mutableStateOf(false) }
+    var errorText by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(callId) {
         try {
@@ -75,9 +77,7 @@ fun FundingCallDetailScreen(
                 }
             }
 
-            val snapshot = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                .collection("fundingCalls").document(callId).get().await()
-            val fetchedCall = snapshot.toObject(FundingCall::class.java)?.copy(id = callId)
+            val fetchedCall = repository.getFundingCall(callId)
             call = fetchedCall
             
             if (fetchedCall != null && fetchedCall.investorId.isNotEmpty()) {
@@ -88,7 +88,9 @@ fun FundingCallDetailScreen(
                 }
             }
         } catch (e: Exception) {
-            Toast.makeText(context, "Error loading call", Toast.LENGTH_SHORT).show()
+            val stack = e.stackTraceToString()
+            errorText = "Error loading call ID: $callId\nUser: ${auth.currentUser?.uid}\n\n$stack"
+            android.util.Log.e("FundingDetail", "Error loading call", e)
         } finally {
             isLoading = false
         }
@@ -100,7 +102,7 @@ fun FundingCallDetailScreen(
                 title = { Text("Funding Opportunity", fontWeight = FontWeight.Bold, fontSize = 20.sp) }, // Generic title as per InvestorDetail
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {}, // Edit button removed as requested
@@ -114,6 +116,16 @@ fun FundingCallDetailScreen(
         if (isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = AtmiyaPrimary)
+            }
+        } else if (errorText != null) {
+             Box(modifier = Modifier.fillMaxSize().padding(innerPadding).padding(16.dp)) {
+                androidx.compose.foundation.text.selection.SelectionContainer {
+                    Text(
+                        text = "DEBUG ERROR:\n$errorText",
+                        color = Color.Red,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
         } else if (call == null) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -182,32 +194,34 @@ fun FundingCallDetailScreen(
                             .padding(horizontal = 24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(
-                            c.title, 
-                            style = MaterialTheme.typography.displaySmall.copy(fontSize = 28.sp), 
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1F2937),
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                            // Investor Avatar Small
                             if (investorProfile?.profilePhotoUrl?.isNotEmpty() == true) {
                                 AsyncImage(
                                     model = investorProfile!!.profilePhotoUrl,
                                     contentDescription = null,
-                                    modifier = Modifier.size(24.dp).clip(CircleShape),
+                                    modifier = Modifier.size(32.dp).clip(CircleShape),
                                     contentScale = ContentScale.Crop
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                             }
+                            // Investor Name (Big)
                             Text(
                                 c.investorName, 
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = AtmiyaPrimary
+                                style = MaterialTheme.typography.displaySmall.copy(fontSize = 26.sp), // Big
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1F2937)
                             )
                         }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        // Funding Call Title (Small)
+                        Text(
+                            c.title, 
+                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp), // Small
+                            fontWeight = FontWeight.Medium,
+                            color = AtmiyaPrimary, // Use Primary for the sub-title/role
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
                     }
                     
                     Spacer(modifier = Modifier.height(32.dp))
@@ -513,18 +527,29 @@ fun FundingCallDetailScreen(
                                     onClick = { 
                                         scope.launch {
                                             isSubmitting = true
-                                            val application = FundingApplication(
-                                                id = UUID.randomUUID().toString(),
-                                                callId = c.id,
-                                                startupId = currentUser!!.uid,
-                                                startupName = currentStartup?.startupName ?: currentUser?.name ?: "Unknown Startup",
-                                                status = "applied",
-                                                appliedAt = Timestamp.now()
-                                            )
-                                            repository.applyToFundingCall(application)
-                                            hasApplied = true
-                                            isSubmitting = false
-                                            Toast.makeText(context, "Application Sent Successfully!", Toast.LENGTH_LONG).show()
+                                            try {
+                                                val application = FundingApplication(
+                                                    id = UUID.randomUUID().toString(),
+                                                    callId = c.id,
+                                                    investorId = c.investorId, // Should be populated now
+                                                    startupId = currentUser!!.uid,
+                                                    startupName = currentStartup?.startupName ?: currentUser?.name ?: "Unknown Startup",
+                                                    status = "applied",
+                                                    appliedAt = Timestamp.now(),
+                                                    // Ensure other fields are populated if needed
+                                                    fundingAsk = c.minTicketAmount, // Placeholder, normally user input
+                                                    startupSector = currentStartup?.sector ?: "",
+                                                    startupStage = currentStartup?.stage ?: ""
+                                                )
+                                                repository.applyToFundingCall(application)
+                                                hasApplied = true
+                                                Toast.makeText(context, "Application Sent Successfully!", Toast.LENGTH_LONG).show()
+                                            } catch (e: Exception) {
+                                                android.util.Log.e("FundingDetail", "Error applying", e)
+                                                Toast.makeText(context, "Failed to apply: ${e.message}", Toast.LENGTH_LONG).show()
+                                            } finally {
+                                                isSubmitting = false
+                                            }
                                         }
                                     },
                                     enabled = !isSubmitting,

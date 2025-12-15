@@ -116,7 +116,7 @@ fun InvestorHome(
                         subtitle = "Review startups",
                         modifier = Modifier.weight(1f),
                         imageResId = com.atmiya.innovation.R.drawable.ic_applications,
-                        onClick = { onNavigate("funding") }
+                        onClick = { onNavigate("funding_applications") }
                     )
                 }
 

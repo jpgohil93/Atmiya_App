@@ -48,6 +48,7 @@ fun FundingCallsSection(
     isLoading: Boolean,
     onCallClick: (String) -> Unit,
     onViewAllClick: () -> Unit,
+    onConnectClick: (FundingCall) -> Unit = {}, // Default empty
     onCreateTestCall: () -> Unit // DEBUG
 ) {
     Column(
@@ -55,16 +56,8 @@ fun FundingCallsSection(
             .fillMaxWidth()
             .padding(vertical = 16.dp)
     ) {
-        // --- Recommended Section ---
-        if (recommendedCalls.isNotEmpty() || isLoading) {
-            SectionHeader(
-                title = "Recommended for You",
-                isAnimated = true,
-                onViewAll = null
-            )
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
+        // ... (Recommended Section logic)
+        
             if (isLoading) {
                 FundingCallShimmer()
             } else {
@@ -73,13 +66,14 @@ fun FundingCallsSection(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(recommendedCalls) { call ->
-                        // For recommended horizontal list, we might want a slightly more compact version
-                        // But for now, let's use the new card style but ensure width is constrained
+                        // ...
                         Box(modifier = Modifier.width(320.dp)) {
                              FundingCallCard(
                                 call = call,
                                 isRecommended = true,
-                                onClick = { onCallClick(call.id) }
+                                isApplied = false, // Handled in main screen, generic section defaults to false
+                                onClick = { onCallClick(call.id) },
+                                onConnectClick = { onConnectClick(call) }
                             )
                         }
                     }
@@ -114,13 +108,15 @@ fun FundingCallsSection(
                     FundingCallCard(
                         call = call,
                         isRecommended = false,
-                        onClick = { onCallClick(call.id) }
+                        isApplied = false,
+                        onClick = { onCallClick(call.id) },
+                        onConnectClick = { onConnectClick(call) }
                     )
                 }
             }
         }
     }
-}
+
 
 @Composable
 fun SectionHeader(
@@ -169,7 +165,9 @@ fun SectionHeader(
 fun FundingCallCard(
     call: FundingCall,
     isRecommended: Boolean,
-    onClick: () -> Unit
+    isApplied: Boolean = false,
+    onClick: () -> Unit,
+    onConnectClick: () -> Unit = {}
 ) {
     // Fetch Investor Details
     val repository = remember { FirestoreRepository() }
@@ -211,6 +209,13 @@ fun FundingCallCard(
                      contentColor = Color(0xFF1976D2)
                 )
             }
+            if (isApplied) {
+                PillBadge(
+                    text = "Applied",
+                    backgroundColor = Color(0xFFECFDF5), // Light Green
+                    contentColor = Color(0xFF10B981) // Green
+                )
+            }
         },
         infoContent = {
             // Sectors Row
@@ -243,25 +248,17 @@ fun FundingCallCard(
             // Posted Time
             val timeAgo = remember(call.createdAt) {
                 call.createdAt?.toDate()?.let { date ->
-                    val diff = System.currentTimeMillis() - date.time
-                    val days = TimeUnit.MILLISECONDS.toDays(diff)
-                    val hours = TimeUnit.MILLISECONDS.toHours(diff)
-                    when {
-                        hours < 1 -> "Just now"
-                        hours < 24 -> "${hours}h ago"
-                        days < 7 -> "${days}d ago"
-                        else -> java.text.SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(date)
-                    }
+                    java.text.SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(date)
                 } ?: ""
             }
             if (timeAgo.isNotEmpty()) {
-                InfoRow(label = "Posted", value = timeAgo)
+                InfoRow(label = "Posted On", value = timeAgo)
             }
         },
         primaryButtonText = if (isOwner) "Review Opportunity" else "View Opportunity",
         onPrimaryClick = onClick,
-        secondaryButtonText = if (isOwner) null else "Connect Now", // Or "Apply"
-        onSecondaryClick = if (isOwner) { {} } else { onClick } // Navigate to detail for applying
+        secondaryButtonText = if (isOwner) null else "Connect Now", 
+        onSecondaryClick = if (isOwner) { {} } else { onConnectClick }
     )
 }
 

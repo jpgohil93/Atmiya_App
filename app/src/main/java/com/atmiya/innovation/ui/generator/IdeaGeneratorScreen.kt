@@ -154,6 +154,7 @@ fun IdeaGeneratorScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
+                        .imePadding() // Handles keyboard overlap
                         .padding(20.dp)
                 ) {
                     // Error Message Banner (inside Column, not overlay)

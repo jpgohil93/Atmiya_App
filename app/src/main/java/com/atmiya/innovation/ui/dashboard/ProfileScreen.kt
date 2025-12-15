@@ -372,7 +372,7 @@ fun ProfileScreen(
                     
                     ProfileField(label = "Email Address", value = userEmail, isEditing = isEditing, icon = TablerIcons.Mail) { userEmail = it }
                     if (userPhone.isNotEmpty()) {
-                        ProfileField(label = "Mobile Number", value = userPhone, isEditing = false, icon = TablerIcons.Phone) { }
+                        ProfileField(label = "Mobile Number", value = com.atmiya.innovation.utils.StringUtils.formatPhoneNumber(userPhone), isEditing = false, icon = TablerIcons.Phone) { }
                     }
                     ProfileField(label = "City", value = userCity, isEditing = isEditing, icon = TablerIcons.MapPin) { userCity = it }
                     ProfileField(label = "Region", value = userRegion, isEditing = isEditing, icon = TablerIcons.World) { userRegion = it }

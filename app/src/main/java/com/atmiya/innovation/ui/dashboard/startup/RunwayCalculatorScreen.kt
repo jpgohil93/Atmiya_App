@@ -91,6 +91,7 @@ fun RunwayCalculatorScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .imePadding() // Handles keyboard overlap
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(bottom = 100.dp)

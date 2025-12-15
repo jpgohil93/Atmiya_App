@@ -296,7 +296,7 @@ fun InvestorDetailScreen(
                                 
                                 targetUser?.let { user ->
                                     if (user.email.isNotBlank()) DetailRow("Email", user.email, TablerIcons.Mail)
-                                    if (user.phoneNumber.isNotBlank()) DetailRow("Phone", user.phoneNumber, TablerIcons.Phone)
+                                    if (user.phoneNumber.isNotBlank()) DetailRow("Phone", com.atmiya.innovation.utils.StringUtils.formatPhoneNumber(user.phoneNumber), TablerIcons.Phone)
                                 }
                                 if (i.website.isNotBlank()) DetailRow("Website", i.website, TablerIcons.World)
                                 // LinkedIn not in Investor model, checking User model isn't standard for linkedin but maybe i.website covers it? 

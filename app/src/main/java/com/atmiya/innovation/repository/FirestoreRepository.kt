@@ -9,6 +9,9 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import com.google.firebase.firestore.QuerySnapshot
+import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.ListenerRegistration
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -563,10 +566,11 @@ class FirestoreRepository {
         var query = db.collection("fundingCalls")
             .orderBy("createdAt", Query.Direction.DESCENDING)
 
-        // Admin sees all, even inactive (unless filtered otherwise in UI, but here we fetch base)
-        // Others see only active
+        // Admin sees all, even inactive
+        // Others see only active - But relaxing query to avoid index issues.
+        // UI filters will handle hiding.
         if (!isAdmin) {
-            query = query.whereEqualTo("isActive", true)
+             // query = query.whereEqualTo("isActive", true) // Relaxed
         }
 
         if (filterType == "my_calls" && userId != null) {
@@ -681,6 +685,28 @@ class FirestoreRepository {
         // Use subcollection: fundingCalls/{callId}/applications/{appId}
         db.collection("fundingCalls").document(application.callId)
             .collection("applications").document(application.id).set(application).await()
+        
+        // Trigger Notification if investorId is present
+        if (application.investorId.isNotEmpty()) {
+            try {
+                val notification = Notification(
+                    id = java.util.UUID.randomUUID().toString(),
+                    userId = application.investorId,
+                    type = "funding_application",
+                    title = "New Application Received",
+                    message = "You received a new application from ${application.startupName}",
+                    referenceId = application.id,
+                    senderId = application.startupId,
+                    senderPhotoUrl = null, 
+                    isRead = false,
+                    createdAt = Timestamp.now()
+                )
+                db.collection("users").document(application.investorId)
+                    .collection("notifications").document(notification.id).set(notification).await()
+            } catch (e: Exception) {
+                log("applyToFundingCall: Failed to send notification: ${e.message}")
+            }
+        }
         logPerf("applyToFundingCall", System.currentTimeMillis() - start)
     }
 
@@ -706,6 +732,18 @@ class FirestoreRepository {
             .get().await().toObject<FundingApplication>()?.copy(id = applicationId)
     }
 
+    // Fetch single application (requres callId for subcollection path)
+    suspend fun getFundingApplication(callId: String, applicationId: String): FundingApplication? {
+        return try {
+            val snapshot = db.collection("fundingCalls").document(callId)
+                .collection("applications").document(applicationId).get().await()
+            snapshot.toObject<FundingApplication>()?.copy(id = snapshot.id)
+        } catch (e: Exception) {
+            log("getFundingApplication Error: ${e.message}")
+            null
+        }
+    }
+
     suspend fun createTestFundingCall() {
         val id = java.util.UUID.randomUUID().toString()
         val call = FundingCall(
@@ -724,21 +762,44 @@ class FirestoreRepository {
     }
 
     suspend fun hasApplied(callId: String, startupId: String): Boolean {
-        val snapshot = db.collection("fundingCalls").document(callId)
-            .collection("applications")
+        try {
+            val snapshot = db.collection("fundingCalls").document(callId)
+                .collection("applications")
+                .whereEqualTo("startupId", startupId)
+                .limit(1)
+                .get().await()
+            return !snapshot.isEmpty
+        } catch (e: Exception) {
+            // If index is building or fails, assume false to allow screen to load
+            android.util.Log.e("FirestoreRepo", "hasApplied check failed (Index building?)", e)
+            return false
+        }
+    }
+
+    fun getMyApplications(startupId: String): Flow<List<FundingApplication>> = callbackFlow {
+        // Query the Collection Group "applications" to find all applications by this startup across all FundingCalls
+        val listener = db.collectionGroup("applications")
             .whereEqualTo("startupId", startupId)
-            .limit(1)
-            .get().await()
-        return !snapshot.isEmpty
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    log("getMyApplications ERROR: ${error.message}")
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                val apps = snapshot?.documents?.mapNotNull { it.toObject<FundingApplication>()?.copy(id = it.id) } ?: emptyList()
+                trySend(apps)
+            }
+        awaitClose { listener.remove() }
     }
 
     suspend fun getFundingCalls(limit: Int = 20): List<FundingCall> {
         val start = System.currentTimeMillis()
         try {
-            // DEBUG: Relaxed query to find ANY funding calls
+            // Production logic - Relaxed to ensure data visibility
+            // Filtering happens on UI side in FundingCallsScreen
             val snapshot = db.collection("fundingCalls")
-                // .whereEqualTo("isActive", true) // Commented out for debugging
-                // .orderBy("createdAt", Query.Direction.DESCENDING) // Commented out to avoid index issues
+                 //.whereEqualTo("isActive", true) 
+                 .orderBy("createdAt", Query.Direction.DESCENDING) 
                 .limit(limit.toLong())
                 .get().await()
             logPerf("getFundingCalls", System.currentTimeMillis() - start)
@@ -877,7 +938,7 @@ class FirestoreRepository {
     // For MVP, we'll fetch applications per call (already implemented: getApplicationsForCall).
     
     // Fetch all applications made by a startup
-    fun getMyApplications(startupId: String): Flow<List<FundingApplication>> = callbackFlow {
+    fun getMyApplications(startupId: String, onError: (String) -> Unit = {}): Flow<List<FundingApplication>> = callbackFlow {
         // Collection Group Query on 'applications' subcollection
         val listener = db.collectionGroup("applications")
             .whereEqualTo("startupId", startupId)
@@ -885,6 +946,7 @@ class FirestoreRepository {
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     log("getMyApplications ERROR: ${error.message}")
+                    onError(error.message ?: "Unknown Firestore Error") // EXPOSE ERROR
                     trySend(emptyList())
                     return@addSnapshotListener
                 }
@@ -1277,4 +1339,110 @@ class FirestoreRepository {
         awaitClose { listener.remove() }
     }
 
+    // --- Missing Investor Methods ---
+
+    suspend fun hasAppliedToInvestor(investorId: String, startupId: String): Boolean {
+        if (investorId.isEmpty() || startupId.isEmpty()) return false
+        try {
+            // 1. Fast Path: Check using the new optimized index
+            val fastSnapshot = db.collectionGroup("applications")
+                .whereEqualTo("investorId", investorId)
+                .whereEqualTo("startupId", startupId)
+                .limit(1)
+                .get().await()
+            
+            if (!fastSnapshot.isEmpty) return true
+
+            // 2. Slow Path (Fallback for Legacy Data): 
+            // Fetch all applications by this startup and check the parent Funding Call's investor
+            val allAppsSnapshot = db.collectionGroup("applications")
+                .whereEqualTo("startupId", startupId)
+                .get().await()
+
+            for (doc in allAppsSnapshot.documents) {
+                // Manually map to avoid crash if fields missing
+                val callId = doc.getString("callId") ?: continue
+                val appInvestorId = doc.getString("investorId") ?: ""
+                
+                // If investorId is present but didn't match in Fast Path, it's not us (or index lag). 
+                // Skip if explicit mismatch.
+                if (appInvestorId.isNotEmpty() && appInvestorId != investorId) continue
+
+                // If investorId is missing (Legacy), fetch the call
+                if (appInvestorId.isEmpty()) {
+                    val call = getFundingCall(callId)
+                    if (call != null && call.investorId == investorId) {
+                        // Match found! Self-heal this document for future fast access
+                        try {
+                            doc.reference.update("investorId", investorId)
+                        } catch (e: Exception) {
+                            // Ignore update failure, just return true
+                        }
+                        return true
+                    }
+                }
+            }
+            
+            return false
+        } catch (e: Exception) {
+            android.util.Log.e("FirestoreRepository", "hasAppliedToInvestor error", e)
+            return false
+        }
+    }
+
+    fun getFundingCallsForInvestorFlow(investorId: String): Flow<List<FundingCall>> = callbackFlow {
+        val listener = db.collection("fundingCalls")
+            .whereEqualTo("investorId", investorId)
+            .addSnapshotListener { snapshot: QuerySnapshot?, error: FirebaseFirestoreException? ->
+                if (error != null) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                val calls = snapshot?.documents?.mapNotNull { it.toObject<FundingCall>()?.copy(id = it.id) } 
+                    ?.sortedByDescending { it.createdAt }
+                    ?: emptyList()
+                trySend(calls)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    fun getApplicationsForCallsFlow(callIds: List<String>, onError: (String) -> Unit = {}): Flow<List<FundingApplication>> = callbackFlow {
+        if (callIds.isEmpty()) {
+            trySend(emptyList())
+            close()
+            return@callbackFlow
+        }
+        val activeIds = callIds.take(10)
+        val listener = db.collectionGroup("applications")
+            .whereIn("callId", activeIds)
+            .addSnapshotListener { snapshot: QuerySnapshot?, error: FirebaseFirestoreException? ->
+                if (error != null) {
+                    onError(error.message ?: "Unknown Firestore Error") // EXPOSE ERROR
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                val apps = snapshot?.documents?.mapNotNull { it.toObject<FundingApplication>()?.copy(id = it.id) } ?: emptyList()
+                trySend(apps)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    suspend fun getFundingApplication(id: String): FundingApplication? {
+        val snapshot = db.collectionGroup("applications")
+            .whereEqualTo("id", id)
+            .limit(1)
+            .get().await()
+        return snapshot.documents.firstOrNull()?.toObject<FundingApplication>()?.copy(id = id)
+    }
+
+    suspend fun updateFundingApplicationStatus(id: String, status: String) {
+        val snapshot = db.collectionGroup("applications")
+            .whereEqualTo("id", id)
+            .limit(1)
+            .get().await()
+        val doc = snapshot.documents.firstOrNull()
+        if (doc != null) {
+            doc.reference.update("status", status).await()
+        }
+    }
 }

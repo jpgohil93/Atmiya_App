@@ -72,6 +72,7 @@ fun StartupDetailScreen(
 
     // Connection Status State
     var connectionStatus by remember { mutableStateOf("none") }
+    var hasAppliedToMe by remember { mutableStateOf(false) }
     
     // Auth
     val auth = FirebaseAuth.getInstance()
@@ -93,6 +94,11 @@ fun StartupDetailScreen(
                 }
                 // Check connection
                 connectionStatus = repository.checkConnectionStatus(currentUserId, startupId)
+                
+                // Check if applied to me (for Investors)
+                if (viewerRole == "investor") {
+                    hasAppliedToMe = repository.hasAppliedToInvestor(currentUserId, startupId)
+                }
             }
         } catch (e: Exception) {
             // Handle error
@@ -193,23 +199,24 @@ fun StartupDetailScreen(
                             .padding(horizontal = 24.dp), 
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        // Founder Name (Main)
                         Text(
-                            s.startupName, 
+                            if (u.name.isNotBlank()) u.name else "Founder", 
                             style = MaterialTheme.typography.displaySmall, 
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF1F2937),
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
-                        if (u.name.isNotBlank()) {
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                u.name, 
-                                style = MaterialTheme.typography.titleMedium, 
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFF4B5563), 
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                            )
-                        }
+                        
+                        // Startup Name (Sub)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            s.startupName, 
+                            style = MaterialTheme.typography.titleMedium, 
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF4B5563), 
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             s.sector, 
@@ -279,11 +286,10 @@ fun StartupDetailScreen(
                             HorizontalDivider(color = Color.LightGray.copy(alpha=0.3f))
                             Spacer(modifier = Modifier.height(24.dp))
 
-                            // Details
+                            // Details Header
                             Text("Details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = AtmiyaPrimary)
                             Spacer(modifier = Modifier.height(16.dp))
 
-                            DetailRow("Startup Name", s.startupName, TablerIcons.Home)
                             DetailRow("Founder Name(s)", u.name, TablerIcons.User)
                             DetailRow("City", u.city, TablerIcons.MapPin)
                             DetailRow("Sector", s.sector, TablerIcons.Hash)
@@ -300,8 +306,8 @@ fun StartupDetailScreen(
                             if(s.socialLinks.isNotBlank()) DetailRow("Social Media", s.socialLinks, TablerIcons.Link)
 
                             // --- Private Details (Pitch Deck, Contact) ---
-                            // Show if connected OR if viewing OWN profile
-                            if (connectionStatus == "connected" || connectionStatus == "connected_auto" || currentUserId == startupId) {
+                            // Show if connected OR if viewing OWN profile OR if startup has applied to me
+                            if (connectionStatus == "connected" || connectionStatus == "connected_auto" || currentUserId == startupId || hasAppliedToMe) {
                                 Spacer(modifier = Modifier.height(24.dp))
                                 HorizontalDivider(color = Color.LightGray.copy(alpha=0.3f))
                                 Spacer(modifier = Modifier.height(24.dp))
@@ -309,34 +315,33 @@ fun StartupDetailScreen(
                                 Text("Private Information", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = AtmiyaPrimary)
                                 Spacer(modifier = Modifier.height(16.dp))
                                 
-                                if (!s.pitchDeckUrl.isNullOrBlank()) {
-                                    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(TablerIcons.Link, contentDescription = null, tint = AtmiyaSecondary, modifier = Modifier.size(20.dp))
-                                        Spacer(modifier = Modifier.width(12.dp))
-                                        Column {
-                                            Text("Pitch Deck", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
-                                            Text(
-                                                "View Document", 
-                                                style = MaterialTheme.typography.bodyMedium, 
-                                                color = AtmiyaSecondary, 
-                                                fontWeight = FontWeight.SemiBold,
-                                                modifier = Modifier.clickable { 
-                                                    // Open Pitch Deck via generic webview or external browser
-                                                    // For now, assume webview handling via nav would be ideal but simple Intent works
-                                                    // We can't navigate easily from here without navController passed down, forcing intent?
-                                                    // The `onBack` is the only nav callback.
-                                                    // I'll show the URL string for now or use a placeholder click.
-                                                }
-                                            )
+                                    // Pitch Deck
+                                    val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+                                    if (!s.pitchDeckUrl.isNullOrBlank()) {
+                                        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(TablerIcons.Link, contentDescription = null, tint = AtmiyaSecondary, modifier = Modifier.size(20.dp))
+                                            Spacer(modifier = Modifier.width(12.dp))
+                                            Column {
+                                                Text("Pitch Deck", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                                                val fileName = com.atmiya.innovation.utils.StorageUtils.getFileNameFromUrl(s.pitchDeckUrl!!)
+                                                Text(
+                                                    fileName, 
+                                                    style = MaterialTheme.typography.bodyMedium, 
+                                                    color = AtmiyaSecondary, 
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    modifier = Modifier.clickable { 
+                                                        uriHandler.openUri(s.pitchDeckUrl)
+                                                    }
+                                                )
+                                            }
                                         }
+                                    } else {
+                                         DetailRow("Pitch Deck", "Not available", TablerIcons.Link)
                                     }
-                                } else {
-                                     DetailRow("Pitch Deck", "Not available", TablerIcons.Link)
-                                }
                                 
                                 // Contact Info
                                 if (u.email.isNotBlank()) DetailRow("Email", u.email, TablerIcons.Mail)
-                                if (u.phoneNumber.isNotBlank()) DetailRow("Phone", u.phoneNumber, TablerIcons.Phone)
+                                if (u.phoneNumber.isNotBlank()) DetailRow("Phone", com.atmiya.innovation.utils.StringUtils.formatPhoneNumber(u.phoneNumber), TablerIcons.Phone)
                             } else {
                                 Spacer(modifier = Modifier.height(24.dp))
                                 HorizontalDivider(color = Color.LightGray.copy(alpha=0.3f))
@@ -350,7 +355,7 @@ fun StartupDetailScreen(
                         }
                     }
                     
-                    Spacer(modifier = Modifier.height(100.dp))
+                    Spacer(modifier = Modifier.height(130.dp))
                 }
 
                 // --- Floating CTA Section ---

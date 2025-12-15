@@ -55,13 +55,22 @@ fun CreateFundingCallScreen(
     val context = LocalContext.current
 
     var title by remember { mutableStateOf("") }
+    var titleError by remember { mutableStateOf(false) }
+    
     var description by remember { mutableStateOf("") }
+    var descriptionError by remember { mutableStateOf(false) }
+    
     var minTicket by remember { mutableStateOf("") }
+    var minTicketError by remember { mutableStateOf(false) }
+    
     var maxTicket by remember { mutableStateOf("") }
+    var maxTicketError by remember { mutableStateOf(false) }
+    
     var minEquity by remember { mutableStateOf("") }
     var maxEquity by remember { mutableStateOf("") }
     var location by remember { mutableStateOf("") }
-    var deadline by remember { mutableStateOf("") } 
+    var deadline by remember { mutableStateOf("") }
+    var deadlineError by remember { mutableStateOf(false) } 
 
     // Multi-select states
     val allSectors = listOf("Tech", "Fintech", "Healthcare", "EdTech", "AgriTech", "CleanTech", "Consumer", "B2B")
@@ -147,9 +156,33 @@ fun CreateFundingCallScreen(
                 SoftCard(modifier = Modifier.fillMaxWidth()) {
                     SectionHeader("Basic Information")
                     Spacer(modifier = Modifier.height(16.dp))
-                    SoftTextField(value = title, onValueChange = { title = it }, label = "Title (e.g., Seed Round for Fintech)")
+                    SoftTextField(
+                        value = title, 
+                        onValueChange = { 
+                            title = it 
+                            titleError = false 
+                        }, 
+                        label = "Title (e.g., Seed Round for Fintech) *", 
+                        isError = titleError,
+                        placeholder = if(titleError) "Title is required" else ""
+                    )
+                    if (titleError) {
+                        Text("Title is required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 8.dp, top = 2.dp))
+                    }
                     Spacer(modifier = Modifier.height(12.dp))
-                    SoftTextField(value = description, onValueChange = { description = it }, label = "Description", minLines = 4)
+                    SoftTextField(
+                        value = description, 
+                        onValueChange = { 
+                            description = it 
+                            descriptionError = false 
+                        }, 
+                        label = "Description *", 
+                        minLines = 4,
+                        isError = descriptionError
+                    )
+                    if (descriptionError) {
+                         Text("Description is required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 8.dp, top = 2.dp))
+                    }
                 }
 
                 // Financials Card
@@ -157,20 +190,37 @@ fun CreateFundingCallScreen(
                     SectionHeader("Financials & Equity")
                     Spacer(modifier = Modifier.height(16.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        SoftTextField(
-                            value = minTicket, 
-                            onValueChange = { if (it.all { char -> char.isDigit() }) minTicket = it }, 
-                            label = "Min Ticket (₹)", 
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.weight(1f)
-                        )
-                        SoftTextField(
-                            value = maxTicket, 
-                            onValueChange = { if (it.all { char -> char.isDigit() }) maxTicket = it }, 
-                            label = "Max Ticket (₹)", 
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.weight(1f)
-                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            SoftTextField(
+                                value = minTicket, 
+                                onValueChange = { 
+                                    if (it.all { char -> char.isDigit() }) {
+                                        minTicket = it 
+                                        minTicketError = false
+                                    }
+                                }, 
+                                label = "Min Ticket (₹) *", 
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                isError = minTicketError
+                            )
+                            if (minTicketError) Text("Required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                        }
+                        
+                        Column(modifier = Modifier.weight(1f)) {
+                            SoftTextField(
+                                value = maxTicket, 
+                                onValueChange = { 
+                                    if (it.all { char -> char.isDigit() }) {
+                                        maxTicket = it
+                                        maxTicketError = false
+                                    }
+                                }, 
+                                label = "Max Ticket (₹) *", 
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                isError = maxTicketError
+                            )
+                            if (maxTicketError) Text("Required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                        }
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -247,17 +297,19 @@ fun CreateFundingCallScreen(
                         SoftTextField(
                              value = deadline, 
                              onValueChange = { }, // Read Only
-                             label = "Application Deadline (YYYY-MM-DD)",
-                             modifier = Modifier.clickable { showDatePicker = true }, // Making the whole field clickable might be tricky with SoftTextField internals, wrapping in Box with matchParentSize clickable is safer or just passing Enabled=false and handling click on Box.
-                             // Actually SoftTextField might consume touch.
-                             // Let's use OutlinedTextField directly for more control or an overlay.
-                             enabled = false // Disable direct editing
+                             label = "Application Deadline (YYYY-MM-DD) *",
+                             modifier = Modifier.clickable { showDatePicker = true }, 
+                             enabled = false, // Disable direct editing
+                             isError = deadlineError
                         )
                         Box(
                             modifier = Modifier
                                 .matchParentSize()
                                 .clickable { showDatePicker = true }
                         )
+                    }
+                    if (deadlineError) {
+                        Text("Deadline is required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 8.dp, top = 2.dp))
                     }
 
                     if (showDatePicker) {
@@ -323,7 +375,20 @@ fun CreateFundingCallScreen(
                 // Submit Button
                 SoftButton(
                     onClick = {
-                        if (validateInputs(title, description, minTicket, maxTicket, selectedSectors, selectedStages)) {
+                        // Validation Logic inside onClick
+                        var isValid = true
+                        
+                        if (title.isBlank()) { titleError = true; isValid = false }
+                        if (description.isBlank()) { descriptionError = true; isValid = false }
+                        if (minTicket.isBlank()) { minTicketError = true; isValid = false }
+                        if (maxTicket.isBlank()) { maxTicketError = true; isValid = false }
+                        if (deadline.isBlank()) { deadlineError = true; isValid = false }
+                        if (selectedSectors.isEmpty() || selectedStages.isEmpty()) { 
+                             isValid = false 
+                             Toast.makeText(context, "Please select at least one Sector and Stage", Toast.LENGTH_SHORT).show()
+                        }
+
+                        if (isValid) {
                             isUploading = true
                             scope.launch {
                                 try {
@@ -421,18 +486,4 @@ fun SectionHeader(title: String) {
     )
 }
 
-fun validateInputs(
-    title: String, 
-    description: String, 
-    minTicket: String, 
-    maxTicket: String, 
-    sectors: List<String>, 
-    stages: List<String>
-): Boolean {
-    return title.isNotBlank() && 
-           description.isNotBlank() && 
-           minTicket.isNotBlank() && 
-           maxTicket.isNotBlank() && 
-           sectors.isNotEmpty() && 
-           stages.isNotEmpty()
-}
+// validateInputs removed as logic moved inline for state management

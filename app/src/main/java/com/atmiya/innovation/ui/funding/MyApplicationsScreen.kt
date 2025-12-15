@@ -36,10 +36,14 @@ fun MyApplicationsScreen(
     
     var applications by remember { mutableStateOf<List<FundingApplication>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
+    var errorText by remember { mutableStateOf<String?>(null) } // Error State
 
     LaunchedEffect(currentUser) {
         if (currentUser != null) {
-            repository.getMyApplications(currentUser.uid).collect {
+            repository.getMyApplications(currentUser.uid, onError = { msg ->
+                errorText = msg
+                isLoading = false
+            }).collect {
                 applications = it
                 isLoading = false
             }
@@ -67,60 +71,76 @@ fun MyApplicationsScreen(
                 CircularProgressIndicator(color = AtmiyaPrimary)
             }
         } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                if (applications.isEmpty()) {
-                    item {
-                        Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
-                            Text("You haven't applied to any funding calls yet.", color = Color.Gray)
+            Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+                 // ERROR DISPLAY
+                if (errorText != null) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                        modifier = Modifier.fillMaxWidth().padding(16.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "Error Loading Applications",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = errorText ?: "",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Hint: If this is an Index Error, look at Logcat for the link.",
+                                style = MaterialTheme.typography.labelSmall
+                            )
                         }
                     }
-                } else {
-                    items(applications) { app ->
-                        MyApplicationCard(
-                            app = app,
-                            onChatClick = {
-                                scope.launch {
-                                    if (currentUser != null) {
-                                        // Create/Get chat channel with investor
-                                        // We need investorId. FundingApplication doesn't store it directly, 
-                                        // but we can get it from the call or store it in application.
-                                        // Wait, FundingApplication DOES NOT have investorId.
-                                        // We need to fetch the Call to get the InvestorID OR store investorId in Application.
-                                        // For now, let's assume we need to fetch the call or update the model.
-                                        // Updating model is better but requires migration.
-                                        // Let's fetch the call for now (slower but safer).
-                                        try {
-                                            val calls = repository.getFundingCalls("all") // Inefficient
-                                            // Better: repository.getFundingCall(app.callId) -> add this method
-                                            // Or just store investorId in Application (Best for future).
-                                            
-                                            // Let's try to find the chat channel directly if we know the investor ID.
-                                            // Since we don't have investorId easily, let's fetch the call.
-                                            val call: com.atmiya.innovation.data.FundingCall? = repository.getFundingCall(app.callId)
-                                            if (call != null) {
-                                                val iName = call.investorName
-                                                val iId = call.investorId
-                                                val channel = ChatChannel(
-                                                    participants = listOf(currentUser.uid, iId),
-                                                    participantNames = mapOf(
-                                                        currentUser.uid to (currentUser.displayName ?: "Startup"),
-                                                        iId to iName
+                }
+                
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    if (applications.isEmpty() && errorText == null) {
+                        item {
+                            Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+                                Text("You haven't applied to any funding calls yet.", color = Color.Gray)
+                            }
+                        }
+                    } else {
+                        items(applications) { app ->
+                            MyApplicationCard(
+                                app = app,
+                                onChatClick = {
+                                    scope.launch {
+                                        if (currentUser != null) {
+                                            try {
+                                                val call: com.atmiya.innovation.data.FundingCall? = repository.getFundingCall(app.callId)
+                                                if (call != null) {
+                                                    val iName = call.investorName
+                                                    val iId = call.investorId
+                                                    val channel = ChatChannel(
+                                                        participants = listOf(currentUser.uid, iId),
+                                                        participantNames = mapOf(
+                                                            currentUser.uid to (currentUser.displayName ?: "Startup"),
+                                                            iId to iName
+                                                        )
                                                     )
-                                                )
-                                                val channelId = repository.createChatChannel(channel)
-                                                onChatClick(channelId, iName)
+                                                    val channelId = repository.createChatChannel(channel)
+                                                    onChatClick(channelId, iName)
+                                                }
+                                            } catch (e: Exception) {
+                                                // Handle error
                                             }
-                                        } catch (e: Exception) {
-                                            // Handle error
                                         }
                                     }
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             }

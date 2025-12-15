@@ -55,6 +55,46 @@ fun FundingCallsScreen(
     // User State
     var userSector by remember { mutableStateOf<String?>(null) }
 
+    // State for Applied Calls (for Startup visual indication)
+    var appliedCallIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+
+    // --- Helper for Connection Requests ---
+    val context = androidx.compose.ui.platform.LocalContext.current
+    
+    val handleConnect: (FundingCall) -> Unit = { call ->
+        val userId = auth.currentUser?.uid
+        if (userId != null) {
+            scope.launch {
+                try {
+                    // Send Connection Request
+                    // Sender (Startup) -> Receiver (Investor)
+                    // We need Sender User Object
+                    val sender = repository.getUser(userId)
+                    if (sender != null) {
+                        repository.sendConnectionRequest(
+                            sender = sender,
+                            receiverId = call.investorId,
+                            receiverName = call.investorName,
+                            receiverRole = "investor",
+                            receiverPhotoUrl = null // Can't easily get it here without fetching, but Repo handles nullable
+                        )
+                        android.widget.Toast.makeText(context, "Connection request sent!", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: Exception) {
+                    val msg = e.message ?: "Failed to send request"
+                    if (msg.contains("Already connected") || msg.contains("pending")) {
+                         android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                    } else {
+                         android.widget.Toast.makeText(context, "Error: $msg", android.widget.Toast.LENGTH_SHORT).show()
+                         android.util.Log.e("FundingScreen", "Connect Error", e)
+                    }
+                }
+            }
+        } else {
+             android.widget.Toast.makeText(context, "Please login first", android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
+
     // Fetch Logic
     val fetchData: () -> Unit = {
         scope.launch {
@@ -64,9 +104,9 @@ fun FundingCallsScreen(
                 allCalls = calls
                 
                 // Fetch User Sector if not loaded
-                if (userSector == null) {
-                    val userId = auth.currentUser?.uid
-                    if (userId != null) {
+                val userId = auth.currentUser?.uid
+                if (userId != null) {
+                    if (userSector == null) {
                         val user = repository.getUser(userId)
                         userSector = user?.startupCategory
                     }
@@ -76,6 +116,16 @@ fun FundingCallsScreen(
             } finally {
                 isLoading = false
                 isRefreshing = false
+            }
+        }
+    }
+    
+    // Listen for Applications (Real-time)
+    val userId = auth.currentUser?.uid
+    LaunchedEffect(userId, role) {
+        if (userId != null && role == "startup") {
+            repository.getMyApplications(userId).collect { apps ->
+                 appliedCallIds = apps.map { it.callId }.toSet()
             }
         }
     }
@@ -347,7 +397,9 @@ fun FundingCallsScreen(
                                 FundingCallCard(
                                     call = call,
                                     isRecommended = false,
-                                    onClick = { onNavigate("funding_call/${call.id}") }
+                                    isApplied = appliedCallIds.contains(call.id),
+                                    onClick = { onNavigate("funding_call/${call.id}") },
+                                    onConnectClick = { handleConnect(call) }
                                 )
                                 // Optional Overlay for Expired
                                 if (isPastTab) {

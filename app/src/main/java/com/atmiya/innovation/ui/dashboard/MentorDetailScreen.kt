@@ -265,7 +265,7 @@ fun MentorDetailScreen(
                                 
                                 targetUser?.let { user ->
                                     if (user.email.isNotBlank()) DetailRow("Email", user.email, TablerIcons.Mail)
-                                    if (user.phoneNumber.isNotBlank()) DetailRow("Phone", user.phoneNumber, TablerIcons.Phone)
+                                    if (user.phoneNumber.isNotBlank()) DetailRow("Phone", com.atmiya.innovation.utils.StringUtils.formatPhoneNumber(user.phoneNumber), TablerIcons.Phone)
                                 }
                                 // Mentors might not have website in model directly in Models.kt?
                                 // Checking Models.kt, Mentor does NOT have website. It has city, bio, organization.

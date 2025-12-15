@@ -48,6 +48,12 @@ service cloud.firestore {
       match /saved_ideas/{ideaId} {
         allow read, write: if isAuthenticated() && request.auth.uid == userId;
       }
+      
+      match /notifications/{notificationId} {
+        allow read: if isAuthenticated() && request.auth.uid == userId;
+        allow create: if isAuthenticated(); // Allow others to send notifications
+        allow update, delete: if isAuthenticated() && request.auth.uid == userId; // User can mark read/delete
+      }
     }
     
     // --- Role Specific Collections ---

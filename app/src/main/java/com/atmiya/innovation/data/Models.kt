@@ -163,6 +163,7 @@ data class FundingCall(
 data class FundingApplication(
     val id: String = "",
     val callId: String = "",
+    val investorId: String = "", // Added for easier permissions/notifications
     val startupId: String = "", // User UID of startup
     val startupName: String = "",
     val startupEmail: String = "",
@@ -319,5 +320,19 @@ data class Feedback(
     val userName: String = "",
     val userPhone: String = "",
     val message: String = "",
+    val createdAt: Timestamp? = null
+)
+
+// --- Notifications ---
+data class Notification(
+    val id: String = "",
+    val userId: String = "", // Recipient
+    val type: String = "", // "connection_request", "funding_application", "wall_post"
+    val title: String = "",
+    val message: String = "",
+    val referenceId: String = "", // ID of related object (e.g., applicationId, connectionRequestId)
+    val senderId: String? = null,
+    val senderPhotoUrl: String? = null,
+    val isRead: Boolean = false,
     val createdAt: Timestamp? = null
 )

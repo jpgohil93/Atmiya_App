@@ -459,6 +459,7 @@ fun SignupScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .imePadding() // Handles keyboard overlap
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {

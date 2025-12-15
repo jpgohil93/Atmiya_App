@@ -5,6 +5,17 @@
             "queryScope": "COLLECTION_GROUP",
             "fields": [
                 {
+                    "fieldPath": "__name__",
+                    "order": "DESCENDING"
+                }
+            ],
+            "density": "SPARSE_ALL"
+        },
+        {
+            "collectionGroup": "applications",
+            "queryScope": "COLLECTION_GROUP",
+            "fields": [
+                {
                     "fieldPath": "startupId",
                     "order": "ASCENDING"
                 },
@@ -314,5 +325,48 @@
             "density": "SPARSE_ALL"
         }
     ],
-    "fieldOverrides": []
+    "fieldOverrides": [
+        {
+            "collectionGroup": "applications",
+            "fieldPath": "callId",
+            "indexes": [
+                {
+                    "order": "ASCENDING",
+                    "queryScope": "COLLECTION_GROUP"
+                },
+                {
+                    "order": "ASCENDING",
+                    "queryScope": "COLLECTION"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "applications",
+            "fieldPath": "investorId",
+            "indexes": [
+                {
+                    "order": "ASCENDING",
+                    "queryScope": "COLLECTION_GROUP"
+                },
+                {
+                    "order": "ASCENDING",
+                    "queryScope": "COLLECTION"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "applications",
+            "fieldPath": "startupId",
+            "indexes": [
+                {
+                    "order": "ASCENDING",
+                    "queryScope": "COLLECTION_GROUP"
+                },
+                {
+                    "order": "ASCENDING",
+                    "queryScope": "COLLECTION"
+                }
+            ]
+        }
+    ]
 }

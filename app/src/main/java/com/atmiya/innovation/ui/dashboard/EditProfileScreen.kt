@@ -2,6 +2,10 @@ package com.atmiya.innovation.ui.dashboard
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import compose.icons.TablerIcons
@@ -98,6 +102,7 @@ fun EditProfileScreen(
                         bio = m.bio
                     }
                 }
+
             }
         }
         isLoading = false
@@ -123,7 +128,9 @@ fun EditProfileScreen(
         } else {
             Column(
                 modifier = Modifier
+                    .fillMaxSize()
                     .padding(padding)
+                    // Removed .imePadding() from here to avoid conflict with Scaffold
                     .padding(16.dp)
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -211,6 +218,9 @@ fun EditProfileScreen(
                     isLoading = isSaving,
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                // Add Spacer for Keyboard (Last item in scrollable Column)
+                Spacer(modifier = Modifier.height(WindowInsets.ime.asPaddingValues().calculateBottomPadding()))
             }
         }
     }

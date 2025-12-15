@@ -284,10 +284,12 @@ fun DashboardScreen(
                             onBack = { navController.popBackStack() },
                             onNotificationClick = { type, id ->
                                 // Reuse deep link logic
-                                if (type == "wall_post") {
-                                    navController.navigate("wall_post/$id")
-                                } else if (type == "mentor_video") {
-                                    navController.navigate("mentor_video/$id")
+                                when (type) {
+                                    "wall_post" -> navController.navigate("wall_post/$id")
+                                    "mentor_video" -> navController.navigate("mentor_video/$id")
+                                    "funding_application" -> navController.navigate("startup_detail/$id")
+                                    "connection_request" -> navController.navigate("network_hub?tab=2")
+                                    else -> { /* No action */ }
                                 }
                             }
                         )
@@ -598,6 +600,30 @@ fun DashboardScreen(
                     composable("outreach_generator") {
                         com.atmiya.innovation.ui.generator.OutreachGeneratorScreen(
                             onBack = { navController.popBackStack() }
+                        )
+                    }
+
+                     composable("funding_applications") {
+                          com.atmiya.innovation.ui.dashboard.network.InvestorApplicationsScreen(
+                              onBack = { navController.popBackStack() },
+                              onNavigateToDetail = { startupId -> navController.navigate("startup_detail/$startupId") }
+                          )
+                     }
+
+                    composable(
+                        "application_detail/{callId}/{appId}",
+                        arguments = listOf(
+                            navArgument("callId") { type = NavType.StringType },
+                            navArgument("appId") { type = NavType.StringType }
+                        )
+                    ) { backStackEntry ->
+                        val callId = backStackEntry.arguments?.getString("callId") ?: return@composable
+                        val appId = backStackEntry.arguments?.getString("appId") ?: return@composable
+                        com.atmiya.innovation.ui.dashboard.network.ApplicationDetailScreen(
+                            callId = callId,
+                            applicationId = appId,
+                            onBack = { navController.popBackStack() },
+                            onViewStartupProfile = { startupId -> navController.navigate("startup_detail/$startupId") }
                         )
                     }
 

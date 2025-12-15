@@ -23,14 +23,7 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 
 // Data model (local for UI)
-data class NotificationItem(
-    val id: String,
-    val title: String,
-    val body: String,
-    val type: String,
-    val targetId: String,
-    val createdAt: Timestamp?
-)
+import com.atmiya.innovation.data.Notification
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,12 +31,12 @@ fun NotificationScreen(
     onBack: () -> Unit,
     onNotificationClick: (String, String) -> Unit // type, id
 ) {
-    val firestoreRepo = remember { FirestoreRepository() } // Or direct usage if repo doesn't support generic listeners
-    // For simplicity, we'll query directly here or add to Repo. 
-    // Ideally add to Repo, but for MVP speed, we'll use a direct query.
+    val firestoreRepo = remember { FirestoreRepository() }
     val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+    val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
+    val currentUserId = auth.currentUser?.uid ?: ""
     
-    var notifications by remember { mutableStateOf<List<NotificationItem>>(emptyList()) }
+    var notifications by remember { mutableStateOf<List<Notification>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
     // Local Preferences for "Clearing" notifications
@@ -51,9 +44,15 @@ fun NotificationScreen(
     val prefs = remember { context.getSharedPreferences("notification_prefs", android.content.Context.MODE_PRIVATE) }
     var clearedTimestamp by remember { mutableStateOf(prefs.getLong("cleared_timestamp", 0L)) }
 
-    LaunchedEffect(Unit) {
-        // Real-time listener
-        db.collection("global_notifications")
+    LaunchedEffect(currentUserId) {
+        if (currentUserId.isBlank()) {
+            isLoading = false
+            return@LaunchedEffect
+        }
+        
+        // Real-time listener on User's notifications
+        db.collection("users").document(currentUserId)
+            .collection("notifications")
             .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
             .limit(50)
             .addSnapshotListener { snapshot, e ->
@@ -63,16 +62,7 @@ fun NotificationScreen(
                 }
                 
                 if (snapshot != null) {
-                    notifications = snapshot.documents.map { doc ->
-                        NotificationItem(
-                            id = doc.id,
-                            title = doc.getString("title") ?: "",
-                            body = doc.getString("body") ?: "",
-                            type = doc.getString("type") ?: "",
-                            targetId = doc.getString("targetId") ?: "",
-                            createdAt = doc.getTimestamp("createdAt")
-                        )
-                    }
+                    notifications = snapshot.documents.mapNotNull { it.toObject(Notification::class.java) }
                     isLoading = false
                 }
             }
@@ -129,7 +119,12 @@ fun NotificationScreen(
             ) {
                 items(filteredNotifications) { item ->
                     NotificationCard(item) {
-                        onNotificationClick(item.type, item.targetId)
+                        // Determine target ID based on type
+                        val targetId = when (item.type) {
+                            "funding_application" -> item.senderId ?: item.referenceId // Navigate to startup profile (sender)
+                            else -> item.referenceId
+                        }
+                        onNotificationClick(item.type, targetId)
                     }
                 }
             }
@@ -138,7 +133,7 @@ fun NotificationScreen(
 }
 
 @Composable
-fun NotificationCard(item: NotificationItem, onClick: () -> Unit) {
+fun NotificationCard(item: Notification, onClick: () -> Unit) {
     Card(
         onClick = onClick,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.5f)),
@@ -174,7 +169,7 @@ fun NotificationCard(item: NotificationItem, onClick: () -> Unit) {
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = item.body,
+                    text = item.message,
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
