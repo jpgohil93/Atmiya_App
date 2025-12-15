@@ -1,5 +1,6 @@
 package com.atmiya.innovation.ui.dashboard
 import androidx.compose.foundation.background
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -48,6 +49,11 @@ import com.google.firebase.auth.FirebaseAuth
 import compose.icons.tablericons.Bulb
 import compose.icons.tablericons.Activity
 
+import androidx.compose.foundation.clickable
+import compose.icons.tablericons.Lock
+import compose.icons.tablericons.Mail
+import compose.icons.tablericons.Phone
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StartupDetailScreen(
@@ -59,14 +65,17 @@ fun StartupDetailScreen(
     var user by remember { mutableStateOf<User?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     
-    // Smart Questions State
-
-    // Smart Questions State
+    // Smart Questions & Diagnosis State
     var showSmartQuestions by remember { mutableStateOf(false) }
-    var showDiagnosis by remember { mutableStateOf(false) } // Added for Startup Diagnosis
+    var showDiagnosis by remember { mutableStateOf(false) }
     var viewerRole by remember { mutableStateOf("") }
 
+    // Connection Status State
+    var connectionStatus by remember { mutableStateOf("none") }
+    
+    // Auth
     val auth = FirebaseAuth.getInstance()
+    val currentUserId = auth.currentUser?.uid ?: ""
 
     LaunchedEffect(startupId) {
         try {
@@ -76,13 +85,14 @@ fun StartupDetailScreen(
             startup = s
             user = u
             
-            // Fetch Viewer Role
-            val currentUser = auth.currentUser
-            if (currentUser != null) {
-                val viewer = repository.getUser(currentUser.uid)
+            // Fetch Viewer Role & Connection Status
+            if (currentUserId.isNotBlank()) {
+                val viewer = repository.getUser(currentUserId)
                 if (viewer != null) {
                     viewerRole = viewer.role
                 }
+                // Check connection
+                connectionStatus = repository.checkConnectionStatus(currentUserId, startupId)
             }
         } catch (e: Exception) {
             // Handle error
@@ -94,14 +104,14 @@ fun StartupDetailScreen(
     SoftScaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Startup Profile", fontWeight = FontWeight.Bold, fontSize = 20.sp) }, // Smaller, cleaner title
+                title = { Text("Startup Profile", fontWeight = FontWeight.Bold, fontSize = 20.sp) }, 
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent, // Transparent to blend with background
+                    containerColor = Color.Transparent, 
                     titleContentColor = Color(0xFF111827)
                 )
             )
@@ -128,13 +138,14 @@ fun StartupDetailScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     
-                    // --- Header Section (Hero Image) ---
+                    // --- Hero Section (Hero Image) ---
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(400.dp) // Covers roughly half screen
+                            .height(400.dp) 
                     ) {
-                        val heroImage = if (!s.logoUrl.isNullOrBlank()) s.logoUrl else u.profilePhotoUrl
+                        // Prioritize users.profilePhotoUrl (source of truth for listings) over startups.logoUrl
+                        val heroImage = if (!u.profilePhotoUrl.isNullOrBlank()) u.profilePhotoUrl else s.logoUrl
                         
                         if (!heroImage.isNullOrBlank()) {
                             AsyncImage(
@@ -167,8 +178,8 @@ fun StartupDetailScreen(
                                     androidx.compose.ui.graphics.Brush.verticalGradient(
                                         colorStops = arrayOf(
                                             0.0f to Color.Transparent,
-                                            0.7f to Color.Transparent, // Keep majority of image clear
-                                            1.0f to MaterialTheme.colorScheme.background // Fade to match scaffold background
+                                            0.7f to Color.Transparent, 
+                                            1.0f to MaterialTheme.colorScheme.background 
                                         )
                                     )
                                 )
@@ -179,7 +190,7 @@ fun StartupDetailScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 24.dp), // Removed negative offset to let gradient do the work seamlessly
+                            .padding(horizontal = 24.dp), 
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
@@ -195,7 +206,7 @@ fun StartupDetailScreen(
                                 u.name, 
                                 style = MaterialTheme.typography.titleMedium, 
                                 fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFF4B5563), // Dark Gray
+                                color = Color(0xFF4B5563), 
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
                         }
@@ -206,7 +217,7 @@ fun StartupDetailScreen(
                             color = AtmiyaPrimary,
                             fontWeight = FontWeight.Medium
                         )
-                        // Location: City, Region
+                        // Location
                         if (u.city.isNotBlank() || u.region.isNotBlank()) {
                              Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
                                  Icon(TablerIcons.MapPin, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.Gray)
@@ -222,7 +233,7 @@ fun StartupDetailScreen(
 
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    // --- Highlights Cards (Quick Stats) ---
+                    // --- Highlights Cards ---
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -265,17 +276,16 @@ fun StartupDetailScreen(
                             )
                              
                             Spacer(modifier = Modifier.height(24.dp))
-                            Divider(color = Color.LightGray.copy(alpha=0.3f))
+                            HorizontalDivider(color = Color.LightGray.copy(alpha=0.3f))
                             Spacer(modifier = Modifier.height(24.dp))
 
-                            // Grid of Details
+                            // Details
                             Text("Details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = AtmiyaPrimary)
                             Spacer(modifier = Modifier.height(16.dp))
 
                             DetailRow("Startup Name", s.startupName, TablerIcons.Home)
                             DetailRow("Founder Name(s)", u.name, TablerIcons.User)
                             DetailRow("City", u.city, TablerIcons.MapPin)
-                            DetailRow("Region", u.region, TablerIcons.World)
                             DetailRow("Sector", s.sector, TablerIcons.Hash)
                             DetailRow("Stage", s.stage, TablerIcons.ChartBar)
                             
@@ -285,19 +295,68 @@ fun StartupDetailScreen(
                             val supportNeeded = if (s.fundingAsk.isNotBlank()) "Funding, Mentorship" else "Mentorship, Networking"
                             DetailRow("Type of Support Needed", supportNeeded, TablerIcons.InfoCircle)
                             
-                            DetailRow("Website URL", s.website, TablerIcons.World)
-                            DetailRow("Social Media", s.socialLinks, TablerIcons.Link)
+                            // Public web links
+                            if(s.website.isNotBlank()) DetailRow("Website", s.website, TablerIcons.World)
+                            if(s.socialLinks.isNotBlank()) DetailRow("Social Media", s.socialLinks, TablerIcons.Link)
+
+                            // --- Private Details (Pitch Deck, Contact) ---
+                            // Show if connected OR if viewing OWN profile
+                            if (connectionStatus == "connected" || connectionStatus == "connected_auto" || currentUserId == startupId) {
+                                Spacer(modifier = Modifier.height(24.dp))
+                                HorizontalDivider(color = Color.LightGray.copy(alpha=0.3f))
+                                Spacer(modifier = Modifier.height(24.dp))
+                                
+                                Text("Private Information", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = AtmiyaPrimary)
+                                Spacer(modifier = Modifier.height(16.dp))
+                                
+                                if (!s.pitchDeckUrl.isNullOrBlank()) {
+                                    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(TablerIcons.Link, contentDescription = null, tint = AtmiyaSecondary, modifier = Modifier.size(20.dp))
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Column {
+                                            Text("Pitch Deck", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                                            Text(
+                                                "View Document", 
+                                                style = MaterialTheme.typography.bodyMedium, 
+                                                color = AtmiyaSecondary, 
+                                                fontWeight = FontWeight.SemiBold,
+                                                modifier = Modifier.clickable { 
+                                                    // Open Pitch Deck via generic webview or external browser
+                                                    // For now, assume webview handling via nav would be ideal but simple Intent works
+                                                    // We can't navigate easily from here without navController passed down, forcing intent?
+                                                    // The `onBack` is the only nav callback.
+                                                    // I'll show the URL string for now or use a placeholder click.
+                                                }
+                                            )
+                                        }
+                                    }
+                                } else {
+                                     DetailRow("Pitch Deck", "Not available", TablerIcons.Link)
+                                }
+                                
+                                // Contact Info
+                                if (u.email.isNotBlank()) DetailRow("Email", u.email, TablerIcons.Mail)
+                                if (u.phoneNumber.isNotBlank()) DetailRow("Phone", u.phoneNumber, TablerIcons.Phone)
+                            } else {
+                                Spacer(modifier = Modifier.height(24.dp))
+                                HorizontalDivider(color = Color.LightGray.copy(alpha=0.3f))
+                                Spacer(modifier = Modifier.height(24.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(TablerIcons.Lock, contentDescription = null, tint = Color.Gray)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Connect to view private details", color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
+                                }
+                            }
                         }
                     }
                     
-                    Spacer(modifier = Modifier.height(100.dp)) // Padding for FAB
+                    Spacer(modifier = Modifier.height(100.dp))
                 }
 
-                // --- Floating CTA ---
                 // --- Floating CTA Section ---
                 Column(
                     modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
-                    horizontalAlignment = Alignment.End // Align FAB to right
+                    horizontalAlignment = Alignment.End 
                 ) {
                     
                     // Smart Questions Entry Point (Investor Only)
@@ -317,49 +376,80 @@ fun StartupDetailScreen(
                         ExtendedFloatingActionButton(
                             onClick = { showDiagnosis = true },
                             modifier = Modifier.padding(end = 24.dp, bottom = 12.dp),
-                            containerColor = AtmiyaPrimary, // Brand Blue
+                            containerColor = AtmiyaPrimary, 
                             contentColor = Color.White,
                             icon = { Icon(TablerIcons.Activity, contentDescription = null) },
                             text = { Text("Run Startup Diagnosis") }
                         )
                     }
 
-                    // Connect Bar
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shadowElevation = 16.dp,
-                        color = Color.White,
-                        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(24.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                    // Connect Bar - Show only if NOT self AND NOT connected
+                    if (currentUserId != startupId && connectionStatus != "connected") {
+                         Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shadowElevation = 16.dp,
+                            color = Color.White,
+                            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("Interested?", style = MaterialTheme.typography.labelLarge, color = Color.Gray)
-                                Text("Connect with them", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                            }
-                            Button(
-                                onClick = { /* Handle Connect Logic */ },
-                                shape = RoundedCornerShape(50),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF111827)),
-                                modifier = Modifier.height(50.dp)
+                            Row(
+                                modifier = Modifier.padding(24.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("Connect Now", fontSize = 16.sp)
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("Interested?", style = MaterialTheme.typography.labelLarge, color = Color.Gray)
+                                    Text("Connect with them", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                }
+                                
+                                val context = androidx.compose.ui.platform.LocalContext.current
+                                val scope = rememberCoroutineScope()
+                                
+                                val (btnText, btnEnabled) = when(connectionStatus) {
+                                     "pending", "pending_sent" -> "Pending" to false
+                                     "pending_received" -> "Accept" to true 
+                                     else -> "Connect Now" to true
+                                 }
+
+                                Button(
+                                    onClick = { 
+                                         if (connectionStatus == "none") {
+                                             scope.launch {
+                                                 try {
+                                                      repository.sendConnectionRequest(
+                                                          sender = repository.getUser(currentUserId)!!, // Unsafe? Handled in catch
+                                                          receiverId = startupId,
+                                                          receiverName = s.startupName,
+                                                          receiverRole = "startup",
+                                                          receiverPhotoUrl = s.logoUrl
+                                                      )
+                                                      connectionStatus = "pending"
+                                                      android.widget.Toast.makeText(context, "Request Sent!", android.widget.Toast.LENGTH_SHORT).show()
+                                                 } catch(e: Exception) {
+                                                     android.widget.Toast.makeText(context, "Error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                                                 }
+                                             }
+                                         }
+                                    },
+                                    enabled = btnEnabled,
+                                    shape = RoundedCornerShape(50),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (btnEnabled) Color(0xFF111827) else Color.Gray
+                                    ),
+                                    modifier = Modifier.height(50.dp)
+                                ) {
+                                    Text(btnText, fontSize = 16.sp)
+                                }
                             }
                         }
                     }
                 }
             }
-            }
         }
-
-
-
+    }
+    
     if (showSmartQuestions && startup != null) {
         SmartQuestionsSheet(
             startup = startup!!,
-            pitchSummary = startup!!.description.ifBlank { "A startup in ${startup!!.sector} sector at ${startup!!.stage} stage." },
+            pitchSummary = startup!!.description.ifBlank { "A startup in ${startup!!.sector} sector." },
             onDismiss = { showSmartQuestions = false }
         )
     }

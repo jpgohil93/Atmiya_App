@@ -215,7 +215,10 @@ fun ProfileScreen(
                     Toast.makeText(context, "Uploading Logo...", Toast.LENGTH_SHORT).show()
                     val url = storageRepository.uploadStartupLogo(context, user.uid, uri)
                     startupLogoUrl = url
+                    profileImageUrl = url // Update local state for immediate UI feedback
                     firestoreRepository.updateStartup(user.uid, mapOf("logoUrl" to url))
+                    // Sync to users collection so listings show the updated image
+                    firestoreRepository.updateUser(user.uid, mapOf("profilePhotoUrl" to url))
                     Toast.makeText(context, "Logo Updated", Toast.LENGTH_SHORT).show()
                 } catch (e: Exception) {
                     Toast.makeText(context, "Logo Upload Failed", Toast.LENGTH_SHORT).show()

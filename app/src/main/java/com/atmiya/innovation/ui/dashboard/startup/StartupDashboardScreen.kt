@@ -21,6 +21,7 @@ import compose.icons.tablericons.Leaf
 import compose.icons.tablericons.ShieldCheck
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Gavel
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -195,7 +196,7 @@ fun StartupDashboardScreen(
                                 imageResId = R.drawable.ic_incubators,
                                 onClick = { onNavigate("incubators_list") }
                             )
-                            
+
                             com.atmiya.innovation.ui.dashboard.DashboardCard(
                                 title = "Governance",
                                 subtitle = "Government Policy",
@@ -204,7 +205,7 @@ fun StartupDashboardScreen(
                                 onClick = { onNavigate("governance") }
                             )
                         }
-
+                        
                         // Row 4
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                             com.atmiya.innovation.ui.dashboard.DashboardCard(
@@ -219,7 +220,7 @@ fun StartupDashboardScreen(
                                 title = "Pitch Generator",
                                 subtitle = "AI-powered drafts",
                                 modifier = Modifier.weight(1f),
-                                imageResId = R.drawable.ic_outreach,
+                                imageResId = R.drawable.ic_pitch_generator,
                                 onClick = { onNavigate("outreach_generator") }
                             )
                         }

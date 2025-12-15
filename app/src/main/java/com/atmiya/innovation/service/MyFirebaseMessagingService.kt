@@ -21,38 +21,55 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         val body = remoteMessage.notification?.body ?: ""
         val data = remoteMessage.data
         
-        val type = data["type"] // "funding_call", "wall_post", "mentor_video", "funding_call_update"
-        val id = when(type) {
-            "funding_call" -> data["fundingCallId"]
-            "funding_call_update" -> data["callId"] // Handle Cloud Function payload
-            "wall_post" -> data["postId"]
-            "mentor_video" -> data["videoId"]
-            else -> null
-        }
-        
         // Prevent Self-Notification
-        val authorId = data["authorId"]
+        val authorId = data["authorId"] ?: data["senderId"]
         val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
         if (authorId != null && currentUserId != null && authorId == currentUserId) {
             return // Stop here, do not show notification
         }
 
-        sendNotification(title, body, type, id)
+        val type = data["type"] // "funding_call", "wall_post", "mentor_video", "connection_request", "connection_accepted"
+        val senderRole = data["senderRole"] // "startup", "investor", "mentor"
+        
+        val (destType, destId) = when(type) {
+            "funding_call" -> "funding_call" to data["fundingCallId"]
+            "funding_call_update" -> "funding_call" to data["callId"]
+            "wall_post" -> "wall_post" to data["postId"]
+            "mentor_video" -> "mentor_video" to data["videoId"]
+            "connection_request" -> "connection_requests" to null
+            "connection_accepted" -> {
+                val roleDetail = when(senderRole) {
+                    "investor" -> "investor_detail"
+                    "mentor" -> "mentor_detail"
+                    "startup" -> "startup_detail"
+                    else -> "profile_screen"
+                }
+                roleDetail to authorId
+            }
+            else -> null to null
+        }
+        
+        sendNotification(title, body, destType, destId, type)
     }
 
     override fun onNewToken(token: String) {
         // Send token to your app server.
-    }
+        val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
+        val user = auth.currentUser
+        if (user != null) {
+            val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+            db.collection("users").document(user.uid).update("fcmToken", token)
+        }
+    }    // Implement token upload if user is logged in
+    
 
-    private fun sendNotification(title: String, messageBody: String, type: String?, id: String?) {
+    private fun sendNotification(title: String, messageBody: String, destType: String?, destId: String?, originalType: String?) {
         val intent = Intent(this, MainActivity::class.java)
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
         
-        if (type != null && id != null) {
-            // Map 'funding_call_update' to 'funding_call' effectively for Dashboard navigation
-            val destType = if (type == "funding_call_update") "funding_call" else type
+        if (destType != null) {
             intent.putExtra("navigation_destination", destType)
-            intent.putExtra("navigation_id", id)
+            if (destId != null) intent.putExtra("navigation_id", destId)
         }
         
         val pendingIntent = PendingIntent.getActivity(
@@ -60,10 +77,11 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        val channelId = when(type) {
+        val channelId = when(originalType) {
             "funding_call" -> "channel_funding_calls"
             "wall_post" -> "channel_wall_posts"
             "mentor_video" -> "channel_mentor_videos"
+            "connection_request", "connection_accepted" -> "channel_connections"
             else -> "fcm_default_channel"
         }
         
@@ -80,10 +98,11 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
         // Since android Oreo notification channel is needed.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channelName = when(type) {
+            val channelName = when(originalType) {
                 "funding_call" -> "Funding Calls"
                 "wall_post" -> "Wall Posts"
                 "mentor_video" -> "Mentor Videos"
+                "connection_request", "connection_accepted" -> "Connections"
                 else -> "General Notifications"
             }
             val channel = NotificationChannel(

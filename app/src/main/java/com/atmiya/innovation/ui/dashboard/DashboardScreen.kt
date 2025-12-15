@@ -126,6 +126,10 @@ fun DashboardScreen(
                 "funding_call" -> if (startId != null) "funding_call/$startId" else "main_tabs"
                 "wall_post" -> if (startId != null) "wall_post/$startId" else "main_tabs"
                 "mentor_video" -> if (startId != null) "mentor_video/$startId" else "mentor_videos"
+                "connection_requests" -> "network_hub?tab=2"
+                "investor_detail" -> if (startId != null) "investor_detail/$startId" else "investors_list"
+                "mentor_detail" -> if (startId != null) "mentor_detail/$startId" else "mentors_list"
+                "startup_detail" -> if (startId != null) "startup_detail/$startId" else "startups_list"
                 else -> null
             }
             
@@ -194,6 +198,7 @@ fun DashboardScreen(
                 "funding_calls_list" -> { scope.launch { drawerState.close() }; navController.navigate("funding_calls_list") }
                 "events_list" -> { scope.launch { drawerState.close() }; navController.navigate("events_list") }
                 "network" -> { scope.launch { drawerState.close() }; navController.navigate("network_hub") }
+                "connection_requests" -> { scope.launch { drawerState.close() }; navController.navigate("network_hub?tab=2") }
                 else -> { scope.launch { drawerState.close() }; navController.navigate(route) }
             }
         },
@@ -477,12 +482,24 @@ fun DashboardScreen(
                         )
                     }
 
-                    composable("network_hub") {
-                        NetworkScreen(
-                            role = role,
-                            onMentorClick = { mentorId -> navController.navigate("mentor_detail/$mentorId") },
-                            onInvestorClick = { investorId -> navController.navigate("investor_detail/$investorId") },
-                            onWatchVideosClick = { mentorId -> navController.navigate("mentor_videos_list/$mentorId") }
+                    composable(
+                        "network_hub?tab={tab}",
+                        arguments = listOf(navArgument("tab") { type = NavType.IntType; defaultValue = 0 })
+                    ) { backStackEntry ->
+                        val tab = backStackEntry.arguments?.getInt("tab") ?: 0
+                        val initialFilter = if (tab == 2) "Requests" else "All"
+                        
+                        com.atmiya.innovation.ui.dashboard.network.NetworkHubScreen(
+                            onBack = { navController.popBackStack() },
+                            onNavigateToProfile = { userId, role ->
+                                when (role.lowercase()) {
+                                    "startup" -> navController.navigate("startup_detail/$userId")
+                                    "investor" -> navController.navigate("investor_detail/$userId")
+                                    "mentor" -> navController.navigate("mentor_detail/$userId")
+                                    else -> {} 
+                                }
+                            },
+                            initialFilter = initialFilter
                         )
                     }
 
@@ -696,52 +713,7 @@ sealed class Screen(val route: String, val icon: ImageVector) {
     object Governance : Screen("Governance", Icons.Filled.Gavel) // Governance icon
 }
 
-@Composable
-fun NetworkScreen(
-    role: String,
-    onMentorClick: (String) -> Unit,
-    onInvestorClick: (String) -> Unit,
-    onWatchVideosClick: (String) -> Unit
-) {
-    Column {
-        var selectedTab by androidx.compose.runtime.saveable.rememberSaveable { mutableIntStateOf(0) }
-        val tabs = listOf("Investors", "Mentors")
 
-        TabRow(
-            selectedTabIndex = selectedTab,
-            containerColor = AtmiyaPrimary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
-            indicator = { tabPositions ->
-                TabRowDefaults.Indicator(
-                    Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                    color = AtmiyaSecondary
-                )
-            }
-        ) {
-            tabs.forEachIndexed { index, title ->
-                Tab(
-                    text = { Text(title) },
-                    selected = selectedTab == index,
-                    onClick = { selectedTab = index },
-                    selectedContentColor = AtmiyaSecondary,
-                    unselectedContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f)
-                )
-            }
-        }
-
-        when (selectedTab) {
-            0 -> com.atmiya.innovation.ui.dashboard.listing.InvestorListingScreen(
-                onBack = {}, // Back not needed inside tab context or handle differently if required
-                onInvestorClick = onInvestorClick
-            )
-            1 -> com.atmiya.innovation.ui.dashboard.listing.MentorListingScreen(
-                onBack = {},
-                onMentorClick = onMentorClick,
-                onWatchVideosClick = onWatchVideosClick
-            )
-        }
-    }
-}
 
 
 

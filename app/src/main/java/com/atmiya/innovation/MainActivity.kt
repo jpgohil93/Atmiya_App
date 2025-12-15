@@ -66,75 +66,104 @@ class MainActivity : ComponentActivity() {
                     
                     // Repository instance (Manual dependency injection for now)
                     val firestoreRepository = remember { FirestoreRepository() }
+                    
+                    // Force Update Logic
+                    var showForceUpdate by remember { mutableStateOf(false) }
+                    var appConfig by remember { mutableStateOf(com.atmiya.innovation.data.AppConfig()) }
 
-                    // Helper to check session and route
-                    fun checkSessionAndNavigate() {
-                        val uid = auth.currentUser?.uid
-                        if (uid != null) {
-                            lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                                try {
-                                    val start = System.currentTimeMillis()
-                                    val user = firestoreRepository.getUser(uid)
-                                    android.util.Log.d("Perf", "SessionCheck: getUser took ${System.currentTimeMillis() - start} ms")
-                                    
-                                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                        if (user != null && user.isBlocked) {
-                                            android.util.Log.w("SessionCheck", "User ${user.uid} is blocked. Signing out.")
-                                            auth.signOut()
-                                            android.widget.Toast.makeText(this@MainActivity, "Your account has been blocked by Admin.", android.widget.Toast.LENGTH_LONG).show()
-                                            currentScreen = "login"
-                                            return@withContext
-                                        }
+                    LaunchedEffect(Unit) {
+                        try {
+                            val config = firestoreRepository.getAppConfig()
+                            appConfig = config
+                            val currentVersion = com.atmiya.innovation.BuildConfig.VERSION_CODE
+                            
+                            
+                            android.util.Log.d("ForceUpdate", "Status: Checked. Current=$currentVersion, Min=${config.minVersionCode}")
 
-                                        // DEBUG ONLY: Auto-promote specific user to Admin for testing
-                                        val phoneNumber = auth.currentUser?.phoneNumber
-                                        if (com.atmiya.innovation.BuildConfig.DEBUG && user != null && phoneNumber?.endsWith("9999999999") == true) {
-                                            if (user.role != "admin") {
-                                                android.util.Log.d("DebugAdmin", "Promoting user ${user.uid} to admin for testing")
-                                                // Update Firestore (Launch in IO scope)
-                                                lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                                                    firestoreRepository.updateUser(user.uid, mapOf("role" to "admin"))
-                                                }
-                                                // Update local state
-                                                selectedRole = "admin"
-                                                currentScreen = "dashboard"
-                                            } else {
-                                                android.util.Log.d("SessionCheck", "Navigating to Dashboard. Role: ${user.role}")
-                                                selectedRole = user.role
-                                                currentScreen = "dashboard"
-                                            }
-                                        } else if (user != null && user.isOnboardingComplete && user.role.isNotEmpty()) {
-                                            android.util.Log.d("SessionCheck", "Navigating to Dashboard. Role: ${user.role}")
-                                            selectedRole = user.role
-                                            currentScreen = "dashboard"
-                                        } else {
-                                            android.util.Log.d("SessionCheck", "Navigating to Signup. User null? ${user == null}, Onboarding? ${user?.isOnboardingComplete}, Role? ${user?.role}")
-                                            currentScreen = "signup"
-                                        }
-                                        
-                                        // Ask for permission after successful login check
-                                        askNotificationPermission()
-                                    }
-                                } catch (e: Exception) {
-                                    android.util.Log.e("SessionCheck", "Error: ${e.message}", e)
-                                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                        currentScreen = "login"
-                                    }
-                                }
+                            if (currentVersion < config.minVersionCode) {
+                                showForceUpdate = true
                             }
-                        } else {
-                            currentScreen = "login"
+                        } catch (e: Exception) {
+                            android.util.Log.e("ForceUpdate", "Error", e)
                         }
                     }
 
-
-                    when (currentScreen) {
-                        "splash" -> {
-                            com.atmiya.innovation.ui.auth.SplashScreen(
-                                onSessionValid = { checkSessionAndNavigate() },
-                                onSessionInvalid = { currentScreen = "login" }
-                            )
+                    if (showForceUpdate) {
+                         com.atmiya.innovation.ui.components.ForceUpdateScreen(appConfig)
+                    } else {
+                        // Helper to check session and route
+                        fun checkSessionAndNavigate() {
+                            val uid = auth.currentUser?.uid
+                            if (uid != null) {
+                                lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                    try {
+                                        val start = System.currentTimeMillis()
+                                        val user = firestoreRepository.getUser(uid)
+                                        android.util.Log.d("Perf", "SessionCheck: getUser took ${System.currentTimeMillis() - start} ms")
+                                        
+                                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                            if (user != null && user.isBlocked) {
+                                                android.util.Log.w("SessionCheck", "User ${user.uid} is blocked. Signing out.")
+                                                auth.signOut()
+                                                android.widget.Toast.makeText(this@MainActivity, "Your account has been blocked by Admin.", android.widget.Toast.LENGTH_LONG).show()
+                                                currentScreen = "login"
+                                                return@withContext
+                                            }
+    
+                                            // DEBUG ONLY: Auto-promote specific user to Admin for testing
+                                            val phoneNumber = auth.currentUser?.phoneNumber
+                                            if (com.atmiya.innovation.BuildConfig.DEBUG && user != null && phoneNumber?.endsWith("9999999999") == true) {
+                                                if (user.role != "admin") {
+                                                    android.util.Log.d("DebugAdmin", "Promoting user ${user.uid} to admin for testing")
+                                                    // Update Firestore (Launch in IO scope)
+                                                    lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                                        firestoreRepository.updateUser(user.uid, mapOf("role" to "admin"))
+                                                    }
+                                                    // Update local state
+                                                    selectedRole = "admin"
+                                                    currentScreen = "dashboard"
+                                                } else {
+                                                    android.util.Log.d("SessionCheck", "Navigating to Dashboard. Role: ${user.role}")
+                                                    selectedRole = user.role
+                                                    currentScreen = "dashboard"
+                                                }
+                                            } else if (user != null && user.isOnboardingComplete && user.role.isNotEmpty()) {
+                                                android.util.Log.d("SessionCheck", "Navigating to Dashboard. Role: ${user.role}")
+                                                selectedRole = user.role
+                                                currentScreen = "dashboard"
+                                            } else {
+                                                android.util.Log.d("SessionCheck", "Navigating to Signup. User null? ${user == null}, Onboarding? ${user?.isOnboardingComplete}, Role? ${user?.role}")
+                                                currentScreen = "signup"
+                                            }
+                                            
+                                            // Ask for permission after successful login check
+                                            askNotificationPermission()
+                                            
+                                            // Update FCM Token for notifications
+                                            lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                                user?.let { firestoreRepository.updateFcmToken(it.uid) }
+                                            }
+                                        }
+                                    } catch (e: Exception) {
+                                        android.util.Log.e("SessionCheck", "Error: ${e.message}", e)
+                                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                            currentScreen = "login"
+                                        }
+                                    }
+                                }
+                            } else {
+                                currentScreen = "login"
+                            }
                         }
+    
+    
+                        when (currentScreen) {
+                            "splash" -> {
+                                com.atmiya.innovation.ui.auth.SplashScreen(
+                                    onSessionValid = { checkSessionAndNavigate() },
+                                    onSessionInvalid = { currentScreen = "login" }
+                                )
+                            }
                         "login" -> {
                             com.atmiya.innovation.ui.auth.LoginScreen(
                                 onLoginSuccess = { checkSessionAndNavigate() },
@@ -197,6 +226,7 @@ class MainActivity : ComponentActivity() {
                             intent.removeExtra("navigation_id")
                         }
                     }
+                }
                 }
             }
         }

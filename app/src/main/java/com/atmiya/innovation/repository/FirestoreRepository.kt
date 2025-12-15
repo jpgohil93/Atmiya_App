@@ -16,6 +16,32 @@ import javax.inject.Singleton
 class FirestoreRepository {
 
     private val db = FirebaseFirestore.getInstance()
+
+    // --- App Config (Force Update) ---
+    suspend fun getAppConfig(): AppConfig {
+        return try {
+            val snapshot = db.collection("app_config").document("android").get().await()
+            if (snapshot.exists()) {
+                // Manual parsing to avoid any serialization issues
+                val minVer = snapshot.getLong("min_version_code")?.toInt() ?: 0
+                val forceMsg = snapshot.getString("force_update_message") ?: "Update Required"
+                val forceTitle = snapshot.getString("force_update_title") ?: "Update App"
+                
+                android.util.Log.d("FirestoreRepo", "getAppConfig: Found doc. min_version=$minVer")
+                AppConfig(
+                    minVersionCode = minVer,
+                    forceUpdateMessage = forceMsg,
+                    forceUpdateTitle = forceTitle
+                )
+            } else {
+                android.util.Log.w("FirestoreRepo", "getAppConfig: Document app_config/android DOES NOT EXIST")
+                AppConfig() // Return default if doc doesn't exist
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("FirestoreRepo", "Error fetching AppConfig", e)
+            AppConfig() // Fail gracefully with default (no force update)
+        }
+    }
     
     // Debugging removed
     private fun log(msg: String) {
@@ -34,9 +60,19 @@ class FirestoreRepository {
         logPerf("createUser", System.currentTimeMillis() - start)
     }
 
+    suspend fun updateFcmToken(userId: String) {
+        try {
+            val token = com.google.firebase.messaging.FirebaseMessaging.getInstance().token.await()
+            db.collection("users").document(userId).update("fcmToken", token).await()
+        } catch (e: Exception) {
+            // Log error or ignore
+        }
+    }
+
     suspend fun getUser(uid: String): User? {
         val start = System.currentTimeMillis()
-        val user = db.collection("users").document(uid).get().await().toObject<User>()
+        val snapshot = db.collection("users").document(uid).get().await()
+        val user = snapshot.toObject<User>()?.copy(uid = snapshot.id)
         logPerf("getUser", System.currentTimeMillis() - start)
         return user
     }
@@ -236,7 +272,7 @@ class FirestoreRepository {
                 Mentor(
                     uid = user.uid,
                     name = user.name, // User collection is master for name
-                    profilePhotoUrl = user.profilePhotoUrl, // User collection is master for photo
+                    profilePhotoUrl = if (!user.profilePhotoUrl.isNullOrBlank()) user.profilePhotoUrl else detail?.profilePhotoUrl, // User collection is master for photo
                     city = user.city, // User collection is master for city
                     title = detail?.title ?: "Mentor",
                     organization = detail?.organization ?: "",
@@ -266,7 +302,7 @@ class FirestoreRepository {
                 Investor(
                     uid = user.uid,
                     name = user.name,
-                    profilePhotoUrl = user.profilePhotoUrl,
+                    profilePhotoUrl = if (!user.profilePhotoUrl.isNullOrBlank()) user.profilePhotoUrl else detail?.profilePhotoUrl,
                     city = user.city,
                     firmName = detail?.firmName ?: "",
                     sectorsOfInterest = detail?.sectorsOfInterest ?: emptyList(),
@@ -296,7 +332,7 @@ class FirestoreRepository {
                 Startup(
                     uid = user.uid,
                     startupName = detail?.startupName.takeIf { !it.isNullOrBlank() } ?: user.name,
-                    logoUrl = user.profilePhotoUrl,
+                    logoUrl = if (!user.profilePhotoUrl.isNullOrBlank()) user.profilePhotoUrl else detail?.logoUrl,
                     track = detail?.track ?: "",
                     sector = detail?.sector ?: "",
                     stage = detail?.stage ?: "",
@@ -1017,8 +1053,21 @@ class FirestoreRepository {
 
     // --- Connection System ---
 
-    suspend fun sendConnectionRequest(sender: User, receiverId: String) {
-        val requestId = "${sender.uid}_$receiverId" // Deterministic ID to prevent duplicates
+    // --- Connection System ---
+
+    suspend fun sendConnectionRequest(sender: User, receiverId: String, receiverName: String, receiverRole: String, receiverPhotoUrl: String?) {
+        val sortedIds = listOf(sender.uid, receiverId).sorted()
+        val requestId = "${sortedIds[0]}_${sortedIds[1]}" // Deterministic ID ensures only ONE request/connection pair exists
+        
+        // Double check if already connected or pending to prevent overwrites (UI should prevent this, but safety first)
+        val doc = db.collection("connectionRequests").document(requestId).get().await()
+        if (doc.exists()) {
+             val existingStatus = doc.getString("status")
+             if (existingStatus == "accepted") throw Exception("Already connected")
+             if (existingStatus == "pending") throw Exception("Request already pending")
+             // If declined, we might allow re-requesting after check, but here we just overwrite for now as per "allow re-request" logic
+        }
+
         val request = ConnectionRequest(
             id = requestId,
             senderId = sender.uid,
@@ -1026,8 +1075,12 @@ class FirestoreRepository {
             senderRole = sender.role,
             senderPhotoUrl = sender.profilePhotoUrl,
             receiverId = receiverId,
+            receiverName = receiverName,
+            receiverRole = receiverRole,
+            receiverPhotoUrl = receiverPhotoUrl,
             status = "pending",
-            createdAt = Timestamp.now()
+            createdAt = Timestamp.now(),
+            updatedAt = Timestamp.now()
         )
         db.collection("connectionRequests").document(requestId).set(request).await()
     }
@@ -1060,11 +1113,78 @@ class FirestoreRepository {
         awaitClose { listener.remove() }
     }
 
-    fun getConnectionRequests(userId: String): Flow<List<ConnectionRequest>> = callbackFlow {
+    suspend fun acceptConnectionRequest(requestId: String) {
+        db.collection("connectionRequests").document(requestId)
+            .update(mapOf(
+                "status" to "accepted",
+                "updatedAt" to Timestamp.now()
+            )).await()
+    }
+
+    suspend fun declineConnectionRequest(requestId: String) {
+        db.collection("connectionRequests").document(requestId)
+            .update(mapOf(
+                "status" to "declined",
+                "updatedAt" to Timestamp.now()
+            )).await()
+    }
+    
+    suspend fun cancelConnectionRequest(requestId: String) {
+         db.collection("connectionRequests").document(requestId)
+            .update(mapOf(
+                "status" to "cancelled",
+                "updatedAt" to Timestamp.now()
+            )).await()
+    }
+
+
+    fun getIncomingConnectionRequests(userId: String): Flow<List<ConnectionRequest>> = callbackFlow {
         val listener = db.collection("connectionRequests")
             .whereEqualTo("receiverId", userId)
             .whereEqualTo("status", "pending")
-            .orderBy("createdAt", Query.Direction.DESCENDING)
+            //.orderBy("createdAt", Query.Direction.DESCENDING) // Removed to avoid Index requirement issues
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                val requests = snapshot?.documents?.mapNotNull { it.toObject<ConnectionRequest>() }
+                    ?.sortedByDescending { it.createdAt }
+                    ?: emptyList()
+                trySend(requests)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    suspend fun getSentConnectionRequests(userId: String): List<ConnectionRequest> {
+        return db.collection("connectionRequests")
+            .whereEqualTo("senderId", userId)
+            .whereEqualTo("status", "pending")
+            .get().await().toObjects(ConnectionRequest::class.java)
+    }
+
+    // Get all accepted connections (where user is either sender or receiver)
+    suspend fun getAcceptedConnections(userId: String): List<ConnectionRequest> {
+        // Query 1: Where I am sender
+        val sent = db.collection("connectionRequests")
+            .whereEqualTo("senderId", userId)
+            .whereEqualTo("status", "accepted")
+            .get().await().toObjects(ConnectionRequest::class.java)
+
+        // Query 2: Where I am receiver
+        val received = db.collection("connectionRequests")
+            .whereEqualTo("receiverId", userId)
+            .whereEqualTo("status", "accepted")
+            .get().await().toObjects(ConnectionRequest::class.java)
+            
+        return sent + received
+    }
+
+    // Real-time Flow for Sent Requests
+    fun getSentConnectionRequestsFlow(userId: String): Flow<List<ConnectionRequest>> = callbackFlow {
+        val listener = db.collection("connectionRequests")
+            .whereEqualTo("senderId", userId)
+            .whereEqualTo("status", "pending")
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     trySend(emptyList())
@@ -1076,49 +1196,59 @@ class FirestoreRepository {
         awaitClose { listener.remove() }
     }
 
-    suspend fun getSentConnectionRequests(userId: String): List<ConnectionRequest> {
-        return db.collection("connectionRequests")
-             .whereEqualTo("senderId", userId)
-             .whereEqualTo("status", "pending")
-             .get().await()
-             .mapNotNull { it.toObject<ConnectionRequest>() }
-    }
+    // Real-time Flow for Accepted Connections
+    fun getAcceptedConnectionsFlow(userId: String): Flow<List<ConnectionRequest>> {
+        val sentFlow = callbackFlow {
+            val listener = db.collection("connectionRequests")
+                .whereEqualTo("senderId", userId)
+                .whereEqualTo("status", "accepted")
+                .addSnapshotListener { snapshot, error ->
+                     val list = snapshot?.documents?.mapNotNull { it.toObject<ConnectionRequest>() } ?: emptyList()
+                     trySend(list)
+                }
+            awaitClose { listener.remove() }
+        }
 
-    suspend fun updateConnectionStatus(requestId: String, status: String) {
-        db.collection("connectionRequests").document(requestId).update("status", status).await()
-    }
+        val receivedFlow = callbackFlow {
+            val listener = db.collection("connectionRequests")
+                .whereEqualTo("receiverId", userId)
+                .whereEqualTo("status", "accepted")
+                .addSnapshotListener { snapshot, error ->
+                     val list = snapshot?.documents?.mapNotNull { it.toObject<ConnectionRequest>() } ?: emptyList()
+                     trySend(list)
+                }
+            awaitClose { listener.remove() }
+        }
 
-    // Get all accepted connections (where user is either sender or receiver)
-    suspend fun getAcceptedConnections(userId: String): List<ConnectionRequest> {
-        val sent = db.collection("connectionRequests")
-            .whereEqualTo("senderId", userId)
-            .whereEqualTo("status", "accepted")
-            .get().await().toObjects(ConnectionRequest::class.java)
-
-        val received = db.collection("connectionRequests")
-            .whereEqualTo("receiverId", userId)
-            .whereEqualTo("status", "accepted")
-            .get().await().toObjects(ConnectionRequest::class.java)
-            
-        return sent + received
+        return kotlinx.coroutines.flow.combine(sentFlow, receivedFlow) { sent, received ->
+            sent + received
+        }
     }
     
     // Check status between two users (One-shot)
     suspend fun checkConnectionStatus(currentUserId: String, targetUserId: String): String {
-        // Check if I sent a request
-        val myRequestNode = "${currentUserId}_${targetUserId}"
-        val myRequest = db.collection("connectionRequests").document(myRequestNode).get().await()
-        if (myRequest.exists()) {
-             val status = myRequest.getString("status") ?: "pending"
-             return if (status == "accepted") "connected" else "pending_sent" // or rejected
-        }
+        // Since we use deterministic IDs (sorted UIDs), we only need to check ONE document!
+        val sortedIds = listOf(currentUserId, targetUserId).sorted()
+        val requestId = "${sortedIds[0]}_${sortedIds[1]}"
         
-        // Check if they sent a request
-        val theirRequestNode = "${targetUserId}_${currentUserId}"
-        val theirRequest = db.collection("connectionRequests").document(theirRequestNode).get().await()
-        if (theirRequest.exists()) {
-            val status = theirRequest.getString("status") ?: "pending"
-             return if (status == "accepted") "connected" else "pending_received"
+        val snapshot = db.collection("connectionRequests").document(requestId).get().await()
+        if (snapshot.exists()) {
+             val status = snapshot.getString("status") ?: "none"
+             val senderId = snapshot.getString("senderId")
+             
+             return when(status) {
+                 "accepted" -> "connected"
+                 "pending" -> {
+                     if (senderId == currentUserId) "pending_sent" else "pending_received"
+                 }
+                 "declined" -> {
+                     val updatedAt = snapshot.getTimestamp("updatedAt") ?: Timestamp.now()
+                     val diffMillis = System.currentTimeMillis() - (updatedAt.seconds * 1000)
+                     val days = diffMillis / (1000 * 60 * 60 * 24)
+                     if (days < 7) "declined" else "none"
+                 }
+                 else -> "none"
+             }
         }
         
         return "none"

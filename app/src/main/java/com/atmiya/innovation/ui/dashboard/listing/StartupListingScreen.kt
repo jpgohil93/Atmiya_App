@@ -54,6 +54,15 @@ fun StartupListingScreen(
     val startupsFlow = remember { repository.getStartupsFlow() }
     val allStartups by startupsFlow.collectAsState(initial = emptyList())
     
+    // User Role for Investor View
+    var currentUserRole by remember { mutableStateOf("") }
+    LaunchedEffect(currentUser) {
+        if (currentUser != null) {
+            val u = repository.getUser(currentUser.uid)
+            currentUserRole = u?.role ?: ""
+        }
+    }
+    
     // Filter startups based on search and selection
     val filteredStartups = remember(allStartups, searchQuery, selectedFilter) {
         allStartups.filter { startup ->
@@ -145,7 +154,8 @@ fun StartupListingScreen(
             items(filteredStartups) { startup ->
                 ModernStartupCard(
                     startup = startup,
-                    onClick = { onStartupClick(startup.uid) }
+                    onClick = { onStartupClick(startup.uid) },
+                    isInvestor = currentUserRole == "investor"
                 )
             }
         }
@@ -155,7 +165,8 @@ fun StartupListingScreen(
 @Composable
 fun ModernStartupCard(
     startup: Startup,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    isInvestor: Boolean = false
 ) {
     Card(
         modifier = Modifier
@@ -214,18 +225,31 @@ fun ModernStartupCard(
                 }
 
                 Column(modifier = Modifier.weight(1f)) {
+                    val titleText = if (isInvestor && founderName.isNotBlank()) founderName else startup.startupName
                     Text(
-                        text = startup.startupName,
+                        text = titleText,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
-                    if (founderName.isNotBlank()) {
-                         Text(
-                            text = founderName,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color(0xFF1F2937),
-                            fontWeight = FontWeight.Medium
-                        )
+                    
+                    if (isInvestor) {
+                        if (founderName.isNotBlank()) {
+                             Text(
+                                text = startup.startupName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color(0xFF1F2937),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    } else {
+                        if (founderName.isNotBlank()) {
+                             Text(
+                                text = founderName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color(0xFF1F2937),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                          if (startup.sector.isNotBlank()) {

@@ -10,16 +10,16 @@ plugins {
 
 android {
     namespace = "com.atmiya.innovation"
-    compileSdk = 34
-    buildToolsVersion = "34.0.0"
+    compileSdk = 35
+    buildToolsVersion = "35.0.0"
 
     defaultConfig {
         applicationId = "com.atmiya.innovation"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 35
         
         // Dynamic Versioning for CI
-        val buildNumber = System.getenv("APPCIRCLE_BUILD_NUMBER")?.toIntOrNull() ?: 10
+        val buildNumber = System.getenv("APPCIRCLE_BUILD_NUMBER")?.toIntOrNull() ?: 13
         versionCode = buildNumber
         versionName = "1.2.$buildNumber"
 

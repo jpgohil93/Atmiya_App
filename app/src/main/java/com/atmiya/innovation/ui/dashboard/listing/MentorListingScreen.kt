@@ -45,20 +45,39 @@ fun MentorListingScreen(
     onWatchVideosClick: (String) -> Unit
 ) {
     val repository = remember { FirestoreRepository() }
+    val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
-    // We can restart the flow by changing a key
+    // Auth & User
+    val auth = remember { com.google.firebase.auth.FirebaseAuth.getInstance() }
+    val currentUserId = auth.currentUser?.uid ?: ""
+    var currentUser by remember { mutableStateOf<com.atmiya.innovation.data.User?>(null) }
+    
+    // Connection State
+    var connectionStatusMap by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+
     var key by remember { mutableStateOf(0) }
-
-    // Using key to restart flow on refresh
     val mentorsFlow = remember(key) { repository.getMentorsFlow() }
     val mentors by mentorsFlow.collectAsState(initial = emptyList())
 
-    var isRefreshing by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-
-    LaunchedEffect(Unit) {
-        // Optional: Any initial setup
+    // Fetch user and connections
+    LaunchedEffect(currentUserId, key) {
+        if (currentUserId.isNotBlank()) {
+            currentUser = repository.getUser(currentUserId)
+            val sentRequests = repository.getSentConnectionRequests(currentUserId)
+            val connections = repository.getAcceptedConnections(currentUserId)
+            
+            val newMap = mutableMapOf<String, String>()
+            sentRequests.forEach { newMap[it.receiverId] = "pending" }
+            connections.forEach { 
+                val partnerId = if(it.senderId == currentUserId) it.receiverId else it.senderId
+                newMap[partnerId] = "connected"
+            }
+            connectionStatusMap = newMap
+        }
     }
+
+    var isRefreshing by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -76,15 +95,13 @@ fun MentorListingScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        // If we want a spinner, we'd need a more complex flow wrapper.
-        // For now, let's just show the list. Valid empty list is fine.
          SwipeRefresh(
             state = rememberSwipeRefreshState(isRefreshing),
             onRefresh = {
                 scope.launch {
                     isRefreshing = true
-                    key++ // Restart flow
-                    kotlinx.coroutines.delay(1000) // Fake delay to show spinner
+                    key++ 
+                    kotlinx.coroutines.delay(1000) 
                     isRefreshing = false
                 }
             },
@@ -95,15 +112,37 @@ fun MentorListingScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // DEBUG SECTION
-                // Debug info removed as per request
-                
                 items(mentors) { mentor ->
+                    val status = connectionStatusMap[mentor.uid] ?: "none"
+                    
                     MentorCard(
                         user = mentor, 
+                        status = status,
                         onClick = { onMentorClick(mentor.uid) },
                         onWatchVideo = { onWatchVideosClick(mentor.uid) },
-                        onConnect = { /* Connect Logic */ onMentorClick(mentor.uid) } // Opens profile for now as requested flow for "Connect" usually leads to details or specific connect action. User said "inside view profile page change request now to connect now". But on card? "Connect Now". I will default to opening profile for connect unless spec says otherwise.
+                        onConnect = { 
+                             if (status == "none" && currentUser != null) {
+                                scope.launch {
+                                    try {
+                                        repository.sendConnectionRequest(
+                                            sender = currentUser!!,
+                                            receiverId = mentor.uid,
+                                            receiverName = mentor.name,
+                                            receiverRole = "mentor",
+                                            receiverPhotoUrl = mentor.profilePhotoUrl
+                                        )
+                                        connectionStatusMap = connectionStatusMap.toMutableMap().apply {
+                                            put(mentor.uid, "pending")
+                                        }
+                                        android.widget.Toast.makeText(context, "Request sent!", android.widget.Toast.LENGTH_SHORT).show()
+                                    } catch (e: Exception) {
+                                         android.widget.Toast.makeText(context, e.message ?: "Error sending request", android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            } else if (status == "connected") {
+                                onMentorClick(mentor.uid) // Open profile if connected
+                            }
+                        }
                     )
                 }
             }
@@ -114,10 +153,17 @@ fun MentorListingScreen(
 @Composable
 fun MentorCard(
     user: Mentor, 
+    status: String,
     onClick: () -> Unit,
     onWatchVideo: () -> Unit,
     onConnect: () -> Unit
 ) {
+    val (btnText, isBtnEnabled) = when(status) {
+        "connected" -> "Connected" to false // Or true to view profile
+        "pending" -> "Pending" to false
+        else -> "Connect Now" to true
+    }
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -128,7 +174,7 @@ fun MentorCard(
         border = androidx.compose.foundation.BorderStroke(0.5.dp, Color(0xFFE0E0E0))
     ) {
          Column(modifier = Modifier.padding(16.dp)) {
-            // Header: Image + Info
+            // Header: Image + Info (Same as before)
             Row(
                 verticalAlignment = Alignment.Top,
                 modifier = Modifier.fillMaxWidth()
@@ -156,7 +202,7 @@ fun MentorCard(
                     contentDescription = null,
                     modifier = imageModifier,
                     contentScale = ContentScale.Crop,
-                    error = androidx.compose.ui.graphics.painter.ColorPainter(initialsBg) // Simple fallback
+                    error = androidx.compose.ui.graphics.painter.ColorPainter(initialsBg) 
                 )
 
                 Spacer(modifier = Modifier.width(16.dp))
@@ -215,7 +261,6 @@ fun MentorCard(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Buttons
-            // Row 1: Watch Mentor Video (Full Width)
             OutlinedButton(
                 onClick = onWatchVideo,
                 modifier = Modifier.fillMaxWidth().height(40.dp),
@@ -230,7 +275,6 @@ fun MentorCard(
             
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Row 2: View Profile & Connect Now
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -249,14 +293,15 @@ fun MentorCard(
 
                 OutlinedButton(
                     onClick = onConnect,
+                    enabled = isBtnEnabled,
                     modifier = Modifier.weight(1f).height(40.dp),
                     shape = RoundedCornerShape(8.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.Black),
+                    border = if (isBtnEnabled) androidx.compose.foundation.BorderStroke(1.dp, Color.Black) else androidx.compose.foundation.BorderStroke(1.dp, Color.Gray),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color.Black
+                        contentColor = if (isBtnEnabled) Color.Black else Color.Gray
                     )
                 ) {
-                    Text(text = "Connect Now", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(text = btnText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
             }
          }

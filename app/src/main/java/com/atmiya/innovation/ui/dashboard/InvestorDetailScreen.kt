@@ -1,5 +1,6 @@
 package com.atmiya.innovation.ui.dashboard
 
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -35,6 +36,10 @@ import compose.icons.tablericons.Coin
 import compose.icons.tablericons.CurrencyRupee
 import compose.icons.tablericons.InfoCircle
 import compose.icons.tablericons.Target
+import compose.icons.tablericons.Mail
+import compose.icons.tablericons.Phone
+import compose.icons.tablericons.World
+import compose.icons.tablericons.BrandLinkedin
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,14 +48,59 @@ fun InvestorDetailScreen(
     onBack: () -> Unit
 ) {
     val repository = remember { FirestoreRepository() }
+    val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    
+    // Auth & Status
+    val auth = remember { com.google.firebase.auth.FirebaseAuth.getInstance() }
+    val currentUserId = auth.currentUser?.uid ?: ""
+    var currentUser by remember { mutableStateOf<com.atmiya.innovation.data.User?>(null) }
+    var connectionStatus by remember { mutableStateOf("none") } // "none", "pending", "connected"
+
     var investor by remember { mutableStateOf<Investor?>(null) }
+    var targetUser by remember { mutableStateOf<com.atmiya.innovation.data.User?>(null) } // To get email/phone
     var isLoading by remember { mutableStateOf(true) }
 
-    LaunchedEffect(investorId) {
+    LaunchedEffect(investorId, currentUserId) {
         try {
-            investor = repository.getInvestor(investorId)
+            isLoading = true
+            var inv = repository.getInvestor(investorId)
+            targetUser = repository.getUser(investorId) // Fetch user for contact details
+            
+            // Fallback if Investor is null OR if it has no name (empty document)
+            val needsFallback = (inv == null || inv.name.isBlank())
+            
+            if (needsFallback && targetUser != null) {
+                val u = targetUser!!
+                // Use user data as base
+                inv = inv?.copy(
+                    name = u.name,
+                    profilePhotoUrl = u.profilePhotoUrl ?: inv.profilePhotoUrl,
+                    city = u.city
+                ) ?: Investor(
+                    uid = u.uid,
+                    name = u.name,
+                    profilePhotoUrl = u.profilePhotoUrl,
+                    city = u.city,
+                    firmName = "",
+                    sectorsOfInterest = emptyList(),
+                    preferredStages = emptyList(),
+                    ticketSizeMin = "",
+                    investmentType = "",
+                    bio = "",
+                    website = "",
+                    isDeleted = false
+                )
+            }
+            investor = inv
+            
+            if (currentUserId.isNotBlank()) {
+                currentUser = repository.getUser(currentUserId)
+                connectionStatus = repository.checkConnectionStatus(currentUserId, investorId)
+            }
+            android.util.Log.d("InvestorDetail", "Loaded investor: ${investor?.name}, ID: $investorId")
         } catch (e: Exception) {
-             // Log error
+             android.util.Log.e("InvestorDetail", "Error loading investor", e)
         } finally {
             isLoading = false
         }
@@ -78,12 +128,16 @@ fun InvestorDetailScreen(
             }
         } else if (investor == null) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Investor details not found.", style = MaterialTheme.typography.bodyLarge, color = Color.Gray)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Investor details not found.", style = MaterialTheme.typography.bodyLarge, color = Color.Gray)
+                    // Spacer(modifier = Modifier.height(8.dp))
+                    // Text("DEBUG: ID = $investorId", style = MaterialTheme.typography.bodySmall, color = Color.Red)
+                }
             }
         } else {
             val i = investor!!
             
-            Box(modifier = Modifier.fillMaxSize()) {
+            Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -97,9 +151,11 @@ fun InvestorDetailScreen(
                             .fillMaxWidth()
                             .height(400.dp)
                     ) {
-                        if (!i.profilePhotoUrl.isNullOrBlank()) {
+                        // Prioritize users.profilePhotoUrl (source of truth) over investors.profilePhotoUrl
+                        val heroPhotoUrl = targetUser?.profilePhotoUrl ?: i.profilePhotoUrl
+                        if (!heroPhotoUrl.isNullOrBlank()) {
                             AsyncImage(
-                                model = i.profilePhotoUrl,
+                                model = heroPhotoUrl,
                                 contentDescription = null,
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop
@@ -112,7 +168,7 @@ fun InvestorDetailScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    i.name.take(1).uppercase(),
+                                    if (i.name.isNotBlank()) i.name.take(1).uppercase() else "?",
                                     style = MaterialTheme.typography.displayLarge,
                                     color = AtmiyaPrimary,
                                     fontWeight = FontWeight.Bold
@@ -144,7 +200,7 @@ fun InvestorDetailScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            i.name, 
+                            i.name.ifBlank { "Unknown Investor" }, 
                             style = MaterialTheme.typography.displaySmall, 
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF1F2937),
@@ -229,7 +285,23 @@ fun InvestorDetailScreen(
                                 DetailRow("Stage", i.preferredStages.joinToString(", "), TablerIcons.InfoCircle)
                              }
 
-                            // Email/Phone intentionally excluded
+                            // Contact Info (Revealed if connected)
+                            if (connectionStatus == "connected" || connectionStatus == "connected_auto") { 
+                                Spacer(modifier = Modifier.height(24.dp))
+                                HorizontalDivider(color = Color.LightGray.copy(alpha=0.3f))
+                                Spacer(modifier = Modifier.height(24.dp))
+
+                                Text("Contact Information", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = AtmiyaPrimary)
+                                Spacer(modifier = Modifier.height(16.dp))
+                                
+                                targetUser?.let { user ->
+                                    if (user.email.isNotBlank()) DetailRow("Email", user.email, TablerIcons.Mail)
+                                    if (user.phoneNumber.isNotBlank()) DetailRow("Phone", user.phoneNumber, TablerIcons.Phone)
+                                }
+                                if (i.website.isNotBlank()) DetailRow("Website", i.website, TablerIcons.World)
+                                // LinkedIn not in Investor model, checking User model isn't standard for linkedin but maybe i.website covers it? 
+                                // Model says "website: String // LinkedIn or Website". So we use i.website.
+                            }
                         }
                     }
                     
@@ -237,29 +309,69 @@ fun InvestorDetailScreen(
                 }
                 
                 // --- Floating CTA ---
-                Surface(
-                    modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
-                    shadowElevation = 16.dp,
-                    color = Color.White,
-                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-                ) {
-                     Row(
-                         modifier = Modifier.padding(24.dp),
-                         verticalAlignment = Alignment.CenterVertically
-                     ) {
-                         Column(modifier = Modifier.weight(1f)) {
-                             Text("Interested in funding?", style = MaterialTheme.typography.labelLarge, color = Color.Gray)
-                             Text("Connect with Investor", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                         }
-                         Button(
-                             onClick = { /* Connect Logic */ },
-                             shape = RoundedCornerShape(50),
-                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF111827)),
-                             modifier = Modifier.height(50.dp)
+                // Hide if connected
+                if (connectionStatus != "connected") {
+                    Surface(
+                        modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
+                        shadowElevation = 16.dp,
+                        color = Color.White,
+                        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                    ) {
+                         Row(
+                             modifier = Modifier.padding(24.dp),
+                             verticalAlignment = Alignment.CenterVertically
                          ) {
-                             Text("Connect Now", fontSize = 16.sp)
+                             Column(modifier = Modifier.weight(1f)) {
+                                 Text("Interested in funding?", style = MaterialTheme.typography.labelLarge, color = Color.Gray)
+                                 Text("Connect with Investor", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                             }
+                             
+                             Spacer(modifier = Modifier.width(16.dp))
+
+                             val (btnText, btnEnabled) = when(connectionStatus) {
+                                 "pending", "pending_sent" -> "Pending" to false
+                                 "pending_received" -> "Accept" to true 
+                                 else -> "Connect Now" to true
+                             }
+
+                             Button(
+                                 onClick = { 
+                                     if (connectionStatus == "none" && currentUser != null) {
+                                         scope.launch {
+                                             try {
+                                                 repository.sendConnectionRequest(
+                                                     sender = currentUser!!,
+                                                     receiverId = investorId,
+                                                     receiverName = i.name,
+                                                     receiverRole = "investor",
+                                                     receiverPhotoUrl = i.profilePhotoUrl
+                                                 )
+                                                 // Refresh status after sending
+                                                 connectionStatus = repository.checkConnectionStatus(currentUserId, investorId)
+                                                 android.widget.Toast.makeText(context, "Request sent!", android.widget.Toast.LENGTH_SHORT).show()
+                                                 
+                                              } catch (e: Exception) {
+                                                  android.util.Log.e("Connection", "Error", e)
+                                                  android.widget.Toast.makeText(context, "Error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                                              }
+                                         }
+                                     }
+                                 },
+                                 enabled = btnEnabled && currentUser != null,
+                                 // Removed fillMaxWidth, let it wrap content or set fixed width if needed
+                                 // But since it's in a Row with weight(1f) text, it should be fine.
+                                 colors = ButtonDefaults.buttonColors(
+                                     containerColor = if (btnText == "Connect Now") AtmiyaSecondary else Color.Gray
+                                 ),
+                                 shape = RoundedCornerShape(12.dp)
+                             ) {
+                                 Text(btnText, fontWeight = FontWeight.Bold)
+                             }
                          }
-                     }
+                    }
+                } else {
+                    // Connected State - No Button, maybe just a small floating text or nothing?
+                    // User requested "no other button displayed". So we render nothing.
                 }
             }
         }

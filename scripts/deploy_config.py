@@ -54,17 +54,20 @@ def deploy_firestore_rules(project_id, token):
         
         # 2. Update Release
         release_url = f"https://firebaserules.googleapis.com/v1/projects/{project_id}/releases/cloud.firestore"
+        # 2. Update Release (DELETE then CREATE to avoid PATCH issues)
+        release_url = f"https://firebaserules.googleapis.com/v1/projects/{project_id}/releases/cloud.firestore"
         release_payload = {
             "name": f"projects/{project_id}/releases/cloud.firestore",
             "rulesetName": ruleset_name
         }
         
-        # Try updating first (PATCH), if 404 then CREATE (POST) logic varies, usually UPDATE works for standard release
-        response = requests.patch(release_url, headers=headers, json=release_payload)
-        if response.status_code != 200:
-             # Try Create?
-             create_release_url = f"https://firebaserules.googleapis.com/v1/projects/{project_id}/releases"
-             response = requests.post(create_release_url, headers=headers, json=release_payload)
+        print("Deleting old release...")
+        requests.delete(release_url, headers=headers)
+        
+        print("Creating new release...")
+        create_release_url = f"https://firebaserules.googleapis.com/v1/projects/{project_id}/releases"
+        response = requests.post(create_release_url, headers=headers, json=release_payload)
+    
         
         if response.status_code == 200:
             print("- Rules released successfully!")

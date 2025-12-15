@@ -186,3 +186,106 @@ exports.notifyOnFundingCallUpdate = functions.firestore
             return null;
         }
     });
+
+/**
+ * Triggered when a new Connection Request is created.
+ * Notifies the receiver.
+ */
+exports.notifyOnNewConnectionRequest = functions.firestore
+    .document('connectionRequests/{requestId}')
+    .onCreate(async (snap, context) => {
+        const newData = snap.data();
+        const receiverId = newData.receiverId;
+        const senderName = newData.senderName;
+        const senderRole = newData.senderRole;
+
+        // Get Receiver's FCM Token
+        const receiverDoc = await admin.firestore().collection('users').doc(receiverId).get();
+        const receiverData = receiverDoc.data();
+        const fcmToken = receiverData ? receiverData.fcmToken : null;
+
+        if (!fcmToken) {
+            console.log('No FCM token for receiver:', receiverId);
+            return null;
+        }
+
+        const title = "New Connection Request";
+        const body = `${senderName} wants to connect with you.`;
+
+        const payload = {
+            notification: {
+                title: title,
+                body: body,
+            },
+            data: {
+                type: 'connection_request',
+                senderRole: senderRole || 'unknown',
+                click_action: 'FLUTTER_NOTIFICATION_CLICK'
+            },
+            token: fcmToken
+        };
+
+        try {
+            const response = await admin.messaging().send(payload);
+            console.log('Sent connection request notification:', response);
+            return response;
+        } catch (error) {
+            console.log('Error sending notification:', error);
+            return null;
+        }
+    });
+
+/**
+ * Triggered when a Connection Request is accepted.
+ * Notifies the sender.
+ */
+exports.notifyOnConnectionAccepted = functions.firestore
+    .document('connectionRequests/{requestId}')
+    .onUpdate(async (change, context) => {
+        const newData = change.after.data();
+        const oldData = change.before.data();
+
+        // Only trigger if status changed to 'accepted'
+        if (newData.status === 'accepted' && oldData.status !== 'accepted') {
+            const senderId = newData.senderId;
+            const receiverId = newData.receiverId;
+            const receiverName = newData.receiverName;
+
+            // Get Sender's FCM Token
+            const senderDoc = await admin.firestore().collection('users').doc(senderId).get();
+            const senderData = senderDoc.data();
+            const fcmToken = senderData ? senderData.fcmToken : null;
+
+            if (!fcmToken) {
+                console.log('No FCM token for sender:', senderId);
+                return null;
+            }
+
+            const title = "Connection Accepted! 🎉";
+            const body = `${receiverName} accepted your connection request.`;
+
+            const payload = {
+                notification: {
+                    title: title,
+                    body: body,
+                },
+                data: {
+                    type: 'connection_accepted',
+                    senderRole: newData.receiverRole || 'unknown',
+                    authorId: receiverId, // ID to navigate to
+                    click_action: 'FLUTTER_NOTIFICATION_CLICK'
+                },
+                token: fcmToken
+            };
+
+            try {
+                const response = await admin.messaging().send(payload);
+                console.log('Sent connection accepted notification:', response);
+                return response;
+            } catch (error) {
+                console.log('Error sending notification:', error);
+                return null;
+            }
+        }
+        return null;
+    });

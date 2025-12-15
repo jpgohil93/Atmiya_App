@@ -33,7 +33,8 @@ fun NetworkCard(
     primaryButtonText: String,
     onPrimaryClick: () -> Unit,
     secondaryButtonText: String? = null,
-    onSecondaryClick: () -> Unit = {}
+    onSecondaryClick: () -> Unit = {},
+    isSecondaryButtonEnabled: Boolean = true
 ) {
     Surface(
         modifier = Modifier
@@ -174,11 +175,12 @@ fun NetworkCard(
                     if (secondaryButtonText != null) {
                         OutlinedButton(
                             onClick = onSecondaryClick,
+                            enabled = isSecondaryButtonEnabled,
                             modifier = Modifier.weight(1f).height(40.dp),
                             shape = RoundedCornerShape(8.dp),
-                            border = BorderStroke(1.dp, Color.Black),
+                            border = if (isSecondaryButtonEnabled) BorderStroke(1.dp, Color.Black) else BorderStroke(1.dp, Color.Gray),
                             colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = Color.Black
+                                contentColor = if (isSecondaryButtonEnabled) Color.Black else Color.Gray
                             )
                         ) {
                             Text(text = secondaryButtonText, fontSize = 12.sp, fontWeight = FontWeight.Bold)

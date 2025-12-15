@@ -50,7 +50,7 @@ fun ConnectionsScreen(
         if (currentUser != null) {
             // Real-time listener for Requests
             launch {
-                repository.getConnectionRequests(currentUser.uid).collect {
+                repository.getIncomingConnectionRequests(currentUser.uid).collect {
                     requests = it
                 }
             }
@@ -128,14 +128,14 @@ fun ConnectionsScreen(
                         requests = requests,
                         onAccept = { req ->
                             scope.launch {
-                                repository.updateConnectionStatus(req.id, "accepted")
+                                repository.acceptConnectionRequest(req.id)
                                 // Refresh network immediately
                                 network = repository.getAcceptedConnections(currentUser?.uid ?: "")
                             }
                         },
                         onIgnore = { req ->
                             scope.launch {
-                                repository.updateConnectionStatus(req.id, "ignored")
+                                repository.declineConnectionRequest(req.id)
                             }
                         }
                     )

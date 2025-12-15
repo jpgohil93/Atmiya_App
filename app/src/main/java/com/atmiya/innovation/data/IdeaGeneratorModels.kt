@@ -2,6 +2,7 @@ package com.atmiya.innovation.data
 
 import com.google.firebase.Timestamp
 
+@androidx.annotation.Keep
 data class GeneratorInputs(
     val selectedSectors: List<String> = emptyList(),
     val skills: String = "",
@@ -15,6 +16,7 @@ data class GeneratorInputs(
     val isTechHeavy: Boolean = false
 )
 
+@androidx.annotation.Keep
 data class StartupIdea(
     val id: String = java.util.UUID.randomUUID().toString(),
     val userId: String = "", 
@@ -31,6 +33,7 @@ data class StartupIdea(
     val generatedAt: Timestamp = Timestamp.now()
 )
 
+@androidx.annotation.Keep
 data class ExecutionPhase(
     val phaseName: String = "",
     val duration: String = "",

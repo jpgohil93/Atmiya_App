@@ -1,5 +1,6 @@
 package com.atmiya.innovation.ui.dashboard
 
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -33,6 +34,10 @@ import compose.icons.tablericons.Clock
 import compose.icons.tablericons.MapPin
 import compose.icons.tablericons.School
 import compose.icons.tablericons.User
+import compose.icons.tablericons.Mail
+import compose.icons.tablericons.Phone
+import compose.icons.tablericons.World
+import compose.icons.tablericons.BrandLinkedin
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,12 +46,29 @@ fun MentorDetailScreen(
     onBack: () -> Unit
 ) {
     val repository = remember { FirestoreRepository() }
+    val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    
+    // Auth & Status
+    val auth = remember { com.google.firebase.auth.FirebaseAuth.getInstance() }
+    val currentUserId = auth.currentUser?.uid ?: ""
+    var currentUser by remember { mutableStateOf<com.atmiya.innovation.data.User?>(null) }
+    var connectionStatus by remember { mutableStateOf("none") } 
+
     var mentor by remember { mutableStateOf<Mentor?>(null) }
+    var targetUser by remember { mutableStateOf<com.atmiya.innovation.data.User?>(null) }
     var isLoading by remember { mutableStateOf(true) }
 
-    LaunchedEffect(mentorId) {
+    LaunchedEffect(mentorId, currentUserId) {
         try {
+            isLoading = true
             mentor = repository.getMentor(mentorId)
+            targetUser = repository.getUser(mentorId)
+            
+            if (currentUserId.isNotBlank()) {
+                currentUser = repository.getUser(currentUserId)
+                connectionStatus = repository.checkConnectionStatus(currentUserId, mentorId)
+            }
         } catch (e: Exception) {
             // Log error
         } finally {
@@ -96,9 +118,11 @@ fun MentorDetailScreen(
                             .fillMaxWidth()
                             .height(400.dp)
                     ) {
-                        if (!m.profilePhotoUrl.isNullOrBlank()) {
+                        // Prioritize users.profilePhotoUrl (source of truth) over mentors.profilePhotoUrl
+                        val heroPhotoUrl = targetUser?.profilePhotoUrl ?: m.profilePhotoUrl
+                        if (!heroPhotoUrl.isNullOrBlank()) {
                             AsyncImage(
-                                model = m.profilePhotoUrl,
+                                model = heroPhotoUrl,
                                 contentDescription = null,
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop
@@ -230,7 +254,23 @@ fun MentorDetailScreen(
                                 DetailRow("Expertise", m.expertiseAreas.joinToString(", "), TablerIcons.Certificate)
                             }
                             
-                            // Email/Phone intentionally excluded as per requirements
+                            // Contact Info (Revealed if connected)
+                            if (connectionStatus == "connected" || connectionStatus == "connected_auto") { 
+                                Spacer(modifier = Modifier.height(24.dp))
+                                HorizontalDivider(color = Color.LightGray.copy(alpha=0.3f))
+                                Spacer(modifier = Modifier.height(24.dp))
+
+                                Text("Contact Information", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = AtmiyaPrimary)
+                                Spacer(modifier = Modifier.height(16.dp))
+                                
+                                targetUser?.let { user ->
+                                    if (user.email.isNotBlank()) DetailRow("Email", user.email, TablerIcons.Mail)
+                                    if (user.phoneNumber.isNotBlank()) DetailRow("Phone", user.phoneNumber, TablerIcons.Phone)
+                                }
+                                // Mentors might not have website in model directly in Models.kt?
+                                // Checking Models.kt, Mentor does NOT have website. It has city, bio, organization.
+                                // So relying on User email/phone is correct.
+                            }
                         }
                     }
                     
@@ -238,29 +278,61 @@ fun MentorDetailScreen(
                 }
 
                 // --- Floating CTA ---
-                Surface(
-                    modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
-                    shadowElevation = 16.dp,
-                    color = Color.White,
-                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-                ) {
-                     Row(
-                         modifier = Modifier.padding(24.dp),
-                         verticalAlignment = Alignment.CenterVertically
-                     ) {
-                         Column(modifier = Modifier.weight(1f)) {
-                             Text("Looking for guidance?", style = MaterialTheme.typography.labelLarge, color = Color.Gray)
-                             Text("Request Mentorship", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                         }
-                         Button(
-                             onClick = { /* Handle Request Logic */ },
-                             shape = RoundedCornerShape(50),
-                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF111827)),
-                             modifier = Modifier.height(50.dp)
+                if (connectionStatus != "connected" && connectionStatus != "connected_auto") {
+                    Surface(
+                        modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
+                        shadowElevation = 16.dp,
+                        color = Color.White,
+                        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                    ) {
+                         Row(
+                             modifier = Modifier.padding(24.dp),
+                             verticalAlignment = Alignment.CenterVertically
                          ) {
-                             Text("Connect Now", fontSize = 16.sp)
+                             Column(modifier = Modifier.weight(1f)) {
+                                 Text("Looking for guidance?", style = MaterialTheme.typography.labelLarge, color = Color.Gray)
+                                 Text("Request Mentorship", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                             }
+
+                             val (btnText, btnEnabled) = when(connectionStatus) {
+                                 "pending", "pending_sent" -> "Pending" to false
+                                 "pending_received" -> "Accept" to true 
+                                 else -> "Connect Now" to true
+                             }
+
+                             Button(
+                                 onClick = { 
+                                     if (connectionStatus == "none" && currentUser != null) {
+                                         scope.launch {
+                                             try {
+                                                 repository.sendConnectionRequest(
+                                                     sender = currentUser!!,
+                                                     receiverId = mentorId,
+                                                     receiverName = m.name,
+                                                     receiverRole = "mentor",
+                                                     receiverPhotoUrl = m.profilePhotoUrl
+                                                 )
+                                                 connectionStatus = "pending_sent"
+                                                 android.widget.Toast.makeText(context, "Request sent!", android.widget.Toast.LENGTH_SHORT).show()
+                                             } catch(e: Exception) {
+                                                 android.widget.Toast.makeText(context, "Error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                                             }
+                                         }
+                                     } else if (connectionStatus == "pending_received") {
+                                        android.widget.Toast.makeText(context, "Check Requests tab to accept.", android.widget.Toast.LENGTH_LONG).show()
+                                     }
+                                 },
+                                 enabled = btnEnabled,
+                                 shape = RoundedCornerShape(50),
+                                 colors = ButtonDefaults.buttonColors(
+                                 containerColor = if (btnEnabled) Color(0xFF111827) else Color.Gray
+                                 ),
+                                 modifier = Modifier.height(50.dp)
+                             ) {
+                                 Text(btnText, fontSize = 16.sp)
+                             }
                          }
-                     }
+                    }
                 }
             }
         }

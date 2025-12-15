@@ -124,7 +124,7 @@ fun InvestorHome(
                 Row(
                      horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Events (Moved here)
+                    // Events
                     com.atmiya.innovation.ui.dashboard.DashboardCard(
                         title = "Events",
                         subtitle = "Upcoming events",
@@ -133,7 +133,7 @@ fun InvestorHome(
                         onClick = { onNavigate("events_list") }
                     )
 
-                    // Smart Questions (Updated)
+                    // Smart Questions
                     com.atmiya.innovation.ui.dashboard.DashboardCard(
                         title = "Smart Questions",
                         subtitle = "AI Due Diligence", 

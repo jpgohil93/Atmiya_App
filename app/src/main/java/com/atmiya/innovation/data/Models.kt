@@ -24,7 +24,8 @@ data class User(
     @get:com.google.firebase.firestore.PropertyName("isDeleted")
     val isDeleted: Boolean = false,
     val createdAt: Timestamp? = null,
-    val updatedAt: Timestamp? = null
+    val updatedAt: Timestamp? = null,
+    val fcmToken: String? = null // For Push Notifications
 )
 
 data class Startup(
@@ -288,11 +289,16 @@ data class ConnectionRequest(
     val senderRole: String = "",
     val senderPhotoUrl: String? = null,
     val receiverId: String = "",
-    val status: String = "pending", // "pending", "accepted", "rejected", "ignored"
-    val createdAt: Timestamp? = null
+    val receiverName: String = "",
+    val receiverRole: String = "",
+    val receiverPhotoUrl: String? = null,
+    val status: String = "pending", // "pending", "accepted", "declined", "cancelled"
+    val createdAt: Timestamp? = null,
+    val updatedAt: Timestamp? = null
 )
 
 // --- Incubator ---
+@androidx.annotation.Keep
 data class Incubator(
     val id: String = "",
     val name: String = "",

@@ -42,13 +42,51 @@ fun InvestorListingScreen(
     onInvestorClick: (String) -> Unit
 ) {
     val repository = remember { FirestoreRepository() }
+    val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
     
+    // Auth & User
+    val auth = remember { com.google.firebase.auth.FirebaseAuth.getInstance() }
+    val currentUserId = auth.currentUser?.uid ?: ""
+    var currentUser by remember { mutableStateOf<com.atmiya.innovation.data.User?>(null) }
+
+    // Data State
     var key by remember { mutableStateOf(0) }
     val investorsFlow = remember(key) { repository.getInvestorsFlow() }
     val investors by investorsFlow.collectAsState(initial = emptyList())
     
+    // Connection State
+    // Map of TargetUserID -> Status ("connected", "pending_sent", "pending_received", "none")
+    var connectionStatusMap by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    
+    // Fetch user and connections
+    LaunchedEffect(currentUserId, key) {
+        if (currentUserId.isNotBlank()) {
+            try {
+                // 1. Get Current User (for sending requests)
+                currentUser = repository.getUser(currentUserId)
+                
+                // 2. Build Status Map
+                // This is efficient: Fetch all MY requests/connections and map them locally
+                // Instead of querying for each card.
+                val sentRequests = repository.getSentConnectionRequests(currentUserId)
+                val connections = repository.getAcceptedConnections(currentUserId)
+                
+                val newMap = mutableMapOf<String, String>()
+                sentRequests.forEach { newMap[it.receiverId] = "pending" }
+                connections.forEach { 
+                    val partnerId = if(it.senderId == currentUserId) it.receiverId else it.senderId
+                    newMap[partnerId] = "connected"
+                }
+                connectionStatusMap = newMap
+            } catch (e: Exception) {
+                // Prevent crash if Firestore fails (e.g. offline, permissions, indexes)
+                android.util.Log.e("InvestorListing", "Error loading connection status", e)
+            }
+        }
+    }
+    
     var isRefreshing by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
 
     Scaffold(
         topBar = {
@@ -83,11 +121,36 @@ fun InvestorListingScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // DEBUG SECTION
-                // Debug info removed as per request
-
-                items(investors) { investor ->
-                    InvestorCard(user = investor, onClick = { onInvestorClick(investor.uid) })
+                 items(investors) { investor ->
+                     val status = connectionStatusMap[investor.uid] ?: "none"
+                     
+                    InvestorCard(
+                        user = investor, 
+                        status = status,
+                        onClick = { onInvestorClick(investor.uid) },
+                        onConnectClick = {
+                            if (currentUser != null) {
+                                scope.launch {
+                                    try {
+                                        repository.sendConnectionRequest(
+                                            sender = currentUser!!,
+                                            receiverId = investor.uid,
+                                            receiverName = investor.name,
+                                            receiverRole = "investor",
+                                            receiverPhotoUrl = investor.profilePhotoUrl
+                                        )
+                                        // Update local map directly for instant feedback
+                                        connectionStatusMap = connectionStatusMap.toMutableMap().apply {
+                                            put(investor.uid, "pending")
+                                        }
+                                        android.widget.Toast.makeText(context, "Request sent!", android.widget.Toast.LENGTH_SHORT).show()
+                                    } catch (e: Exception) {
+                                         android.widget.Toast.makeText(context, e.message ?: "Error sending request", android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        }
+                    )
                 }
             }
         }
@@ -95,13 +158,24 @@ fun InvestorListingScreen(
 }
 
 @Composable
-fun InvestorCard(user: Investor, onClick: () -> Unit) {
+fun InvestorCard(
+    user: Investor, 
+    status: String, // "none", "pending", "connected"
+    onClick: () -> Unit,
+    onConnectClick: () -> Unit
+) {
+    // Determine button text and state
+    val (btnText, isBtnEnabled, isPrimary) = when(status) {
+        "connected" -> Triple("Connected", false, false) // Or true and open profile
+        "pending" -> Triple("Pending", false, false)
+        else -> Triple("Connect Now", true, false)
+    }
+
     NetworkCard(
         imageModel = user.profilePhotoUrl ?: "",
         name = user.name,
         roleOrTitle = user.firmName.ifBlank { "Independent Investor" },
         badges = {
-             // Show first sector as a subtle badge too if space permits, or just rely on details
              if (user.sectorsOfInterest.isNotEmpty()) {
                  PillBadge(
                     text = user.sectorsOfInterest.first(),
@@ -135,7 +209,8 @@ fun InvestorCard(user: Investor, onClick: () -> Unit) {
         },
         primaryButtonText = "View Profile",
         onPrimaryClick = onClick,
-        secondaryButtonText = "Connect Now",
-        onSecondaryClick = { /* Handle Connect */ onClick() }
+        secondaryButtonText = btnText,
+        onSecondaryClick = onConnectClick,
+        isSecondaryButtonEnabled = isBtnEnabled // Need to update NetworkCard signature if this param doesn't exist, checking...
     )
 }

@@ -87,6 +87,7 @@ fun DashboardCard(
     subtitle: String,
     modifier: Modifier = Modifier,
     imageResId: Int? = null,
+    imageVector: androidx.compose.ui.graphics.vector.ImageVector? = null,
     onClick: () -> Unit,
     content: @Composable BoxScope.() -> Unit = {}
 ) {
@@ -114,6 +115,20 @@ fun DashboardCard(
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
+                } else if (imageVector != null) {
+                    Box(
+                         modifier = Modifier
+                             .fillMaxSize()
+                             .background(Color(0xFFE3F2FD)), // Light Blue background for vector
+                         contentAlignment = Alignment.Center
+                    ) {
+                        androidx.compose.material3.Icon(
+                            imageVector = imageVector,
+                            contentDescription = title,
+                            modifier = Modifier.size(64.dp),
+                            tint = Color(0xFF1565C0) // Dark Blue tint
+                        )
+                    }
                 } else {
                     Box(modifier = Modifier.fillMaxSize()) {
                         content()

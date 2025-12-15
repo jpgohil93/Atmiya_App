@@ -133,9 +133,9 @@ fun AppNavigationDrawer(
                         // Triple("Conversations", TablerIcons.MessageCircle, "conversations_list"),
                         Triple("Funding Calls", TablerIcons.Coin, "funding_calls_list"),
                         Triple("My Ideas", TablerIcons.Bulb, "saved_ideas"),
-                        Triple("Mentorship", TablerIcons.School, "network"),
                         Triple("Events", TablerIcons.CalendarEvent, "events_list"),
                         Triple("Profile", TablerIcons.User, "profile_screen"),
+                        Triple("My Network", TablerIcons.Share, "connection_requests"),
                         Triple("Settings", TablerIcons.Settings, "settings_screen")
                     )
 

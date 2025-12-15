@@ -182,7 +182,8 @@ fun LoginScreen(
 
                 override fun onVerificationFailed(e: FirebaseException) {
                     isLoading = false
-                    Toast.makeText(context, "Login failed. Please check your credentials.", Toast.LENGTH_LONG).show()
+                    android.util.Log.e("Auth", "Verification Failed", e)
+                    Toast.makeText(context, "Login failed: ${e.message}", Toast.LENGTH_LONG).show()
                 }
 
                 override fun onCodeSent(

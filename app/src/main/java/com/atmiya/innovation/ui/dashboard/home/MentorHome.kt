@@ -93,19 +93,19 @@ fun MentorHome(
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                  com.atmiya.innovation.ui.dashboard.DashboardCard(
-                    title = "Requests",
-                    subtitle = "Inquiries",
-                    modifier = Modifier.weight(1f),
-                    imageResId = com.atmiya.innovation.R.drawable.ic_requests,
-                    onClick = { onNavigate("network") }
-                )
-                
-                com.atmiya.innovation.ui.dashboard.DashboardCard(
                     title = "Startup Diagnosis",
                     subtitle = "AI Analysis",
                     modifier = Modifier.weight(1f),
-                    imageResId = com.atmiya.innovation.R.drawable.ic_diagnosis_3d, // New Resource
-                    onClick = { onNavigate("startups_list") } // Navigate to list to select startup
+                    imageResId = com.atmiya.innovation.R.drawable.ic_diagnosis_3d, 
+                    onClick = { onNavigate("startups_list") } 
+                )
+
+                com.atmiya.innovation.ui.dashboard.DashboardCard(
+                    title = "Investors",
+                    subtitle = "Connect with investors",
+                    modifier = Modifier.weight(1f),
+                    imageResId = com.atmiya.innovation.R.drawable.ic_investors,
+                    onClick = { onNavigate("investors_list") }
                 )
             }
         }
