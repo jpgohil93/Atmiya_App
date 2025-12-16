@@ -15,33 +15,43 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
-    primary = AtmiyaPrimary,
+    primary = DarkPrimary,
+    onPrimary = DarkOnPrimary,
+    primaryContainer = SoftSurfaceDark,
+    onPrimaryContainer = SoftTextPrimaryDark,
     secondary = AtmiyaSecondary,
+    onSecondary = Color.White,
     tertiary = AtmiyaAccent,
-    background = SoftBgDark,
-    surface = SoftSurfaceDark,
-    onPrimary = Color.White,
-    onSecondary = Color.Black,
     onTertiary = Color.White,
+    background = SoftBgDark,
     onBackground = SoftTextPrimaryDark,
+    surface = SoftSurfaceDark,
     onSurface = SoftTextPrimaryDark,
-    surfaceVariant = SoftSurfaceDark, // For cards
-    onSurfaceVariant = SoftTextSecondaryDark
+    surfaceVariant = SoftSurfaceDark,
+    onSurfaceVariant = SoftTextSecondaryDark,
+    outline = OutlineDark,
+    error = ErrorColor,
+    onError = OnErrorColor
 )
 
 private val LightColorScheme = lightColorScheme(
     primary = AtmiyaPrimary,
-    secondary = AtmiyaSecondary,
-    tertiary = AtmiyaAccent,
-    background = SoftBgLight,
-    surface = SoftSurfaceLight,
     onPrimary = Color.White,
-    onSecondary = Color.Black, // White secondary needs black text
-    onTertiary = Color.White, // Red accent needs white text
+    primaryContainer = SoftSurfaceLight,
+    onPrimaryContainer = SoftTextPrimaryLight,
+    secondary = AtmiyaSecondary,
+    onSecondary = Color.White,
+    tertiary = AtmiyaAccent,
+    onTertiary = Color.White,
+    background = SoftBgLight,
     onBackground = SoftTextPrimaryLight,
+    surface = SoftSurfaceLight,
     onSurface = SoftTextPrimaryLight,
-    surfaceVariant = SoftSurfaceLight, // For cards
-    onSurfaceVariant = SoftTextSecondaryLight
+    surfaceVariant = SoftSurfaceLight,
+    onSurfaceVariant = SoftTextSecondaryLight,
+    outline = OutlineLight,
+    error = ErrorColor,
+    onError = OnErrorColor
 )
 
 @Composable

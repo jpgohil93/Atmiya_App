@@ -28,6 +28,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.atmiya.innovation.ui.theme.*
 
+import androidx.compose.ui.graphics.luminance
+
 // --- Core Surfaces ---
 
 @Composable
@@ -58,7 +60,11 @@ fun SoftCard(
     radius: Dp = 24.dp,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    val isDark = isSystemInDarkTheme()
+    // Determine if we are in dark mode based on surface color luminance (safer than isSystemInDarkTheme for in-app toggle)
+    // Actually, asking the theme system is better, but Material3 doesn't expose 'isDark' boolean directly on ColorScheme easily.
+    // We can infer it:
+    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    
     val shadowColor = if (isDark) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.05f)
     val shape = RoundedCornerShape(radius)
 
@@ -113,7 +119,7 @@ fun SoftTextField(
             focusedContainerColor = MaterialTheme.colorScheme.surface,
             unfocusedContainerColor = MaterialTheme.colorScheme.surface,
             disabledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
-            focusedBorderColor = AtmiyaPrimary,
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
             unfocusedBorderColor = Color.Transparent, // Soft look
             errorBorderColor = MaterialTheme.colorScheme.error
         ),
@@ -138,8 +144,8 @@ fun SoftButton(
     icon: ImageVector? = null,
     enabled: Boolean = true,
     isLoading: Boolean = false,
-    containerColor: Color = AtmiyaPrimary,
-    contentColor: Color = Color.White
+    containerColor: Color = MaterialTheme.colorScheme.primary,
+    contentColor: Color = MaterialTheme.colorScheme.onPrimary
 ) {
     Button(
         onClick = onClick,
@@ -179,7 +185,7 @@ fun SoftButton(
 @Composable
 fun SoftIconBox(
     icon: ImageVector,
-    tint: Color = AtmiyaPrimary,
+    tint: Color = MaterialTheme.colorScheme.primary,
     backgroundColor: Color = PastelBlue,
     size: Dp = 48.dp,
     iconSize: Dp = 24.dp
@@ -245,10 +251,10 @@ fun BentoGrid(
 
 @Composable
 fun BentoCard(item: BentoItem) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     // Dynamic pastel background for Hero/Feature cards if desired, or stick to surface
     val bgColor = if (item.type == BentoCardType.HERO) {
-        if (isDark) AtmiyaPrimary.copy(alpha = 0.3f) else PastelBlue
+        if (isDark) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f) else PastelBlue
     } else {
         MaterialTheme.colorScheme.surface
     }
@@ -307,7 +313,7 @@ fun BentoCard(item: BentoItem) {
                 text = item.metric,
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.ExtraBold,
-                color = AtmiyaPrimary
+                color = MaterialTheme.colorScheme.primary
             )
         }
     }

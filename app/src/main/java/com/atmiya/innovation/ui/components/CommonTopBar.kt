@@ -53,11 +53,11 @@ fun CommonTopBar(
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Box(modifier = Modifier.width(20.dp).height(2.dp).background(AtmiyaPrimary, RoundedCornerShape(1.dp)))
+                    Box(modifier = Modifier.width(20.dp).height(2.dp).background(MaterialTheme.colorScheme.onSurface, RoundedCornerShape(1.dp)))
                     Spacer(modifier = Modifier.height(4.dp))
-                    Box(modifier = Modifier.width(14.dp).height(2.dp).background(AtmiyaPrimary, RoundedCornerShape(1.dp))) // Asymmetric look
+                    Box(modifier = Modifier.width(14.dp).height(2.dp).background(MaterialTheme.colorScheme.onSurface, RoundedCornerShape(1.dp))) // Asymmetric look
                     Spacer(modifier = Modifier.height(4.dp))
-                    Box(modifier = Modifier.width(20.dp).height(2.dp).background(AtmiyaPrimary, RoundedCornerShape(1.dp)))
+                    Box(modifier = Modifier.width(20.dp).height(2.dp).background(MaterialTheme.colorScheme.onSurface, RoundedCornerShape(1.dp)))
                 }
             }
         },
@@ -70,7 +70,7 @@ fun CommonTopBar(
                 Icon(
                     TablerIcons.Bell,
                     contentDescription = "Notifications",
-                    tint = AtmiyaPrimary,
+                    tint = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.size(28.dp)
                 )
             }

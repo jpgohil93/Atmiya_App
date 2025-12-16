@@ -20,6 +20,16 @@ val SoftSurfaceDark = Color(0xFF2C2E33) // Slightly lighter charcoal
 val SoftTextPrimaryDark = Color(0xFFE6E1E5)
 val SoftTextSecondaryDark = Color(0xFFCAC4D0)
 
+// Standard Semantics
+val ErrorColor = Color(0xFFB3261E)
+val OnErrorColor = Color(0xFFFFFFFF)
+val OutlineLight = Color(0xFF79747E)
+val OutlineDark = Color(0xFF938F99)
+
+// Dark Mode Specifics
+val DarkPrimary = Color(0xFFFFFFFF) // Inverted from Black for visibility
+val DarkOnPrimary = Color(0xFF000000)
+
 // Pastels (Apple-like)
 val PastelBlue = Color(0xFFE3F2FD)
 val PastelRed = Color(0xFFFFEBEE)

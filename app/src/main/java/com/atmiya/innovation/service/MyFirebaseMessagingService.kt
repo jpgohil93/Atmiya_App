@@ -79,11 +79,11 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         )
 
         val channelId = when(originalType) {
-            "funding_call" -> "channel_funding_calls"
-            "wall_post" -> "channel_wall_posts"
-            "mentor_video" -> "channel_mentor_videos"
-            "connection_request", "connection_accepted" -> "channel_connections"
-            else -> "fcm_default_channel"
+            "funding_call" -> "channel_funding_calls_v2"
+            "wall_post" -> "channel_wall_posts_v2"
+            "mentor_video" -> "channel_mentor_videos_v2"
+            "connection_request", "connection_accepted" -> "channel_connections_v2"
+            else -> "fcm_default_channel_v2"
         }
         
         val defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
@@ -93,6 +93,8 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             .setContentText(messageBody)
             .setAutoCancel(true)
             .setSound(defaultSoundUri)
+            .setPriority(NotificationCompat.PRIORITY_HIGH) // For Android 7.1 and lower
+            .setDefaults(NotificationCompat.DEFAULT_ALL) // Vibrates and plays sound
             .setContentIntent(pendingIntent)
 
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -109,8 +111,11 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             val channel = NotificationChannel(
                 channelId,
                 channelName,
-                NotificationManager.IMPORTANCE_DEFAULT
+                NotificationManager.IMPORTANCE_HIGH // REQUIRED for Heads Up
             )
+            channel.description = "Important notifications from Atmiya"
+            channel.enableVibration(true)
+            channel.enableLights(true)
             notificationManager.createNotificationChannel(channel)
         }
 

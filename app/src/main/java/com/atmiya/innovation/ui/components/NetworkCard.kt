@@ -41,9 +41,9 @@ fun NetworkCard(
             .fillMaxWidth()
             .padding(1.dp), // Optional padding to avoid shadow clipping if tightly packed
         shape = RoundedCornerShape(16.dp),
-        color = Color.White,
+        color = MaterialTheme.colorScheme.surface,
         shadowElevation = 4.dp,
-        border = BorderStroke(0.5.dp, Color(0xFFE0E0E0)) // Lighter border
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant) // Lighter border
     ) {
              Column(modifier = Modifier.padding(16.dp)) {
                 // Header: Image + Info
@@ -73,7 +73,7 @@ fun NetworkCard(
                         Text(
                             text = roleOrTitle,
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.DarkGray,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -116,8 +116,8 @@ fun NetworkCard(
                         modifier = primaryModifier,
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.Black, 
-                            contentColor = Color.White
+                            containerColor = MaterialTheme.colorScheme.primary, 
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         )
                     ) {
                         Text(text = primaryButtonText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -129,9 +129,9 @@ fun NetworkCard(
                             enabled = isSecondaryButtonEnabled,
                             modifier = Modifier.weight(1f).height(40.dp),
                             shape = RoundedCornerShape(8.dp),
-                            border = if (isSecondaryButtonEnabled) BorderStroke(1.dp, Color.Black) else BorderStroke(1.dp, Color.Gray),
+                            border = if (isSecondaryButtonEnabled) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                             colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = if (isSecondaryButtonEnabled) Color.Black else Color.Gray
+                                contentColor = if (isSecondaryButtonEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                             )
                         ) {
                             Text(text = secondaryButtonText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -156,14 +156,14 @@ fun InfoRow(
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.Gray,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1f)
         )
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium, // Slightly bolder than label
-            color = Color.Black,
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1.5f), // Give more space to value
             textAlign = androidx.compose.ui.text.style.TextAlign.End
         )
@@ -174,8 +174,8 @@ fun InfoRow(
 fun PillBadge(
     text: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
-    backgroundColor: Color = Color.Black,
-    contentColor: Color = Color.White
+    backgroundColor: Color = MaterialTheme.colorScheme.primary,
+    contentColor: Color = MaterialTheme.colorScheme.onPrimary
 ) {
     Surface(
         shape = RoundedCornerShape(50),

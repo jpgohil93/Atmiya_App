@@ -53,9 +53,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.tasks.await
 import java.util.concurrent.TimeUnit
+import com.google.firebase.functions.FirebaseFunctions
+import com.google.firebase.messaging.FirebaseMessaging
 
 enum class LoginMode { OTP, PASSWORD }
 enum class AuthStep { PHONE_INPUT, OTP_VERIFICATION, FORGOT_PASSWORD_OTP, RESET_PASSWORD }
+
+
+const val USE_DYNAMIC_OTP = true
 
 @Composable
 fun LoginScreen(
@@ -149,15 +154,151 @@ fun LoginScreen(
 
     fun getSyntheticEmail(phone: String) = "$phone@atmiya.com"
 
+    // Dynamic OTP Helper Functions
+    // Dynamic OTP Helper Functions
+    // Cached FCM Token
+    var cachedFcmToken by remember { mutableStateOf<String?>(null) }
+
+    // Eagerly fetch FCM token
+    LaunchedEffect(Unit) {
+        try {
+            cachedFcmToken = com.google.firebase.messaging.FirebaseMessaging.getInstance().token.await()
+            android.util.Log.d("Auth", "FCM Token cached: $cachedFcmToken")
+        } catch (e: Exception) {
+            android.util.Log.e("Auth", "Failed to cache FCM token", e)
+        }
+    }
+
+    fun sendDynamicOtp(phone: String, isResend: Boolean = false) { // Accepted param
+        scope.launch {
+            isLoading = true
+            try {
+                // Use cached token if available, otherwise try fetch with timeout
+                val fcmToken = cachedFcmToken ?: try {
+                    kotlinx.coroutines.withTimeoutOrNull(3000) {
+                        FirebaseMessaging.getInstance().token.await()
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("Auth", "Failed to get FCM token for fallback", e)
+                    null
+                }
+                
+                if (fcmToken == null) {
+                     android.util.Log.w("Auth", "Proceeding without FCM token")
+                }
+
+                // Call Cloud Function
+                val functions = FirebaseFunctions.getInstance()
+                val data = hashMapOf(
+                    "phone" to "+91$phone",
+                    "fcmToken" to fcmToken
+                )
+                
+                withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    functions.getHttpsCallable("sendOtp")
+                        .call(data)
+                        .await()
+                }
+
+                withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    isLoading = false
+                    // isOtpSent = true // <-- REMOVED, not in LoginScreen state
+                    
+                    if (authStep == AuthStep.PHONE_INPUT) {
+                         authStep = AuthStep.OTP_VERIFICATION
+                    }
+                    
+                    ticks = 60L
+                    isTimerRunning = true
+                    Toast.makeText(context, "OTP Sent", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    isLoading = false
+                    val errorMsg = if (e is com.google.firebase.functions.FirebaseFunctionsException) {
+                        "Code: ${e.code}, Msg: ${e.message}"
+                    } else {
+                        e.message ?: "Unknown Error"
+                    }
+                    android.util.Log.e("Auth", "Dynamic OTP Send Failed: $errorMsg", e)
+                    Toast.makeText(context, "Failed: $errorMsg", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    fun verifyDynamicOtp(otp: String) {
+        isLoading = true
+        val start = System.currentTimeMillis()
+        
+        scope.launch {
+             try {
+                val functions = FirebaseFunctions.getInstance()
+                val data = hashMapOf(
+                    "phone" to "+91$phoneNumber",
+                    "otp" to otp
+                )
+                
+                val result = withContext(kotlinx.coroutines.Dispatchers.IO) {
+                     functions.getHttpsCallable("verifyOtp").call(data).await()
+                }
+                
+                val resultData = result.data as? Map<String, Any>
+                val customToken = resultData?.get("token") as? String
+                
+                if (customToken != null) {
+                    // Sign in with the custom token
+                    auth.signInWithCustomToken(customToken).await()
+                    
+                    withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        isLoading = false
+                        isVerificationCompleted = true
+                        android.util.Log.d("Perf", "Dynamic OTP Verification took ${System.currentTimeMillis() - start} ms")
+                        
+                        if (authStep == AuthStep.FORGOT_PASSWORD_OTP) {
+                            authStep = AuthStep.RESET_PASSWORD
+                        } else {
+                            onLoginSuccess()
+                        }
+                    }
+                } else {
+                    throw Exception("Invalid response from server")
+                }
+             } catch (e: Exception) {
+                 withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    isLoading = false
+                    isOtpError = true
+                    otpValue = "" // Clear OTP on error
+                    
+                    val errorMsg = if (e is com.google.firebase.functions.FirebaseFunctionsException) {
+                        "Code: ${e.code}, Msg: ${e.message}"
+                    } else {
+                        e.message ?: "Unknown Verify Error"
+                    }
+                    
+                    android.util.Log.e("Auth", "Dynamic OTP Verification Failed: $errorMsg", e)
+                    Toast.makeText(context, "Verify Failed: $errorMsg", Toast.LENGTH_LONG).show()
+                 }
+             }
+        }
+    }
+
     fun sendOtp(phone: String, isResend: Boolean = false) {
         if (isLoading && !isResend) return // Prevent multiple clicks
+        
+        // Dynamic OTP Logic (Skip for Admin 9999999999 which uses static flow)
+        if (USE_DYNAMIC_OTP && phone != "9999999999") {
+            sendDynamicOtp(phone, isResend)
+            return
+        }
         
         val activity = context.findActivity()
         if (activity == null) {
             Toast.makeText(context, "Error: Cannot find Activity", Toast.LENGTH_SHORT).show()
             return
         }
-
+        
+        // Static/Firebase Flow (Existing)
         isLoading = true
         val start = System.currentTimeMillis()
         val fullNumber = "+91$phone"
@@ -215,22 +356,28 @@ fun LoginScreen(
     }
 
     fun verifyOtp(otp: String) {
+        // Dynamic OTP Check (Skip for Admin 9999999999 or Admin OTP 771993)
+        // Admin phone logic is inside static flow, so we just check phone number here.
+        val cleanPhone = phoneNumber.replace("\\s".toRegex(), "").replace("-", "")
+        
+        if (USE_DYNAMIC_OTP && cleanPhone != "9999999999") {
+             verifyDynamicOtp(otp)
+             return
+        }
+
         val vid = verificationId ?: return
         isLoading = true
         val start = System.currentTimeMillis()
         
-        // Clean phone number
-        val cleanPhone = phoneNumber.replace("\\s".toRegex(), "").replace("-", "")
-        android.util.Log.d("LoginScreen", "verifyOtp: cleanPhone=$cleanPhone, otp=$otp")
         
-        // HARDCODED ADMIN CHECK: Admin phone is 9999999999, OTP is 771993
-        // For admin, we map OTP 771993 → use Firebase's actual verification with an internal OTP
+        // HARDCODED ADMIN CHECK: Admin phone is 9999999999, OTP is 1993
+        // For admin, we map OTP 1993 → use Firebase's actual verification with an internal OTP
         val isAdminPhone = cleanPhone == "9999999999"
         
         if (isAdminPhone) {
-            if (otp == "771993") {
-                android.util.Log.d("LoginScreen", "Admin OTP 771993 accepted for phone 9999999999")
-                // Admin uses 771993, but we need to actually sign in via Firebase
+            if (otp == "1993") {
+                android.util.Log.d("LoginScreen", "Admin OTP 1993 accepted for phone 9999999999")
+                // Admin uses 1993, but we need to actually sign in via Firebase
                 // Use Firebase test phone number OTP (123456) internally since admin phone is registered as test number
                 val actualFirebaseOtp = "123456" // Firebase test number OTP for 9999999999
                 val credential = PhoneAuthProvider.getCredential(vid, actualFirebaseOtp)
@@ -254,7 +401,7 @@ fun LoginScreen(
                 return
             } else {
                 // Admin phone with wrong OTP - REJECT
-                android.util.Log.d("LoginScreen", "Admin phone but wrong OTP: $otp (expected 771993)")
+                android.util.Log.d("LoginScreen", "Admin phone but wrong OTP: $otp (expected 1993)")
                 scope.launch {
                     isLoading = false
                     isOtpError = true
@@ -625,6 +772,15 @@ fun LoginScreen(
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "Enable push notifications to receive OTP if SMS fails.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(32.dp))
             
                         TextButton(
                             onClick = onSignupClick,
@@ -646,8 +802,9 @@ fun LoginScreen(
                         
                         Spacer(modifier = Modifier.height(8.dp))
                         
+                        val otpLength = if (USE_DYNAMIC_OTP) 4 else 6
                         Text(
-                            text = "Enter the 6-digit code sent to +91-$phoneNumber",
+                            text = "Enter the $otpLength-digit code sent to +91-$phoneNumber",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                             textAlign = TextAlign.Center,
@@ -658,10 +815,11 @@ fun LoginScreen(
 
                         OtpInput(
                             otpValue = otpValue,
+                            otpLength = otpLength,
                             onOtpChange = { 
                                 otpValue = it
                                 isOtpError = false
-                                if (it.length == 6) {
+                                if (it.length == otpLength) {
                                     verifyOtp(it)
                                 }
                             },
@@ -804,6 +962,7 @@ fun LoginScreen(
 @Composable
 fun OtpInput(
     otpValue: String,
+    otpLength: Int = 6,
     onOtpChange: (String) -> Unit,
     isError: Boolean
 ) {
@@ -814,7 +973,7 @@ fun OtpInput(
     BasicTextField(
         value = otpValue,
         onValueChange = {
-            if (it.length <= 6 && it.all { char -> char.isDigit() }) {
+            if (it.length <= otpLength && it.all { char -> char.isDigit() }) {
                 onOtpChange(it)
             }
         },
@@ -827,19 +986,19 @@ fun OtpInput(
 
     // Visible Boxes
     Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
             .clickable { focusRequester.requestFocus() } // Make the whole row clickable to focus
     ) {
-        for (i in 0 until 6) {
+        for (i in 0 until otpLength) {
             val char = if (i < otpValue.length) otpValue[i].toString() else ""
             val isFocused = i == otpValue.length
             
             Box(
                 modifier = Modifier
-                    .weight(1f)
+                    .size(50.dp) // Fixed size
                     .aspectRatio(1f)
                     .clip(RoundedCornerShape(12.dp))
                     .background(if (isError) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surface)

@@ -1,5 +1,6 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
+const axios = require('axios');
 admin.initializeApp();
 
 /**
@@ -334,7 +335,15 @@ exports.processBulkUpload = functions
         const existingPhonesSnapshot = await admin.firestore().collection('users')
             .select('phoneNumber')
             .get();
-        const existingPhones = new Set(existingPhonesSnapshot.docs.map(doc => doc.data().phoneNumber).filter(Boolean));
+        const existingPhones = new Set(existingPhonesSnapshot.docs.map(doc => {
+            let p = doc.data().phoneNumber;
+            if (p) {
+                p = p.replace(/\s/g, '').replace(/-/g, '');
+                if (p.startsWith('+91')) p = p.substring(3);
+                if (p.startsWith('91') && p.length === 12) p = p.substring(2);
+            }
+            return p;
+        }).filter(Boolean));
         const seenPhones = new Set();
 
         // 5. Process in batches of 150 (each record = 3 writes = 450 ops < 500 limit)
@@ -461,3 +470,197 @@ exports.processBulkUpload = functions
         console.log(`Bulk upload complete: ${results.success} success, ${results.failed} failed`);
         return results;
     });
+
+/**
+ * Sends a 4-digit OTP via SMS.
+ * Callable Function.
+ * Input: { phone: string }
+ */
+exports.sendOtp = functions.https.onCall(async (data, context) => {
+    const phone = data.phone;
+    if (!phone) {
+        throw new functions.https.HttpsError('invalid-argument', 'Phone number is required');
+    }
+
+    // Rate limiting: Check if OTP was sent recently (last 60s)
+    const db = admin.firestore();
+    const otpRef = db.collection('otp_requests').doc(phone);
+    const doc = await otpRef.get();
+
+    const now = Date.now();
+    if (doc.exists) {
+        const lastSent = doc.data().createdAt;
+        if (now - lastSent < 10000) { // 10 seconds
+            throw new functions.https.HttpsError('resource-exhausted', 'Please wait before requesting another OTP');
+        }
+    }
+
+    // Generate 4-digit OTP
+    const otp = Math.floor(1000 + Math.random() * 9000).toString();
+
+    // Store in Firestore (expires in 5 minutes)
+    await otpRef.set({
+        otp: otp,
+        createdAt: now,
+        expiresAt: now + 5 * 60 * 1000,
+        attempts: 0
+    });
+
+    // Send SMS via Provider
+    try {
+        const config = functions.config().sms;
+        const apiKey = config.key;
+        const senderId = config.sender_id;
+        const baseUrl = config.base_url;
+
+        // Format: http://sms.lifeweblink.com/vb/apikey.php?apikey=...&senderid=...&number=...&message=...
+        const message = `Your Atmiya Innovation OTP is ${otp}. Valid for 5 minutes.`;
+
+        // Parse/Clean Phone Number
+        let targetPhone = phone.replace(/\D/g, '');
+        // Heuristic: If > 10 chars take last 10 (India). 
+        // Provider specific logic might vary.
+        if (targetPhone.length > 10) {
+            targetPhone = targetPhone.substring(targetPhone.length - 10);
+        }
+
+        const url = `${baseUrl}?apikey=${apiKey}&senderid=${senderId}&number=${targetPhone}&message=${encodeURIComponent(message)}`;
+
+        console.log(`Sending OTP to ${phone} (target: ${targetPhone})`);
+
+        // Make the GET request
+        const response = await axios.get(url);
+        console.log('SMS Provider Response:', response.data);
+
+        // --- Push Notification Fallback ---
+        const fcmToken = data.fcmToken;
+        let pushResult = "Not attempted";
+
+        if (fcmToken) {
+            try {
+                const message = {
+                    token: fcmToken,
+                    notification: {
+                        title: "Your Verification Code",
+                        body: `Your OTP is ${otp}`
+                    },
+                    data: {
+                        type: "otp_code",
+                        otp: String(otp)
+                    }
+                };
+                await admin.messaging().send(message);
+                pushResult = "Sent";
+                console.log("OTP Push Notification sent to user.");
+            } catch (pushError) {
+                console.error("Failed to send OTP Push:", pushError);
+                pushResult = "Failed: " + pushError.message;
+            }
+        }
+
+        return { success: true, providerResponse: response.data, pushResult: pushResult };
+    } catch (error) {
+        console.error('SMS Provider Error:', error);
+        throw new functions.https.HttpsError('internal', 'Failed to send SMS');
+    }
+});
+
+/**
+ * Verifies the 4-digit OTP.
+ * Callable Function.
+ * Input: { phone: string, otp: string }
+ * Output: { token: string, isNewUser: boolean }
+ */
+exports.verifyOtp = functions.https.onCall(async (data, context) => {
+    const phone = data.phone;
+    const otp = data.otp;
+
+    if (!phone || !otp) {
+        throw new functions.https.HttpsError('invalid-argument', 'Phone and OTP are required');
+    }
+
+    const db = admin.firestore();
+    const otpRef = db.collection('otp_requests').doc(phone);
+    const doc = await otpRef.get();
+
+    if (!doc.exists) {
+        throw new functions.https.HttpsError('not-found', 'No OTP request found');
+    }
+
+    const record = doc.data();
+    const now = Date.now();
+
+    // Check expiration
+    if (now > record.expiresAt) {
+        throw new functions.https.HttpsError('deadline-exceeded', 'OTP has expired');
+    }
+
+    // Check attempts
+    if (record.attempts >= 3) {
+        throw new functions.https.HttpsError('resource-exhausted', 'Too many failed attempts');
+    }
+
+    // Verify OTP
+    // Relaxed check: Verify strict equality on string
+    if (String(record.otp).trim() !== String(otp).trim()) {
+        console.warn(`Invalid OTP for ${phone}. Expected: ${record.otp}, Got: ${otp}`);
+        await otpRef.update({ attempts: admin.firestore.FieldValue.increment(1) });
+        throw new functions.https.HttpsError('invalid-argument', 'Invalid OTP');
+    }
+
+    // OTP Valid - Clean up
+    await otpRef.delete();
+
+    // Create Custom Token for Firebase Auth
+    console.log(`OTP Verified for ${phone}. Generating token...`);
+
+    // 1. Try to find user in Firestore first (to preserve existing UIDs)
+    // IMPORTANT: App handles +91 prefix, but Firestore might store it differently.
+    // Let's check both raw phone and clean phone if needed, but for now exact match.
+    // If phone came in as 9876543210 but stored as +919876543210, we might miss it.
+
+    let uid;
+    let isNewUser = false;
+
+    try {
+        let usersSnap = await db.collection('users').where('phoneNumber', '==', phone).limit(1).get();
+
+        // Fallback: Check for 10-digit number if +91 format not found
+        if (usersSnap.empty && phone.startsWith('+91')) {
+            const rawPhone = phone.replace('+91', '');
+            console.log(`Checking for raw phone in Firestore: ${rawPhone}`);
+            usersSnap = await db.collection('users').where('phoneNumber', '==', rawPhone).limit(1).get();
+        }
+
+        if (!usersSnap.empty) {
+            uid = usersSnap.docs[0].id;
+            console.log(`Found existing Firestore user: ${uid}`);
+        } else {
+            console.log(`User not found in Firestore for ${phone}. Checking Auth...`);
+            // Not in Firestore. Check Auth.
+            try {
+                const userRecord = await admin.auth().getUserByPhoneNumber(phone);
+                uid = userRecord.uid;
+                console.log(`Found existing Auth user: ${uid}`);
+            } catch (e) {
+                // New User
+                isNewUser = true;
+                console.log(`Creating new Auth user for ${phone}`);
+                // Create user in Auth
+                const newUser = await admin.auth().createUser({
+                    phoneNumber: phone,
+                    verified: true
+                });
+                uid = newUser.uid;
+            }
+        }
+
+        const customToken = await admin.auth().createCustomToken(uid);
+        console.log(`Token generated successfully for ${uid}`);
+        return { token: customToken, uid: uid, isNewUser: isNewUser };
+
+    } catch (error) {
+        console.error("Error in verifyOtp token generation:", error);
+        throw new functions.https.HttpsError('internal', `Token generation failed: ${error.message}`);
+    }
+});

@@ -56,11 +56,14 @@ fun SettingsScreen(
     val auth = FirebaseAuth.getInstance()
     val currentUser = auth.currentUser
     val firestoreRepository = remember { FirestoreRepository() }
+    val viewModel: SettingsViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    val currentTheme by viewModel.theme.collectAsState()
 
     // State
     var userName by remember { mutableStateOf("User") }
     var userPhone by remember { mutableStateOf("") }
     var showFeedbackDialog by remember { mutableStateOf(false) }
+    var showThemeDialog by remember { mutableStateOf(false) }
     var feedbackText by remember { mutableStateOf("") }
     var isSubmittingFeedback by remember { mutableStateOf(false) }
     
@@ -142,6 +145,20 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             
+            // --- Appearance Section ---
+            SettingsSection(title = "Appearance") {
+                SettingsCard(
+                    icon = TablerIcons.Palette,
+                    title = "Theme",
+                    subtitle = when(currentTheme) {
+                        "light" -> "Light"
+                        "dark" -> "Dark"
+                        else -> "System Default"
+                    },
+                    onClick = { showThemeDialog = true }
+                )
+            }
+
             // --- Your Account Section ---
             SettingsSection(title = "Your account") {
                 // Account Card
@@ -311,6 +328,46 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showFeedbackDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // --- Theme Dialog ---
+    if (showThemeDialog) {
+        AlertDialog(
+            onDismissRequest = { showThemeDialog = false },
+            title = { Text("Choose Theme") },
+            text = {
+                Column {
+                    val options = listOf("system" to "System Default", "light" to "Light", "dark" to "Dark")
+                    options.forEach { (key, label) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.setTheme(key)
+                                    showThemeDialog = false
+                                }
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = currentTheme == key,
+                                onClick = {
+                                    viewModel.setTheme(key)
+                                    showThemeDialog = false
+                                }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = label, style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showThemeDialog = false }) {
                     Text("Cancel")
                 }
             }

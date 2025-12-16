@@ -66,9 +66,15 @@ fun PendingStartupDetailsScreen(
             
             if (user != null) {
                 organization = user.organization // Pre-fill from CSV if available
+                founderNames = user.name // Pre-fill Founder with Full Name
             }
             if (startup != null) {
-                startupName = startup.startupName
+                // If bulk imported, startupName is initially set to User Name. We want to clear that for the UI.
+                if (user?.createdVia == "bulk" && startup.startupName == user?.name) {
+                    startupName = "" 
+                } else {
+                    startupName = startup.startupName
+                }
             }
         }
     }

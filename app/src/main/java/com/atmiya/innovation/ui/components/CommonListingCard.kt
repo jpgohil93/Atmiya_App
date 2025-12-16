@@ -43,7 +43,7 @@ fun CommonListingCard(
             .fillMaxWidth()
             .clickable { onClick() },
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -55,7 +55,7 @@ fun CommonListingCard(
                 // Profile Image with Black Ring
                 Surface(
                     shape = CircleShape,
-                    border = BorderStroke(2.dp, Color.Black), // Black Ring as requested
+                    border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary), // Black Ring as requested -> Primary
                     color = Color.Transparent,
                     modifier = Modifier.size(64.dp)
                 ) {
@@ -77,12 +77,12 @@ fun CommonListingCard(
                         text = title,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1E3A8A) // Dark Blue/Navy for Name
+                        color = MaterialTheme.colorScheme.onSurface // Dark Blue/Navy for Name -> onSurface
                     )
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1
                     )
                     
@@ -113,18 +113,18 @@ fun CommonListingCard(
                         text = metricValue,
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFFC0CA33) // Gold/Yellowish
+                        color = MaterialTheme.colorScheme.tertiary // Gold/Yellowish -> Tertiary
                     )
                     Text(
                         text = metricLabel,
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.Black
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
             
             Spacer(modifier = Modifier.height(16.dp))
-            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
             Spacer(modifier = Modifier.height(12.dp))
             
             // Footer
@@ -137,7 +137,7 @@ fun CommonListingCard(
                     Icon(
                         imageVector = footerIcon,
                         contentDescription = null,
-                        tint = Color(0xFFC0CA33), // Gold Star
+                        tint = MaterialTheme.colorScheme.tertiary, // Gold Star
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -145,7 +145,7 @@ fun CommonListingCard(
                         text = footerValue,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
@@ -202,7 +202,7 @@ fun CommonListingCard(
                      Icon(
                         imageVector = TablerIcons.ArrowRight,
                         contentDescription = null,
-                        tint = Color.Gray,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp)
                     )
                 }

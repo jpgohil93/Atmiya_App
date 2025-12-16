@@ -34,7 +34,7 @@ fun IOSAlertDialog(
                 .width(280.dp) // Standard iOS Alert width approx
                 .wrapContentHeight(),
             shape = RoundedCornerShape(14.dp),
-            color = Color.White.copy(alpha = 0.95f), // Slight transparency like iOS
+            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.95f), // Slight transparency like iOS
             tonalElevation = 8.dp
         ) {
             Column(
@@ -50,19 +50,19 @@ fun IOSAlertDialog(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
-                        color = Color.Black
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = message,
                         style = MaterialTheme.typography.bodyMedium,
                         textAlign = TextAlign.Center,
-                        color = Color.Black,
+                        color = MaterialTheme.colorScheme.onSurface,
                         lineHeight = 18.sp
                     )
                 }
 
-                HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f), thickness = 0.5.dp)
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
 
                 // Confirm Button (Destructive)
                 Box(
@@ -92,7 +92,7 @@ fun IOSAlertDialog(
                 ) {
                     Text(
                         text = dismissText,
-                        color = Color.Black, /* iOS uses Blue usually, but image looks dark */
+                        color = MaterialTheme.colorScheme.onSurface, /* iOS uses Blue usually, but image looks dark */
                         fontWeight = FontWeight.Normal,
                         fontSize = 17.sp
                     )

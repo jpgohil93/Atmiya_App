@@ -97,7 +97,7 @@ fun DropdownField(
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = MaterialTheme.colorScheme.surface,
                     unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    focusedBorderColor = AtmiyaPrimary,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = Color.Transparent,
                     errorBorderColor = MaterialTheme.colorScheme.error
                 )
@@ -152,14 +152,14 @@ fun PhotoUploadField(
                         modifier = Modifier.fillMaxSize().clip(CircleShape)
                     )
                 } else {
-                    Icon(TablerIcons.Plus, contentDescription = null, tint = AtmiyaPrimary, modifier = Modifier.size(40.dp))
+                    Icon(TablerIcons.Plus, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(40.dp))
                 }
             }
         }
         if (errorMessage != null) {
             Text(errorMessage, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
         } else {
-            Text("Tap to upload photo", style = MaterialTheme.typography.bodySmall, color = Color.Gray, modifier = Modifier.padding(top = 8.dp))
+            Text("Tap to upload photo", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
         }
         }
     }
@@ -172,7 +172,7 @@ fun StepIndicator(step: Int, title: String, isActive: Boolean, isCompleted: Bool
             modifier = Modifier.size(40.dp),
             radius = 20.dp,
             elevation = if (isActive) 8.dp else 2.dp,
-            backgroundColor = if (isActive || isCompleted) AtmiyaPrimary else MaterialTheme.colorScheme.surfaceVariant
+            backgroundColor = if (isActive || isCompleted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
         ) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 if (isCompleted) {
@@ -190,7 +190,7 @@ fun StepIndicator(step: Int, title: String, isActive: Boolean, isCompleted: Bool
         Text(
             text = title,
             style = MaterialTheme.typography.bodySmall,
-            color = if (isActive) AtmiyaPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+            color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
             fontWeight = if (isActive) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal
         )
     }
@@ -229,7 +229,7 @@ fun MultiSelectDropdownField(
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = MaterialTheme.colorScheme.surface,
                     unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    focusedBorderColor = AtmiyaPrimary,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = Color.Transparent,
                     errorBorderColor = MaterialTheme.colorScheme.error
                 )
@@ -289,7 +289,7 @@ fun SimpleBackButton(onClick: () -> Unit, enabled: Boolean = true) {
     TextButton(onClick = onClick, enabled = enabled) {
         Text(
             text = "Back",
-            color = Color.Black,
+            color = MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.Bold,
             style = MaterialTheme.typography.bodyLarge
         )

@@ -39,6 +39,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextAlign
 import com.atmiya.innovation.data.*
 import com.atmiya.innovation.repository.FirestoreRepository
 import com.atmiya.innovation.repository.StorageRepository
@@ -49,6 +50,7 @@ import com.atmiya.innovation.ui.theme.AtmiyaAccent
 import com.atmiya.innovation.ui.auth.RoleCard
 import com.google.firebase.Timestamp
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.PhoneAuthCredential
@@ -57,6 +59,10 @@ import com.google.firebase.auth.PhoneAuthProvider
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
+import com.google.firebase.functions.HttpsCallableResult
+import com.google.firebase.functions.FirebaseFunctionsException
+import com.google.firebase.messaging.FirebaseMessaging
+import com.google.firebase.functions.FirebaseFunctions
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -193,9 +199,140 @@ fun SignupScreen(
 
     // -- Helper Functions --
 
+    // -- Dynamic OTP Logic --
+    val functions = FirebaseFunctions.getInstance()
+    // CHANGE THIS TO FALSE TO REVERT TO FIREBASE PHONE AUTH
+    val USE_DYNAMIC_OTP = true 
+
+    // Cached FCM Token
+    var cachedFcmToken by remember { mutableStateOf<String?>(null) }
+
+    // Eagerly fetch FCM token
+    LaunchedEffect(Unit) {
+        try {
+            cachedFcmToken = FirebaseMessaging.getInstance().token.await()
+            android.util.Log.d("Auth", "FCM Token cached: $cachedFcmToken")
+        } catch (e: Exception) {
+            android.util.Log.e("Auth", "Failed to cache FCM token", e)
+        }
+    }
+
+    fun sendDynamicOtp(phone: String, isResend: Boolean = false) {
+        scope.launch {
+            isLoading = true
+            try {
+                // Use cached token if available, otherwise try fetch with timeout
+                val fcmToken = cachedFcmToken ?: try {
+                    kotlinx.coroutines.withTimeoutOrNull(3000) {
+                        FirebaseMessaging.getInstance().token.await()
+                    }
+                } catch (e: Exception) {
+                    null
+                }
+                
+                if (fcmToken == null) {
+                     android.util.Log.w("Auth", "Proceeding without FCM token")
+                }
+
+                // Call the Cloud Function
+                val data = hashMapOf(
+                    "phone" to "+91$phone", // Ensure consistent format
+                    "fcmToken" to fcmToken
+                )
+
+                val result: HttpsCallableResult = withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    functions.getHttpsCallable("sendOtp").call(data).await()
+                }
+
+                val resultData = result.data as? Map<String, Any>
+                val success = resultData?.get("success") as? Boolean ?: false
+                
+                val pushResult = resultData?.get("pushResult") as? String
+                val pushStatus = if (pushResult == "Sent") "Push Notification" else "SMS"
+
+                isLoading = false
+                
+                if (success) {
+                    isOtpSent = true
+                    ticks = 60L
+                    isTimerRunning = true
+                    Toast.makeText(context, "OTP Sent via $pushStatus", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "Failed to send OTP", Toast.LENGTH_SHORT).show()
+                }
+
+            } catch (e: Exception) {
+                isLoading = false
+                 val errorMsg = if (e is FirebaseFunctionsException) {
+                    "Code: ${e.code}, Msg: ${e.message}"
+                } else {
+                    e.message ?: "Unknown Error"
+                }
+                android.util.Log.e("Auth", "Dynamic OTP Send Failed: $errorMsg", e)
+                Toast.makeText(context, "Failed: $errorMsg", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    fun verifyDynamicOtp(otp: String) {
+        scope.launch {
+            isLoading = true
+            try {
+                val data = hashMapOf(
+                    "phone" to "+91$phoneNumber",
+                    "otp" to otp
+                )
+
+                val result: HttpsCallableResult = withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    functions.getHttpsCallable("verifyOtp")
+                        .call(data)
+                        .await()
+                }
+
+                val resultData = result.data as? Map<String, Any>
+                val token = resultData?.get("token") as? String
+                
+                if (token != null) {
+                    auth.signInWithCustomToken(token).addOnCompleteListener { task ->
+                        isLoading = false
+                        if (task.isSuccessful) {
+                            currentStep = 2 // Proceed to Role Selection
+                        } else {
+                            Toast.makeText(context, "Auth Failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                } else {
+                   isLoading = false
+                   Toast.makeText(context, "Invalid Server Response", Toast.LENGTH_SHORT).show()
+                }
+
+            } catch (e: Exception) {
+                 withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    isLoading = false
+                    isOtpError = true
+                    otpValue = "" 
+                    
+                    val errorMsg = if (e is com.google.firebase.functions.FirebaseFunctionsException) {
+                        "Code: ${e.code}, Msg: ${e.message}"
+                    } else {
+                        e.message ?: "Unknown Verify Error"
+                    }
+                    Toast.makeText(context, "Verify Failed: $errorMsg", Toast.LENGTH_SHORT).show()
+                 }
+             }
+        }
+    }
+
     fun sendOtp(phone: String, isResend: Boolean = false) {
         if (isLoading && !isResend) return
         
+        // Dynamic OTP Path
+        if (USE_DYNAMIC_OTP) {
+            sendDynamicOtp(phone)
+            return
+        }
+
+        // --- OLD STATIC PATH (Backwards Compatibility) ---
         val activity = context.findActivity()
         if (activity == null) return
 
@@ -207,11 +344,10 @@ fun SignupScreen(
             .setActivity(activity)
             .setCallbacks(object : PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
                 override fun onVerificationCompleted(credential: PhoneAuthCredential) {
-                    // Auto-verification
                     auth.signInWithCredential(credential).addOnCompleteListener { task ->
                         isLoading = false
                         if (task.isSuccessful) {
-                            currentStep = 2 // Proceed to Role Selection
+                            currentStep = 2 
                         }
                     }
                 }
@@ -235,9 +371,11 @@ fun SignupScreen(
     }
 
     fun verifyOtp(otp: String) {
-        // --- REMOVED MANUAL BYPASS ---
-        // We rely on Firebase Test Phone Numbers for "123456"
-        
+        if (USE_DYNAMIC_OTP) {
+            verifyDynamicOtp(otp)
+            return
+        }
+
         val vid = verificationId ?: return
         isLoading = true
         val credential = PhoneAuthProvider.getCredential(vid, otp)
@@ -245,7 +383,7 @@ fun SignupScreen(
         auth.signInWithCredential(credential).addOnCompleteListener { task ->
             isLoading = false
             if (task.isSuccessful) {
-                currentStep = 2 // Proceed to Role Selection
+                currentStep = 2 
             } else {
                 isOtpError = true
                 otpValue = ""
@@ -498,11 +636,26 @@ fun SignupScreen(
                         Text("Enter OTP sent to +91 $phoneNumber", style = MaterialTheme.typography.bodyMedium)
                         Spacer(modifier = Modifier.height(16.dp))
                         
-                        OtpInput(otpValue, { 
-                            otpValue = it 
-                            if (it.length == 6) verifyOtp(it)
-                        }, isOtpError)
+                        OtpInput(
+                            otpValue = otpValue, 
+                            otpLength = 4,
+                            onOtpChange = { 
+                                otpValue = it 
+                                if (it.length == 4) verifyOtp(it)
+                            }, 
+                            isError = isOtpError
+                        )
                         
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Text(
+                            text = "Enable push notifications to receive OTP if SMS fails.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+
                         Spacer(modifier = Modifier.height(24.dp))
                         
                         if (isLoading) CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
@@ -868,6 +1021,7 @@ fun android.content.Context.findActivity(): android.app.Activity? {
 @Composable
 fun OtpInput(
     otpValue: String,
+    otpLength: Int = 4,
     onOtpChange: (String) -> Unit,
     isError: Boolean
 ) {
@@ -878,7 +1032,7 @@ fun OtpInput(
     BasicTextField(
         value = otpValue,
         onValueChange = {
-            if (it.length <= 6 && it.all { char -> char.isDigit() }) {
+            if (it.length <= otpLength && it.all { char -> char.isDigit() }) {
                 onOtpChange(it)
             }
         },
@@ -891,19 +1045,19 @@ fun OtpInput(
 
     // Visible Boxes
     Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally), // Center the boxes
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { focusRequester.requestFocus() } // Make the whole row clickable to focus
+            .clickable { focusRequester.requestFocus() }
     ) {
-        for (i in 0 until 6) {
+        for (i in 0 until otpLength) {
             val char = if (i < otpValue.length) otpValue[i].toString() else ""
             val isFocused = i == otpValue.length
             
             Box(
                 modifier = Modifier
-                    .weight(1f)
+                    .size(50.dp) // Fixed size to behave like before
                     .aspectRatio(1f)
                     .clip(RoundedCornerShape(12.dp))
                     .background(if (isError) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surface)
