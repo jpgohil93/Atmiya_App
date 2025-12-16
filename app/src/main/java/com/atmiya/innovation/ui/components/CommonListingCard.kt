@@ -59,15 +59,13 @@ fun CommonListingCard(
                     color = Color.Transparent,
                     modifier = Modifier.size(64.dp)
                 ) {
-                    AsyncImage(
+                    UserAvatar(
                         model = imageModel,
-                        contentDescription = null,
+                        name = title,
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(2.dp) // Spacing between ring and image
-                            .clip(CircleShape)
-                            .background(Color.Gray),
-                        contentScale = ContentScale.Crop
+                            .padding(2.dp),
+                        size = 64.dp // Although modifier fills max size, explicit size helps
                     )
                 }
 

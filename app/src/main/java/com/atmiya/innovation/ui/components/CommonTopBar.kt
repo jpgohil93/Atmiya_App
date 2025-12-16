@@ -26,7 +26,8 @@ fun CommonTopBar(
     onOpenDrawer: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onNavigateToNotifications: () -> Unit,
-    userPhotoUrl: String?
+    userPhotoUrl: String?,
+    userName: String? = null
 ) {
     CenterAlignedTopAppBar(
         title = {
@@ -75,31 +76,15 @@ fun CommonTopBar(
             }
 
             // Larger Profile Photo
-            Box(
+            UserAvatar(
+                model = userPhotoUrl,
+                name = userName ?: "Profile",
                 modifier = Modifier
                     .padding(end = 16.dp)
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .clickable { onNavigateToProfile() },
-                contentAlignment = Alignment.Center
-            ) {
-                if (!userPhotoUrl.isNullOrBlank()) {
-                    AsyncImage(
-                        model = userPhotoUrl,
-                        contentDescription = "Profile",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Icon(
-                        TablerIcons.User,
-                        contentDescription = "Profile",
-                        tint = AtmiyaPrimary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
+                size = 44.dp
+            )
+
         },
         colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
             containerColor = MaterialTheme.colorScheme.surface

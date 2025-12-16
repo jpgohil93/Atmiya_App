@@ -48,6 +48,10 @@ import com.google.firebase.auth.PhoneAuthCredential
 import com.google.firebase.auth.PhoneAuthOptions
 import com.google.firebase.auth.PhoneAuthProvider
 import kotlinx.coroutines.delay
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.tasks.await
 import java.util.concurrent.TimeUnit
 
 enum class LoginMode { OTP, PASSWORD }
@@ -70,6 +74,7 @@ fun LoginScreen(
     var verificationId by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val auth = FirebaseAuth.getInstance()
 
     // Phone Validation
@@ -213,8 +218,55 @@ fun LoginScreen(
         val vid = verificationId ?: return
         isLoading = true
         val start = System.currentTimeMillis()
-        val credential = PhoneAuthProvider.getCredential(vid, otp)
         
+        // Clean phone number
+        val cleanPhone = phoneNumber.replace("\\s".toRegex(), "").replace("-", "")
+        android.util.Log.d("LoginScreen", "verifyOtp: cleanPhone=$cleanPhone, otp=$otp")
+        
+        // HARDCODED ADMIN CHECK: Admin phone is 9999999999, OTP is 771993
+        // For admin, we map OTP 771993 → use Firebase's actual verification with an internal OTP
+        val isAdminPhone = cleanPhone == "9999999999"
+        
+        if (isAdminPhone) {
+            if (otp == "771993") {
+                android.util.Log.d("LoginScreen", "Admin OTP 771993 accepted for phone 9999999999")
+                // Admin uses 771993, but we need to actually sign in via Firebase
+                // Use Firebase test phone number OTP (123456) internally since admin phone is registered as test number
+                val actualFirebaseOtp = "123456" // Firebase test number OTP for 9999999999
+                val credential = PhoneAuthProvider.getCredential(vid, actualFirebaseOtp)
+                
+                signInWithPhoneAuthCredential(credential, auth, {
+                    isLoading = false
+                    isVerificationCompleted = true
+                    android.util.Log.d("LoginScreen", "Admin login successful")
+                    
+                    if (authStep == AuthStep.FORGOT_PASSWORD_OTP) {
+                        authStep = AuthStep.RESET_PASSWORD
+                    } else {
+                        onLoginSuccess()
+                    }
+                }, context) {
+                    isLoading = false
+                    isOtpError = true
+                    otpValue = ""
+                    android.util.Log.e("LoginScreen", "Admin Firebase auth failed")
+                }
+                return
+            } else {
+                // Admin phone with wrong OTP - REJECT
+                android.util.Log.d("LoginScreen", "Admin phone but wrong OTP: $otp (expected 771993)")
+                scope.launch {
+                    isLoading = false
+                    isOtpError = true
+                    otpValue = ""
+                    android.widget.Toast.makeText(context, "Invalid OTP", android.widget.Toast.LENGTH_SHORT).show()
+                }
+                return
+            }
+        }
+        
+        // Non-admin: Normal OTP verification via Firebase (for users with OTP 123456 via test numbers)
+        val credential = PhoneAuthProvider.getCredential(vid, otp)
         signInWithPhoneAuthCredential(credential, auth, {
             isLoading = false
             isVerificationCompleted = true
@@ -233,27 +285,94 @@ fun LoginScreen(
     }
 
     fun loginWithPassword() {
-        if (!isPhoneValid) {
-            phoneError = "Invalid phone number"
-            return
+        if (!isPhoneValid && !phoneNumber.contains("@")) { // Allow email input directly too? For now stick to phone logic or email
+             // The UI asks for "Mobile Number" but label implies it.
+             // If input is email, treat as email. If phone, synthetic.
         }
+        
+        // Handling both Phone (synthetic) and Email input
+        val emailInput = if (phoneNumber.contains("@")) phoneNumber else getSyntheticEmail(phoneNumber)
+        
         if (password.isEmpty()) {
             passwordError = "Enter password"
             return
         }
 
+        // Logic Switch: For Bulk Users, we rely on Phone Number lookup.
+        // We will pass the input (assumed to be phone if pure digits, else email)
+        // Ideally user enters Phone Number.
+        val isPhone = phoneNumber.all { it.isDigit() } && phoneNumber.length == 10
+        val loginIdentifier = if (isPhone) getSyntheticEmail(phoneNumber) else phoneNumber  // Firebase auth expects email
+
         isLoading = true
-        val email = getSyntheticEmail(phoneNumber)
-        auth.signInWithEmailAndPassword(email, password)
+        // Try standard auth first
+        auth.signInWithEmailAndPassword(loginIdentifier, password)
             .addOnCompleteListener { task ->
-                isLoading = false
                 if (task.isSuccessful) {
+                    isLoading = false
                     onLoginSuccess()
                 } else {
-                    passwordError = "Login failed: ${task.exception?.message}"
+                    // Check if failure is due to User Not Found AND Password is "AIF@2025"
+                    val exception = task.exception
+                    // We can't check password validity if user doesn't exist.
+                    // BUT, if the user enters the magic password, we check Firestore.
+                    
+                    if (password == "AIF@2025" || password == "AIF@123") {
+                         // Attempt Lazy Claim
+                         val firestoreRepo = com.atmiya.innovation.repository.FirestoreRepository()
+                                                  scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                              try {
+                                  // Look up by Phone Number (Original Input) - PUBLIC READ, no auth needed
+                                  val existingUid = if (isPhone) firestoreRepo.getBulkInviteUid(phoneNumber) else null
+                                  
+                                  if (existingUid != null) {
+                                     // Found a pending bulk user!
+                                     // Create Auth Account FIRST (before reading protected user data)
+                                     try {
+                                         val authResult = auth.createUserWithEmailAndPassword(loginIdentifier, password).await()
+                                         val newUid = authResult.user?.uid
+                                         
+                                         if (newUid != null) {
+                                             // Migrate Firestore Data (now authenticated)
+                                             firestoreRepo.linkBulkUserToAuth(existingUid, newUid)
+                                             
+                                             withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                                 isLoading = false
+                                                 Toast.makeText(context, "Account Activated!", Toast.LENGTH_SHORT).show()
+                                                 onLoginSuccess()
+                                             }
+                                         }
+                                     } catch (e: Exception) {
+                                          android.util.Log.e("LoginScreen", "Activation failed during linkBulkUserToAuth", e)
+                                          val detailedError = "[DEBUG] Link Failed:\n${e::class.simpleName}: ${e.message}\nCause: ${e.cause?.message ?: "None"}"
+                                          withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                             isLoading = false
+                                             passwordError = detailedError
+                                         }
+                                     }
+                                 } else {
+                                     withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                         isLoading = false
+                                         passwordError = "Login failed: User not found" // Or standard error
+                                     }
+                                 }
+                             } catch (e: Exception) {
+                                 android.util.Log.e("LoginScreen", "Error during bulk user lookup or claim", e)
+                                 val detailedError = "[DEBUG] Lookup/Claim:\n${e::class.simpleName}: ${e.message}\nCause: ${e.cause?.message ?: "None"}"
+                                 withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                     isLoading = false
+                                     passwordError = detailedError
+                                 }
+                             }
+                         }
+                    } else {
+                        isLoading = false
+                        passwordError = "Login failed: ${task.exception?.message}"
+                    }
                 }
             }
     }
+
 
     fun resetPassword() {
          if (password.length < 6) {
@@ -422,11 +541,12 @@ fun LoginScreen(
                             OutlinedTextField(
                                 value = password,
                                 onValueChange = { 
-                                    password = it
+                                    password = it.replace("\n", "") // Prevent newlines
                                     passwordError = null
                                 },
                                 label = { Text("Password") },
                                 placeholder = { Text("Enter your password") },
+                                singleLine = true,
                                 leadingIcon = {
                                     Icon(
                                         imageVector = TablerIcons.Lock,
@@ -444,7 +564,13 @@ fun LoginScreen(
                                         Icon(imageVector = image, contentDescription = if (passwordVisible) "Hide password" else "Show password")
                                     }
                                 },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Password,
+                                    imeAction = androidx.compose.ui.text.input.ImeAction.Done
+                                ),
+                                keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                                    onDone = { loginWithPassword() }
+                                ),
                                 isError = passwordError != null,
                                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                                 modifier = Modifier.fillMaxWidth(),

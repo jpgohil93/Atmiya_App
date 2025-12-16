@@ -26,6 +26,7 @@ import com.atmiya.innovation.ui.components.DetailRow
 import com.atmiya.innovation.ui.components.QuickStatItem
 import com.atmiya.innovation.ui.components.SectionHeader
 import com.atmiya.innovation.ui.components.SoftScaffold
+import com.atmiya.innovation.ui.components.UserAvatar
 import com.atmiya.innovation.ui.theme.AtmiyaPrimary
 import com.atmiya.innovation.ui.theme.AtmiyaSecondary
 import com.atmiya.innovation.utils.CurrencyUtils
@@ -153,28 +154,14 @@ fun InvestorDetailScreen(
                     ) {
                         // Prioritize users.profilePhotoUrl (source of truth) over investors.profilePhotoUrl
                         val heroPhotoUrl = targetUser?.profilePhotoUrl ?: i.profilePhotoUrl
-                        if (!heroPhotoUrl.isNullOrBlank()) {
-                            AsyncImage(
-                                model = heroPhotoUrl,
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                             Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(AtmiyaPrimary.copy(alpha = 0.1f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    if (i.name.isNotBlank()) i.name.take(1).uppercase() else "?",
-                                    style = MaterialTheme.typography.displayLarge,
-                                    color = AtmiyaPrimary,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
+                        UserAvatar(
+                            model = heroPhotoUrl,
+                            name = if (i.name.isNotBlank()) i.name else "?",
+                            modifier = Modifier.fillMaxSize(),
+                            size = null,
+                            shape = androidx.compose.ui.graphics.RectangleShape,
+                            fontSize = MaterialTheme.typography.displayLarge.fontSize
+                        )
                         
                         // Gradient Overlay
                         Box(

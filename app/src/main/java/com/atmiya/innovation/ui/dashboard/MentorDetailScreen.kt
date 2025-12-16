@@ -26,6 +26,7 @@ import com.atmiya.innovation.ui.components.DetailRow
 import com.atmiya.innovation.ui.components.QuickStatItem
 import com.atmiya.innovation.ui.components.SectionHeader
 import com.atmiya.innovation.ui.components.SoftScaffold
+import com.atmiya.innovation.ui.components.UserAvatar
 import com.atmiya.innovation.ui.theme.AtmiyaPrimary
 import compose.icons.TablerIcons
 import compose.icons.tablericons.Briefcase
@@ -120,28 +121,14 @@ fun MentorDetailScreen(
                     ) {
                         // Prioritize users.profilePhotoUrl (source of truth) over mentors.profilePhotoUrl
                         val heroPhotoUrl = targetUser?.profilePhotoUrl ?: m.profilePhotoUrl
-                        if (!heroPhotoUrl.isNullOrBlank()) {
-                            AsyncImage(
-                                model = heroPhotoUrl,
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(AtmiyaPrimary.copy(alpha = 0.1f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    m.name.take(1).uppercase(),
-                                    style = MaterialTheme.typography.displayLarge,
-                                    color = AtmiyaPrimary,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
+                        UserAvatar(
+                            model = heroPhotoUrl,
+                            name = m.name,
+                            modifier = Modifier.fillMaxSize(),
+                            size = null,
+                            shape = androidx.compose.ui.graphics.RectangleShape,
+                            fontSize = MaterialTheme.typography.displayLarge.fontSize
+                        )
                         
                         // Gradient Overlay
                         Box(

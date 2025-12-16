@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.atmiya.innovation.data.User
 import com.atmiya.innovation.repository.FirestoreRepository
+import com.atmiya.innovation.ui.components.UserAvatar
 import com.atmiya.innovation.ui.theme.AtmiyaPrimary
 import com.atmiya.innovation.ui.theme.AtmiyaSecondary
 
@@ -116,18 +117,18 @@ fun ProfileDetailScreen(
                             .size(100.dp)
                             .offset(y = 50.dp) // Push down
                     ) {
-                         if (u.profilePhotoUrl != null) {
-                            AsyncImage(
-                                model = u.profilePhotoUrl,
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize().padding(4.dp).clip(CircleShape)
-                            )
-                        } else {
-                            Box(modifier = Modifier.fillMaxSize().background(Color.LightGray), contentAlignment = Alignment.Center) {
-                                Text(u.name.take(1).uppercase(), fontSize = 40.sp, color = Color.White)
-                            }
-                        }
+                        UserAvatar(
+                            model = u.profilePhotoUrl,
+                            name = u.name,
+                            modifier = Modifier.padding(4.dp),
+                            size = 100.dp, // Surface handles size, but passing it explicitly to avatar ensures text scaling uses it? 
+                            // Actually UserAvatar handles size.
+                            // But Surface 100dp -> Padding 4dp -> Content 92dp approx.
+                            // Let's passed explicit size null and match parent or similar.
+                            // The UserAvatar with size=100.dp will set size=100.
+                            // We have padding(4.dp). So we should probably let UserAvatar fill?
+                            // If we set size=null, modifier.fillMaxSize() works.
+                        )
                     }
                 }
                 

@@ -29,6 +29,7 @@ import com.atmiya.innovation.ui.theme.AtmiyaSecondary
 import com.atmiya.innovation.ui.components.DetailRow
 import com.atmiya.innovation.ui.components.QuickStatItem
 import com.atmiya.innovation.ui.components.SectionHeader
+import com.atmiya.innovation.ui.components.UserAvatar
 import compose.icons.TablerIcons
 import compose.icons.tablericons.Home
 import compose.icons.tablericons.User
@@ -153,28 +154,14 @@ fun StartupDetailScreen(
                         // Prioritize users.profilePhotoUrl (source of truth for listings) over startups.logoUrl
                         val heroImage = if (!u.profilePhotoUrl.isNullOrBlank()) u.profilePhotoUrl else s.logoUrl
                         
-                        if (!heroImage.isNullOrBlank()) {
-                            AsyncImage(
-                                model = heroImage,
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(AtmiyaPrimary.copy(alpha = 0.1f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    s.startupName.take(1).uppercase(),
-                                    style = MaterialTheme.typography.displayLarge,
-                                    color = AtmiyaPrimary,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
+                        UserAvatar(
+                            model = heroImage,
+                            name = s.startupName,
+                            modifier = Modifier.fillMaxSize(),
+                            size = null,
+                            shape = androidx.compose.ui.graphics.RectangleShape,
+                            fontSize = MaterialTheme.typography.displayLarge.fontSize
+                        )
                         
                         // Gradient Fade
                         Box(

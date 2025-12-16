@@ -13,12 +13,67 @@ import androidx.lifecycle.lifecycleScope
 import com.atmiya.innovation.repository.FirestoreRepository
 import com.atmiya.innovation.ui.theme.AtmiyaInnovationTheme
 import com.google.firebase.auth.FirebaseAuth
+import android.content.Intent
+import android.net.Uri
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleNavigationIntent(intent)
+    }
+
+    // Mutable state to hold navigation destination from intent
+    private val navigationState = mutableStateOf<Pair<String?, String?>>(null to null)
+
+    private fun handleNavigationIntent(intent: Intent?) {
+        if (intent == null) return
+        
+        var startDest = intent.getStringExtra("navigation_destination")
+        var navId = intent.getStringExtra("navigation_id")
+
+        // Handle Deep Link URI if extras are missing
+        if (startDest == null && intent.data != null) {
+            val uri = intent.data
+            if (uri != null) {
+                // Scenario 1: Direct Deep Link (https://netfund.app/wall_post/123)
+                if (uri.pathSegments.size >= 2 && uri.pathSegments[0] == "wall_post") {
+                    startDest = "wall_post"
+                    navId = uri.pathSegments[1]
+                }
+                
+                // Scenario 2: Play Store Referrer (https://play.google.com/store/apps/details?id=...&referrer=wall_post/123)
+                // When FDL opens the app, it usually passes the 'link' parameter as the data.
+                // If the 'link' param was the Play Store URL, we need to extract 'referrer'.
+                if (uri.host == "play.google.com" || (uri.getQueryParameter("link")?.contains("play.google.com") == true)) {
+                    // Check if 'referrer' exists directly
+                    val referrer = uri.getQueryParameter("referrer") ?: Uri.parse(uri.getQueryParameter("link") ?: "").getQueryParameter("referrer")
+                    
+                    if (referrer != null && referrer.startsWith("wall_post/")) {
+                         val parts = referrer.split("/")
+                         if (parts.size >= 2) {
+                             startDest = "wall_post"
+                             navId = parts[1]
+                         }
+                    }
+                }
+            }
+        }
+        
+        if (startDest != null) {
+            android.util.Log.d("MainActivity", "Handling Intent: dest=$startDest id=$navId")
+            navigationState.value = startDest to navId
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        
+        // Handle initial intent
+        handleNavigationIntent(intent)
+        
         val themeManager = com.atmiya.innovation.ui.theme.ThemeManager(this)
         
         // Notification Permission Launcher (Android 13+)
@@ -127,13 +182,38 @@ class MainActivity : ComponentActivity() {
                                                     selectedRole = user.role
                                                     currentScreen = "dashboard"
                                                 }
-                                            } else if (user != null && user.isOnboardingComplete && user.role.isNotEmpty()) {
-                                                android.util.Log.d("SessionCheck", "Navigating to Dashboard. Role: ${user.role}")
                                                 selectedRole = user.role
                                                 currentScreen = "dashboard"
                                             } else {
-                                                android.util.Log.d("SessionCheck", "Navigating to Signup. User null? ${user == null}, Onboarding? ${user?.isOnboardingComplete}, Role? ${user?.role}")
-                                                currentScreen = "signup"
+                                                // Check for Pending Role Details (Bulk Users - not yet onboarded)
+                                                android.util.Log.d("SessionCheck", "User check: uid=$uid, user=${user != null}, createdVia=${user?.createdVia}, hasCompletedRoleDetails=${user?.hasCompletedRoleDetails}, isOnboardingComplete=${user?.isOnboardingComplete}, role=${user?.role}")
+                                                
+                                                if (user == null) {
+                                                    // User not found - might be first-time bulk login where doc doesn't exist yet
+                                                    android.util.Log.d("SessionCheck", "User is null for uid=$uid - Going to Signup")
+                                                    currentScreen = "signup"
+                                                } else if (user.createdVia == "bulk") {
+                                                    // Bulk users: check if they need to complete startup details
+                                                    // Either hasCompletedRoleDetails is false, OR it wasn't set (defaults to true but hasCompletedOnboarding is still false)
+                                                    if (!user.hasCompletedRoleDetails || !user.isOnboardingComplete) {
+                                                        android.util.Log.d("SessionCheck", "Bulk user needs to complete details - Redirecting to Pending Details")
+                                                        currentScreen = "pending_details"
+                                                    } else {
+                                                        android.util.Log.d("SessionCheck", "Bulk user completed onboarding - Going to Dashboard")
+                                                        selectedRole = user.role
+                                                        currentScreen = "dashboard"
+                                                    }
+                                                } else if (user.isOnboardingComplete && user.role == "startup" && !user.hasCompletedRoleDetails) {
+                                                    android.util.Log.d("SessionCheck", "Startup without role details - Redirecting to Pending Details")
+                                                    currentScreen = "pending_details"
+                                                } else if (user.isOnboardingComplete && user.role.isNotEmpty()) {
+                                                    android.util.Log.d("SessionCheck", "Navigating to Dashboard. Role: ${user.role}")
+                                                    selectedRole = user.role
+                                                    currentScreen = "dashboard"
+                                                } else {
+                                                    android.util.Log.d("SessionCheck", "Fallthrough - Navigating to Signup. isOnboardingComplete=${user.isOnboardingComplete}, role=${user.role}")
+                                                    currentScreen = "signup"
+                                                }
                                             }
                                             
                                             // Ask for permission after successful login check
@@ -183,21 +263,20 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         }
-                        "dashboard" -> {
-                            var startDest = intent.getStringExtra("navigation_destination")
-                            var navId = intent.getStringExtra("navigation_id")
-
-                            // Handle Deep Link URI if extras are missing
-                            if (startDest == null && intent.data != null) {
-                                val uri = intent.data
-                                if (uri != null && uri.pathSegments.size >= 2) {
-                                    // Path: /wall_post/{id}
-                                    if (uri.pathSegments[0] == "wall_post") {
-                                        startDest = "wall_post"
-                                        navId = uri.pathSegments[1]
-                                    }
+                        "pending_details" -> {
+                            com.atmiya.innovation.ui.onboarding.PendingStartupDetailsScreen(
+                                onComplete = {
+                                    selectedRole = "startup"
+                                    currentScreen = "dashboard"
+                                },
+                                onLogout = {
+                                    auth.signOut()
+                                    currentScreen = "login"
                                 }
-                            }
+                            )
+                        }
+                        "dashboard" -> {
+                            val (navStateDest, navStateId) = navigationState.value
                             
                             // Subscribe to topics if Startup
                             LaunchedEffect(selectedRole) {
@@ -213,17 +292,32 @@ class MainActivity : ComponentActivity() {
                                 com.google.firebase.messaging.FirebaseMessaging.getInstance().subscribeToTopic("all_posts")
                             }
 
+                            // Pass navigation state to Dashboard
+                            // And clear it once consumed is handled inside Dashboard or we just pass it reactively
+                            // For simplicity, we pass state directly. 
+                            // DashboardScreen needs to react to changes.
+                            // To ensure we don't re-navigate on config changes if we already did, correct way is to consume it.
+                            // But since we use rememberSaveable or similar inside Dashboard for nav controller, it might be tricky.
+                            // Better approach: Pass the values, and let Dashboard `LaunchedEffect` handle it.
+                            // We need to clear it so it doesn't trigger again?
+                            // Actually, onNewIntent updates the state, triggering recomposition.
+                            // Dashboard LaunchedEffect(navStateDest, navStateId) will run.
+                            
+                            // To prevent loop/double nav, we can pass a "consume" callback?
+                            // Or just let the state sit there. LaunchedEffect keys will handle only changes.
+
                             com.atmiya.innovation.ui.dashboard.DashboardScreen(
                                 role = selectedRole,
-                                startDestination = startDest,
-                                startId = navId,
+                                startDestination = navStateDest,
+                                startId = navStateId,
                                 onLogout = {
                                     auth.signOut()
                                     currentScreen = "login"
                                 }
                             )
-                            intent.removeExtra("navigation_destination")
-                            intent.removeExtra("navigation_id")
+                            
+                            // Reset navigation state after passing it to Dashboard is risky if Dashboard doesn't consume it immediately.
+                            // Instead, we trust DashboardScreen's LaunchedEffect to react to changes in [startDestination, startId].
                         }
                     }
                 }
@@ -232,3 +326,4 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+

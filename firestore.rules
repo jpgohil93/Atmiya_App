@@ -42,8 +42,15 @@ service cloud.firestore {
     // Authenticated users can read basic profiles of others (for networking).
     match /users/{userId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && request.auth.uid == userId; // Self-signup
-      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow create: if isAuthenticated() && (request.auth.uid == userId || isAdmin()); // Self-signup OR Admin Bulk Create
+      // Allow update if: Owner OR Admin OR (Claiming account: Doc email matches Auth email)
+      allow update: if isAuthenticated() && (
+        request.auth.uid == userId || 
+        isAdmin() ||
+        (resource.data.email == request.auth.token.email)
+      );
+      // Allow delete if: Admin OR (Bulk user being claimed/migrated)
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.createdVia == 'bulk');
       
       match /saved_ideas/{ideaId} {
         allow read, write: if isAuthenticated() && request.auth.uid == userId;
@@ -54,6 +61,14 @@ service cloud.firestore {
         allow create: if isAuthenticated(); // Allow others to send notifications
         allow update, delete: if isAuthenticated() && request.auth.uid == userId; // User can mark read/delete
       }
+    }
+    
+    // --- Bulk Invites (Safe Lookup) ---
+    // Document ID is the Phone Number. Contains { uid: "TARGET_UID" }
+    match /bulk_invites/{phone} {
+      allow read: if true; // Publicly readable if you know the phone (ID)
+      // Allow delete by authenticated user (Claiming process)
+      allow write: if isAdmin() || isAuthenticated();
     }
     
     // --- Role Specific Collections ---

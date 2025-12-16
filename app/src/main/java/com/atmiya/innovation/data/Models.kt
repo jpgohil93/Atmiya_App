@@ -25,7 +25,11 @@ data class User(
     val isDeleted: Boolean = false,
     val createdAt: Timestamp? = null,
     val updatedAt: Timestamp? = null,
-    val fcmToken: String? = null // For Push Notifications
+    val fcmToken: String? = null, // For Push Notifications
+    val createdVia: String = "app", // "app", "bulk"
+    val organization: String = "", // Added for bulk upload compatibility
+    val hasCompletedBasicDetails: Boolean = true,
+    val hasCompletedRoleDetails: Boolean = true
 )
 
 data class Startup(

@@ -30,6 +30,7 @@ import android.widget.Toast
 import coil.compose.AsyncImage
 import com.atmiya.innovation.data.*
 import com.atmiya.innovation.repository.FirestoreRepository
+import com.atmiya.innovation.ui.components.UserAvatar
 import com.atmiya.innovation.ui.theme.AtmiyaPrimary
 import com.atmiya.innovation.ui.theme.AtmiyaSecondary
 import com.google.firebase.auth.FirebaseAuth
@@ -425,18 +426,13 @@ fun NetworkUserCard(
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 // Photo
-                if (!user.photoUrl.isNullOrBlank()) {
-                    AsyncImage(
-                        model = user.photoUrl,
-                        contentDescription = null,
-                        modifier = Modifier.size(56.dp).clip(CircleShape).background(Color(0xFFF3F4F6)),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Box(Modifier.size(56.dp).clip(CircleShape).background(Color(0xFFE0E7FF)), contentAlignment = Alignment.Center) {
-                        Text(finalName.take(1).uppercase(), fontWeight = FontWeight.Bold, color = AtmiyaPrimary, fontSize = 20.sp)
-                    }
-                }
+                // Photo
+                UserAvatar(
+                    model = user.photoUrl,
+                    name = finalName,
+                    modifier = Modifier.size(56.dp),
+                    size = 56.dp
+                )
                 
                 Spacer(modifier = Modifier.width(16.dp))
                 
@@ -541,11 +537,11 @@ fun RequestsListContent(
                 ) {
                     Column(Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                           AsyncImage(
-                               model = req.senderPhotoUrl, 
-                               contentDescription = null, 
-                               modifier = Modifier.size(50.dp).clip(CircleShape).background(Color.Gray), 
-                               contentScale = ContentScale.Crop
+                           UserAvatar(
+                               model = req.senderPhotoUrl,
+                               name = req.senderName,
+                               modifier = Modifier.size(50.dp),
+                               size = 50.dp
                            )
                            Spacer(modifier = Modifier.width(12.dp))
                            Column {

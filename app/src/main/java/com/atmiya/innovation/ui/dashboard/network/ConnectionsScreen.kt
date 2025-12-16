@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.atmiya.innovation.data.ConnectionRequest
 import com.atmiya.innovation.repository.FirestoreRepository
+import com.atmiya.innovation.ui.components.UserAvatar
 import com.atmiya.innovation.ui.theme.AtmiyaPrimary
 import com.atmiya.innovation.ui.theme.AtmiyaSecondary
 import com.google.firebase.auth.FirebaseAuth
@@ -239,14 +240,11 @@ fun ConnectionItem(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AsyncImage(
-                model = displayPhoto, 
-                contentDescription = null,
-                modifier = Modifier
-                    .size(50.dp)
-                    .clip(CircleShape)
-                    .background(Color.LightGray),
-                contentScale = ContentScale.Crop
+            UserAvatar(
+                model = displayPhoto,
+                name = displayName,
+                modifier = Modifier.size(50.dp),
+                size = 50.dp
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -293,14 +291,11 @@ fun RequestItem(
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                AsyncImage(
+                UserAvatar(
                     model = request.senderPhotoUrl,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(50.dp)
-                        .clip(CircleShape)
-                        .background(Color.LightGray),
-                    contentScale = ContentScale.Crop
+                    name = request.senderName,
+                    modifier = Modifier.size(50.dp),
+                    size = 50.dp
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {

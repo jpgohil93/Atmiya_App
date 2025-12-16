@@ -289,3 +289,175 @@ exports.notifyOnConnectionAccepted = functions.firestore
         }
         return null;
     });
+
+/**
+ * Callable Cloud Function for processing bulk CSV uploads.
+ * Reads CSV from Cloud Storage, validates, and creates users in batches.
+ * Supports 50,000+ records efficiently.
+ */
+exports.processBulkUpload = functions
+    .runWith({
+        timeoutSeconds: 540, // 9 minutes max for large uploads
+        memory: '1GB'
+    })
+    .https.onCall(async (data, context) => {
+        // 1. Verify Admin
+        if (!context.auth) {
+            throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+        }
+
+        const callerUid = context.auth.uid;
+        const callerDoc = await admin.firestore().collection('users').doc(callerUid).get();
+        const callerData = callerDoc.data();
+
+        if (!callerData || callerData.role !== 'admin') {
+            throw new functions.https.HttpsError('permission-denied', 'Only admins can perform bulk uploads');
+        }
+
+        // 2. Get CSV content from request (passed as string)
+        const csvContent = data.csvContent;
+        if (!csvContent || typeof csvContent !== 'string') {
+            throw new functions.https.HttpsError('invalid-argument', 'csvContent is required');
+        }
+
+        // 3. Parse CSV
+        const lines = csvContent.split('\n').filter(line => line.trim() !== '');
+        if (lines.length < 2) {
+            throw new functions.https.HttpsError('invalid-argument', 'CSV must have header and at least one data row');
+        }
+
+        // Skip header, process data
+        const dataLines = lines.slice(1);
+        const results = { success: 0, failed: 0, errors: [] };
+
+        // 4. Fetch existing phones for uniqueness check
+        const existingPhonesSnapshot = await admin.firestore().collection('users')
+            .select('phoneNumber')
+            .get();
+        const existingPhones = new Set(existingPhonesSnapshot.docs.map(doc => doc.data().phoneNumber).filter(Boolean));
+        const seenPhones = new Set();
+
+        // 5. Process in batches of 150 (each record = 3 writes = 450 ops < 500 limit)
+        const BATCH_SIZE = 150;
+        const validRecords = [];
+
+        for (let i = 0; i < dataLines.length; i++) {
+            const line = dataLines[i];
+            const parts = line.split(',').map(p => p.trim());
+
+            // Expected: name,phone,email,city,region,organization (matching Android app format)
+            if (parts.length < 3) {
+                results.errors.push(`Line ${i + 2}: Insufficient columns (need at least name, phone, email)`);
+                results.failed++;
+                continue;
+            }
+
+            const [name, rawPhone, email, city, region, organization] = parts;
+
+            // Clean phone number
+            let phone = rawPhone.replace(/\s/g, '').replace(/-/g, '');
+            if (phone.startsWith('+91')) phone = phone.substring(3);
+            if (phone.startsWith('91') && phone.length === 12) phone = phone.substring(2);
+
+            // Validation
+            if (!name || name.length < 2) {
+                results.errors.push(`Line ${i + 2}: Invalid name`);
+                results.failed++;
+                continue;
+            }
+            if (!email || !email.includes('@')) {
+                results.errors.push(`Line ${i + 2}: Invalid email`);
+                results.failed++;
+                continue;
+            }
+            if (!phone || phone.length !== 10 || !/^\d+$/.test(phone)) {
+                results.errors.push(`Line ${i + 2}: Invalid phone (${phone})`);
+                results.failed++;
+                continue;
+            }
+            if (existingPhones.has(phone)) {
+                results.errors.push(`Line ${i + 2}: Phone ${phone} already exists`);
+                results.failed++;
+                continue;
+            }
+            if (seenPhones.has(phone)) {
+                results.errors.push(`Line ${i + 2}: Duplicate phone in CSV`);
+                results.failed++;
+                continue;
+            }
+
+            seenPhones.add(phone);
+            validRecords.push({
+                name,
+                email: email.toLowerCase(),
+                phone,
+                role: 'startup', // Default role for bulk uploads
+                city: city || '',
+                region: region || '',
+                organization: organization || ''
+            });
+        }
+
+        // 6. Write in batches
+        const db = admin.firestore();
+
+        for (let i = 0; i < validRecords.length; i += BATCH_SIZE) {
+            const batchRecords = validRecords.slice(i, i + BATCH_SIZE);
+            const batch = db.batch();
+
+            for (const record of batchRecords) {
+                const uid = db.collection('users').doc().id; // Generate new ID
+                const timestamp = admin.firestore.FieldValue.serverTimestamp();
+
+                // User document
+                const userRef = db.collection('users').doc(uid);
+                batch.set(userRef, {
+                    uid: uid,
+                    name: record.name,
+                    email: record.email,
+                    phoneNumber: record.phone,
+                    role: record.role,
+                    city: record.city,
+                    region: record.region,
+                    organization: record.organization,
+                    createdAt: timestamp,
+                    createdVia: 'bulk',
+                    isBlocked: false,
+                    isDeleted: false,
+                    hasCompletedOnboarding: false,
+                    hasCompletedRoleDetails: false  // Bulk users need to complete startup details
+                });
+
+                // Startup document (if startup role)
+                if (record.role === 'startup') {
+                    const startupRef = db.collection('startups').doc(uid);
+                    batch.set(startupRef, {
+                        uid: uid,
+                        startupName: record.name,
+                        createdAt: timestamp
+                    });
+                }
+
+                // Bulk invite document (keyed by phone)
+                const inviteRef = db.collection('bulk_invites').doc(record.phone);
+                batch.set(inviteRef, {
+                    uid: uid,
+                    email: record.email,
+                    createdAt: timestamp
+                });
+            }
+
+            try {
+                await batch.commit();
+                results.success += batchRecords.length;
+                console.log(`Batch ${Math.floor(i / BATCH_SIZE) + 1} committed: ${batchRecords.length} records`);
+            } catch (error) {
+                console.error('Batch commit error:', error);
+                results.failed += batchRecords.length;
+                results.errors.push(`Batch ${Math.floor(i / BATCH_SIZE) + 1} failed: ${error.message}`);
+            }
+        }
+
+        console.log(`Bulk upload complete: ${results.success} success, ${results.failed} failed`);
+        return results;
+    });

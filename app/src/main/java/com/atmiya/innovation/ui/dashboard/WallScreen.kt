@@ -146,18 +146,9 @@ fun WallScreen(
 
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = isLoading)
 
-    Scaffold(
 
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showCreateDialog = true },
-                containerColor = AtmiyaPrimary,
-                contentColor = Color.White,
-                shape = CircleShape
-            ) {
-                Icon(TablerIcons.Plus, contentDescription = "Create Post", tint = Color.White, modifier = Modifier.size(24.dp))
-            }
-        }
+    Scaffold(
+        // FAB removed
     ) { innerPadding ->
 
             SwipeRefresh(
@@ -228,7 +219,16 @@ fun WallScreen(
                                     onLike = { viewModel.toggleLike(post) },
                                     onVote = { optionId -> viewModel.voteOnPoll(post, optionId) },
                                     onConnect = {
-                                        Toast.makeText(context, "Connect request sent to ${post.authorName}", Toast.LENGTH_SHORT).show()
+                                        viewModel.sendConnectionRequest(
+                                            com.atmiya.innovation.data.User(
+                                                uid = post.authorUserId,
+                                                name = post.authorName,
+                                                role = post.authorRole,
+                                                profilePhotoUrl = post.authorPhotoUrl
+                                            )
+                                        ) {
+                                            Toast.makeText(context, "Connection request sent!", Toast.LENGTH_SHORT).show()
+                                        }
                                     },
                                     onDelete = {
                                         viewModel.deletePost(post.id)
@@ -305,11 +305,47 @@ fun CreatePostDialog(
         }
     }
 
-    AlertDialog(
+    androidx.compose.ui.window.Dialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (isPollMode) "Create Poll" else "Create Post", fontWeight = FontWeight.Bold) },
-        text = {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+        properties = androidx.compose.ui.window.DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
+        )
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+                .imePadding(), // Key fix for keyboard
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(24.dp)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (isPollMode) "Create Poll" else "Create Post",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = onDismiss) {
+                        Icon(TablerIcons.X, contentDescription = "Close")
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Content
                 if (!isPollMode) {
                     SoftTextField(
                         value = text,
@@ -487,42 +523,42 @@ fun CreatePostDialog(
                     if (!isPollMode) {
                          Text("Max size: Image 5MB, Video 20MB", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f), modifier = Modifier.padding(top = 8.dp, start = 4.dp))
                     }
+                }
+                
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Footer (Action Button)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    SoftButton(
+                        onClick = { 
+                            if (isPollMode) {
+                                if (pollQuestion.isBlank() || pollOptions.any { it.isBlank() } || pollOptions.size < 2) {
+                                    Toast.makeText(context, "Please fill all poll fields (min 2 options)", Toast.LENGTH_SHORT).show()
+                                    return@SoftButton
+                                }
+                                isLoading = true
+                                onPost("", emptyList(), pollQuestion, pollOptions)
+                            } else {
+                                if (text.isBlank() && selectedMediaItems.isEmpty()) {
+                                    Toast.makeText(context, "Please add text or media", Toast.LENGTH_SHORT).show()
+                                    return@SoftButton
+                                }
+                                isLoading = true
+                                onPost(text, selectedMediaItems, null, emptyList()) 
+                            }
+                        },
+                        text = if (isLoading) "Posting..." else "Post",
+                        icon = TablerIcons.Send,
+                        isLoading = isLoading,
+                        modifier = Modifier.width(120.dp).height(40.dp)
+                    )
+                }
             }
         }
-    },
-        confirmButton = {
-            SoftButton(
-                onClick = { 
-                    if (isPollMode) {
-                        if (pollQuestion.isBlank() || pollOptions.any { it.isBlank() } || pollOptions.size < 2) {
-                            Toast.makeText(context, "Please fill all poll fields (min 2 options)", Toast.LENGTH_SHORT).show()
-                            return@SoftButton
-                        }
-                        isLoading = true
-                        onPost("", emptyList(), pollQuestion, pollOptions)
-                    } else {
-                        if (text.isBlank() && selectedMediaItems.isEmpty()) {
-                            Toast.makeText(context, "Please add text or media", Toast.LENGTH_SHORT).show()
-                            return@SoftButton
-                        }
-                        isLoading = true
-                        onPost(text, selectedMediaItems, null, emptyList()) 
-                    }
-                },
-                text = if (isLoading) "Posting..." else "Post",
-                icon = TablerIcons.Send,
-                isLoading = isLoading,
-                modifier = Modifier.width(120.dp).height(40.dp)
-            )
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel", color = AtmiyaPrimary)
-            }
-        },
-        containerColor = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(24.dp)
-    )
+    }
 }
 
 fun formatTimestampIST(timestamp: com.google.firebase.Timestamp?): String {
@@ -572,13 +608,13 @@ fun PostCard(
                 verticalAlignment = Alignment.CenterVertically, 
                 modifier = Modifier.padding(12.dp)
             ) {
-                AsyncImage(
+                UserAvatar(
                     model = post.authorPhotoUrl,
-                    contentDescription = null,
-                    modifier = Modifier.size(40.dp).clip(CircleShape).background(Color.Gray),
-                    contentScale = ContentScale.Crop
+                    name = post.authorName,
+                    modifier = Modifier.padding(end = 12.dp),
+                    size = 40.dp
                 )
-                Spacer(modifier = Modifier.width(12.dp))
+
                 Column(modifier = Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
@@ -604,11 +640,36 @@ fun PostCard(
                 }
                 
                 // Connect Button - Top Right
-                TextButton(
-                    onClick = onConnect,
-                    colors = ButtonDefaults.textButtonColors(contentColor = AtmiyaPrimary)
-                ) {
-                    Text("+ Connect", fontWeight = FontWeight.Bold)
+                var connectionStatus by remember { mutableStateOf("loading") }
+
+                LaunchedEffect(currentUserId, post.authorUserId) {
+                    if (currentUserId.isNotEmpty() && post.authorUserId.isNotEmpty() && currentUserId != post.authorUserId) {
+                        try {
+                            connectionStatus = repository.checkConnectionStatus(currentUserId, post.authorUserId)
+                        } catch (e: Exception) {
+                            connectionStatus = "none"
+                        }
+                    } else {
+                        connectionStatus = "self"
+                    }
+                }
+
+                if (currentUserId != post.authorUserId && connectionStatus != "connected" && connectionStatus != "self" && connectionStatus != "loading") {
+                    TextButton(
+                        onClick = {
+                            onConnect()
+                            connectionStatus = "pending_sent" // Optimistic Update
+                        },
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = if (connectionStatus == "pending_sent") Color.Gray else AtmiyaPrimary
+                        ),
+                        enabled = connectionStatus == "none" || connectionStatus == "declined"
+                    ) {
+                        Text(
+                            text = if (connectionStatus == "pending_sent") "Pending" else "+ Connect", 
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
 
                 // Delete Option (Three Dots)
@@ -894,9 +955,14 @@ fun PostCard(
                 // Share
                  Box(
                     modifier = Modifier.weight(1f).clickable { 
+                                // Directly use Play Store URL with referrer for Deep Linking
+                                // This avoids "Dynamic Link Not Found" errors since we don't have a configured domain.
+                                val playStoreUrl = "https://play.google.com/store/apps/details?id=com.atmiya.innovation&referrer=wall_post/${post.id}"
+                                
                                 val sendIntent = android.content.Intent().apply {
                                     action = android.content.Intent.ACTION_SEND
-                                    putExtra(android.content.Intent.EXTRA_TEXT, "Check this out on Atmiya Innovation App!\nhttps://netfund.app/wall_post/${post.id}")
+                                    val shareText = "Check this out on Atmiya Innovation App!\n$playStoreUrl"
+                                    putExtra(android.content.Intent.EXTRA_TEXT, shareText)
                                     type = "text/plain"
                                 }
                                 val shareIntent = android.content.Intent.createChooser(sendIntent, null)
@@ -1120,19 +1186,26 @@ fun VideoPlayer(videoUrl: String) {
 
 // Helper for Hashtags
 fun getAnnotatedString(text: String): androidx.compose.ui.text.AnnotatedString {
+    val hashtagRegex = Regex("#[\\w]+")
     return androidx.compose.ui.text.buildAnnotatedString {
-        val words = text.split("\\s+".toRegex())
-        words.forEach { word ->
-            if (word.startsWith("#")) {
-                pushStyle(androidx.compose.ui.text.SpanStyle(
-                    color = AtmiyaPrimary,
-                    fontWeight = FontWeight.Bold
-                ))
-                append("$word ")
-                pop()
-            } else {
-                append("$word ")
-            }
+        var lastIndex = 0
+        hashtagRegex.findAll(text).forEach { matchResult ->
+            // Append text before hashtag (preserves format)
+            append(text.substring(lastIndex, matchResult.range.first))
+            
+            // Append Hashtag with style
+            pushStyle(androidx.compose.ui.text.SpanStyle(
+                color = AtmiyaPrimary,
+                fontWeight = FontWeight.Bold
+            ))
+            append(matchResult.value)
+            pop()
+            
+            lastIndex = matchResult.range.last + 1
+        }
+        // Append remaining text
+        if (lastIndex < text.length) {
+            append(text.substring(lastIndex))
         }
     }
 }
@@ -1440,17 +1513,6 @@ fun CommentItem(
             }
             Spacer(modifier = Modifier.height(4.dp))
             Text(comment.text, style = MaterialTheme.typography.bodyMedium)
-            
-            // Actions
-            Row(modifier = Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(TablerIcons.Heart, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.Gray)
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Like", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                
-                Spacer(modifier = Modifier.width(16.dp))
-                
-                Text("Reply", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-            }
         }
     }
 }

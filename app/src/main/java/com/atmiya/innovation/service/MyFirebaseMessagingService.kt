@@ -65,7 +65,8 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
     private fun sendNotification(title: String, messageBody: String, destType: String?, destId: String?, originalType: String?) {
         val intent = Intent(this, MainActivity::class.java)
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        // Ensure we bring existing activity to front or create new one, triggering onNewIntent if needed
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         
         if (destType != null) {
             intent.putExtra("navigation_destination", destType)

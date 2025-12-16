@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
 import com.atmiya.innovation.R
+import com.atmiya.innovation.ui.components.UserAvatar
 import com.atmiya.innovation.ui.theme.AtmiyaPrimary
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
@@ -113,16 +114,16 @@ fun IncubatorDetailScreen(
                         .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    AsyncImage(
+                    UserAvatar(
                         model = decodedLogoUrl,
-                        contentDescription = null,
+                        name = name,
                         modifier = Modifier
-                            .size(100.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Color(0xFFF5F5F5)),
-                        contentScale = ContentScale.Fit,
-                        error = rememberAsyncImagePainter(model = R.drawable.ic_launcher_foreground),
-                        placeholder = rememberAsyncImagePainter(model = R.drawable.ic_launcher_foreground)
+                            .size(100.dp),
+                            // .clip(RoundedCornerShape(16.dp)) // UserAvatar clips to shape
+                            // .background(Color(0xFFF5F5F5)), // UserAvatar handles bg
+                        size = 100.dp,
+                        shape = RoundedCornerShape(16.dp),
+                        contentScale = ContentScale.Fit
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(

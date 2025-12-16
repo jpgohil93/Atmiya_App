@@ -19,7 +19,7 @@ android {
         targetSdk = 35
         
         // Dynamic Versioning for CI
-        val buildNumber = System.getenv("APPCIRCLE_BUILD_NUMBER")?.toIntOrNull() ?: 13
+        val buildNumber = System.getenv("APPCIRCLE_BUILD_NUMBER")?.toIntOrNull() ?: 14
         versionCode = buildNumber
         versionName = "1.2.$buildNumber"
 
@@ -133,6 +133,7 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.firebase:firebase-storage")
     implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-functions")
 
     // Coil (Images)
     implementation("io.coil-kt:coil-compose:2.6.0")

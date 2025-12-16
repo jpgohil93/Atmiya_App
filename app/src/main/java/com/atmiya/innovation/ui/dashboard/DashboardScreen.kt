@@ -92,6 +92,12 @@ fun DashboardScreen(
     startId: String? = null,
     onLogout: () -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    // Minimize app on Back press instead of closing
+    androidx.activity.compose.BackHandler(enabled = true) {
+        (context as? android.app.Activity)?.moveTaskToBack(true)
+    }
+
     val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
     val firestoreRepo = remember { com.atmiya.innovation.repository.FirestoreRepository() }
     
@@ -211,7 +217,8 @@ fun DashboardScreen(
                         onOpenDrawer = { scope.launch { drawerState.open() } },
                         onNavigateToProfile = { navController.navigate("profile_screen") },
                         onNavigateToNotifications = { navController.navigate("notifications") },
-                        userPhotoUrl = currentUser?.profilePhotoUrl
+                        userPhotoUrl = currentUser?.profilePhotoUrl,
+                        userName = currentUser?.name
                     )
                 }
             }
@@ -645,6 +652,17 @@ fun DashboardScreen(
 
                     composable("runway_calculator") {
                         com.atmiya.innovation.ui.dashboard.startup.RunwayCalculatorScreen(
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+
+                    composable(
+                        "user_detail/{userId}",
+                        arguments = listOf(navArgument("userId") { type = NavType.StringType })
+                    ) { backStackEntry ->
+                        val userId = backStackEntry.arguments?.getString("userId") ?: return@composable
+                        com.atmiya.innovation.ui.admin.UserDetailScreen(
+                            userId = userId,
                             onBack = { navController.popBackStack() }
                         )
                     }

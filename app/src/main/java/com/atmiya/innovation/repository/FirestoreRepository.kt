@@ -599,13 +599,139 @@ class FirestoreRepository {
     }
 
     // --- Admin User Management ---
-
+    
+    /**
+     * Returns the UID of a bulk-created user by their phone number.
+     * This ONLY reads from `bulk_invites` collection which is publicly readable.
+     * Does NOT require authentication.
+     */
+    suspend fun getBulkInviteUid(phone: String): String? {
+        val cleanPhone = phone.replace("\\s".toRegex(), "").replace("-", "")
+        val inviteSnapshot = db.collection("bulk_invites").document(cleanPhone).get().await()
+        return if (inviteSnapshot.exists()) {
+            inviteSnapshot.getString("uid")
+        } else {
+            null
+        }
+    }
+    
+    /**
+     * Returns full User object by phone. REQUIRES authentication.
+     * Use getBulkInviteUid first if user is not yet authenticated.
+     */
+    suspend fun getBulkUserByPhone(phone: String): User? {
+        val cleanPhone = phone.replace("\\s".toRegex(), "").replace("-", "")
+        // 1. Try to find in bulk_invites (Public/Safe Lookup) - Keyed by Phone
+        val inviteSnapshot = db.collection("bulk_invites").document(cleanPhone).get().await()
+        if (inviteSnapshot.exists()) {
+            val targetUid = inviteSnapshot.getString("uid")
+            if (targetUid != null) {
+                // 2. Fetch the actual user document by ID (Authenticated read allowed)
+                val userSnapshot = db.collection("users").document(targetUid).get().await()
+                return userSnapshot.toObject<User>()
+            }
+        }
+        return null
+    }
+    
+    suspend fun linkBulkUserToAuth(existingUid: String, newAuthUid: String) {
+        android.util.Log.d("FirestoreRepo", "linkBulkUserToAuth: existingUid=$existingUid, newAuthUid=$newAuthUid")
+        val userRef = db.collection("users").document(existingUid)
+        val startupRef = db.collection("startups").document(existingUid) // Check if exists
+        
+        val newUserRef = db.collection("users").document(newAuthUid)
+        val newStartupRef = db.collection("startups").document(newAuthUid)
+        
+        // Link logic... needs to delete the invite too?
+        
+        db.runTransaction { transaction ->
+            android.util.Log.d("FirestoreRepo", "Transaction started")
+            val userSnapshot = transaction.get(userRef)
+            val startupSnapshot = transaction.get(startupRef)
+            android.util.Log.d("FirestoreRepo", "Got snapshots: user=${userSnapshot.exists()}, startup=${startupSnapshot.exists()}")
+            
+            if (userSnapshot.exists()) {
+                val user = userSnapshot.toObject<User>()!!
+                android.util.Log.d("FirestoreRepo", "Old User: uid=${user.uid}, phone=${user.phoneNumber}, createdVia=${user.createdVia}")
+                val userData = user.copy(uid = newAuthUid)
+                
+                android.util.Log.d("FirestoreRepo", "Setting new user doc at ${newUserRef.path}")
+                transaction.set(newUserRef, userData)
+                
+                android.util.Log.d("FirestoreRepo", "Deleting old user doc at ${userRef.path}")
+                transaction.delete(userRef)
+                
+                // Cleanup invite
+                val inviteRef = db.collection("bulk_invites").document(user.phoneNumber)
+                android.util.Log.d("FirestoreRepo", "Deleting invite at ${inviteRef.path}")
+                transaction.delete(inviteRef)
+            }
+            
+            if (startupSnapshot.exists()) {
+                val startupData = startupSnapshot.toObject<Startup>()!!.copy(uid = newAuthUid)
+                android.util.Log.d("FirestoreRepo", "Setting new startup doc at ${newStartupRef.path}")
+                transaction.set(newStartupRef, startupData)
+                
+                android.util.Log.d("FirestoreRepo", "Deleting old startup doc at ${startupRef.path}")
+                transaction.delete(startupRef)
+            }
+            android.util.Log.d("FirestoreRepo", "Transaction operations queued")
+        }.await()
+        android.util.Log.d("FirestoreRepo", "Transaction completed successfully")
+    }
+    
     suspend fun getUsersByRole(role: String): List<User> {
         return db.collection("users")
             .whereEqualTo("role", role)
             // .whereEqualTo("isDeleted", false) // Removed to show all users including deleted
             .get().await()
             .mapNotNull { it.toObject<User>() }
+    }
+    
+    /**
+     * Paginated user fetch with optional search.
+     * Returns Pair<List<User>, lastDocumentSnapshot for next page cursor>
+     */
+    suspend fun getUsersByRolePaginated(
+        role: String,
+        limit: Long = 50,
+        lastDocument: com.google.firebase.firestore.DocumentSnapshot? = null,
+        searchQuery: String? = null
+    ): Pair<List<User>, com.google.firebase.firestore.DocumentSnapshot?> {
+        try {
+            // Note: Removed orderBy to avoid needing composite index
+            // Pagination uses document ID ordering by default
+            var query = db.collection("users")
+                .whereEqualTo("role", role)
+                .limit(limit)
+            
+            if (lastDocument != null) {
+                query = query.startAfter(lastDocument)
+            }
+            
+            val snapshot = query.get().await()
+            val users = snapshot.documents.mapNotNull { it.toObject<User>() }
+            val lastDoc = snapshot.documents.lastOrNull()
+            
+            android.util.Log.d("FirestoreRepo", "getUsersByRolePaginated: role=$role, got ${users.size} users")
+            
+            // Client-side search filter if query is provided
+            val filteredUsers = if (!searchQuery.isNullOrBlank()) {
+                val lowerQuery = searchQuery.lowercase()
+                users.filter { user ->
+                    user.name.lowercase().contains(lowerQuery) ||
+                    user.email.lowercase().contains(lowerQuery) ||
+                    user.phoneNumber.contains(lowerQuery)
+                }
+            } else {
+                users
+            }
+            
+            return Pair(filteredUsers, lastDoc)
+        } catch (e: Exception) {
+            android.util.Log.e("FirestoreRepo", "getUsersByRolePaginated failed: ${e.message}", e)
+            return Pair(emptyList(), null)
+        }
     }
 
     suspend fun createUsersBatch(users: List<User>, role: String) {
@@ -636,6 +762,51 @@ class FirestoreRepository {
         batch.commit().await()
     }
 
+    data class BulkUploadResult(
+        val successCount: Int,
+        val failureCount: Int,
+        val errors: List<String>
+    )
+
+    suspend fun getAllUserPhones(): List<String> {
+        return db.collection("users").get().await().documents.mapNotNull { it.getString("phoneNumber") }
+    }
+
+    suspend fun createBulkStartups(
+        data: List<Pair<User, Startup>>,
+        onProgress: (Int, Int) -> Unit
+    ): BulkUploadResult {
+        var success = 0
+        var failed = 0
+        val errors = mutableListOf<String>()
+
+        // Process sequentially to ensure stability and avoid rate limits
+        // Each user creation is an atomic batch (User + Startup + BulkInvite)
+        data.forEachIndexed { index, (user, startup) ->
+            try {
+                val batch = db.batch()
+                val userRef = db.collection("users").document(user.uid)
+                val startupRef = db.collection("startups").document(startup.uid)
+                val inviteRef = db.collection("bulk_invites").document(user.phoneNumber)
+                
+                batch.set(userRef, user)
+                batch.set(startupRef, startup)
+                batch.set(inviteRef, mapOf("uid" to user.uid))
+                
+                batch.commit().await()
+                success++
+            } catch (e: Exception) {
+                failed++
+                errors.add("Failed to create ${user.phoneNumber}: ${e.message}")
+                android.util.Log.e("FirestoreRepo", "Bulk Create Error", e)
+            }
+            onProgress(index + 1, data.size)
+        }
+        
+        return BulkUploadResult(success, failed, errors)
+    }
+
+
     suspend fun updateUserStatus(userId: String, isBlocked: Boolean? = null, isDeleted: Boolean? = null) {
         val updates = mutableMapOf<String, Any>()
         if (isBlocked != null) updates["isBlocked"] = isBlocked
@@ -644,6 +815,41 @@ class FirestoreRepository {
         if (updates.isNotEmpty()) {
             db.collection("users").document(userId).update(updates).await()
         }
+    }
+
+    suspend fun deleteBulkUsers(onProgress: (Int, Int) -> Unit): Int {
+        val users = db.collection("users")
+            .whereEqualTo("createdVia", "bulk")
+            .get()
+            .await()
+            .documents
+        
+        if (users.isEmpty()) return 0
+
+        var deletedCount = 0
+        users.chunked(400).forEach { chunk ->
+            val batch = db.batch()
+            chunk.forEach { doc ->
+                val uid = doc.id
+                val phone = doc.getString("phoneNumber")
+                
+                // Delete User Doc
+                batch.delete(db.collection("users").document(uid))
+                
+                // Delete Role Doc (Startup)
+                batch.delete(db.collection("startups").document(uid))
+                
+                // Delete Invite (if exists)
+                if (phone != null) {
+                    batch.delete(db.collection("bulk_invites").document(phone))
+                }
+                
+                deletedCount++
+            }
+            batch.commit().await()
+            onProgress(deletedCount, users.size)
+        }
+        return deletedCount
     }
 
     // --- Imports ---

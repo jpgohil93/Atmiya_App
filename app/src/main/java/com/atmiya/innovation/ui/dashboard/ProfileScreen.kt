@@ -30,6 +30,7 @@ import com.atmiya.innovation.repository.FirestoreRepository
 import com.atmiya.innovation.repository.StorageRepository
 import com.atmiya.innovation.ui.components.DetailRow
 import com.atmiya.innovation.ui.components.SectionHeader
+import com.atmiya.innovation.ui.components.UserAvatar
 import com.atmiya.innovation.ui.theme.AtmiyaPrimary
 import com.atmiya.innovation.ui.theme.AtmiyaSecondary
 import com.google.firebase.auth.FirebaseAuth
@@ -262,27 +263,14 @@ fun ProfileScreen(
                 Box(
                     modifier = Modifier.fillMaxWidth().height(420.dp)
                 ) {
-                     if (profileImageUrl != null) {
-                        AsyncImage(
-                            model = profileImageUrl,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier.fillMaxSize()
-                                .background(AtmiyaPrimary.copy(alpha=0.1f))
-                        ) {
-                             Text(
-                                text = if (userName.isNotEmpty()) userName.take(1).uppercase() else "A",
-                                style = MaterialTheme.typography.displayLarge,
-                                color = AtmiyaPrimary,
-                                modifier = Modifier.align(Alignment.Center),
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
+                    UserAvatar(
+                        model = profileImageUrl,
+                        name = if (userName.isNotEmpty()) userName else "User",
+                        modifier = Modifier.fillMaxSize(),
+                        size = null,
+                        shape = androidx.compose.ui.graphics.RectangleShape,
+                        fontSize = MaterialTheme.typography.displayLarge.fontSize
+                    )
                     
                     // Smooth Gradient (3-stop fade)
                     Box(

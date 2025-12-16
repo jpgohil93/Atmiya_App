@@ -240,4 +240,28 @@ class WallViewModel : ViewModel() {
             firestoreRepository.toggleUpvote(post.id, user.uid)
         }
     }
+
+    fun sendConnectionRequest(targetUser: com.atmiya.innovation.data.User, onSuccess: () -> Unit) {
+        val currentUser = auth.currentUser ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val senderProfile = firestoreRepository.getUser(currentUser.uid)
+                if (senderProfile != null) {
+                    firestoreRepository.sendConnectionRequest(
+                        sender = senderProfile,
+                        receiverId = targetUser.uid,
+                        receiverName = targetUser.name,
+                        receiverRole = targetUser.role,
+                        receiverPhotoUrl = targetUser.profilePhotoUrl
+                    )
+                    withContext(Dispatchers.Main) {
+                        onSuccess()
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("WallViewModel", "Error sending connection request", e)
+                _error.value = "Failed to send request: ${e.message}"
+            }
+        }
+    }
 }

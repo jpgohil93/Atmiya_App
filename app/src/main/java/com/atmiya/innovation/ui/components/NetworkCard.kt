@@ -52,61 +52,12 @@ fun NetworkCard(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     // Profile Image
-                    val imageModifier = Modifier
-                        .size(64.dp)
-                        .clip(CircleShape)
-                    
-                    val initials = name.split(" ")
-                        .mapNotNull { it.firstOrNull()?.toString() }
-                        .take(2)
-                        .joinToString("")
-                        .uppercase()
-
-                    // Deterministic color based on name
-                    val bgColors = listOf(
-                        Color(0xFFEF5350), Color(0xFFAB47BC), Color(0xFF5C6BC0), 
-                        Color(0xFF26A69A), Color(0xFF66BB6A), Color(0xFFFFA726), 
-                        Color(0xFF8D6E63), Color(0xFF78909C)
+                    UserAvatar(
+                        model = imageModel,
+                        name = name,
+                        modifier = Modifier.size(64.dp),
+                        size = 64.dp
                     )
-                    val initialsBg = bgColors[name.hashCode().let { if (it < 0) -it else it } % bgColors.size]
-
-                    val validImageModel = if (imageModel is String && imageModel.isBlank()) null else imageModel
-
-                    if (validImageModel != null) {
-                        coil.compose.SubcomposeAsyncImage(
-                            model = validImageModel,
-                            contentDescription = null,
-                            modifier = imageModifier,
-                            contentScale = ContentScale.Crop,
-                            loading = {
-                                Box(
-                                    modifier = Modifier.fillMaxSize().background(initialsBg),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(text = initials, color = Color.White, fontWeight = FontWeight.Bold)
-                                }
-                            },
-                            error = {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(initialsBg)
-                                        .border(2.dp, Color.Red, CircleShape), // Red border for error
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(text = initials, color = Color.White, fontWeight = FontWeight.Bold)
-                                    // Optional: Small error icon overlay
-                                }
-                            }
-                        )
-                    } else {
-                        Box(
-                            modifier = imageModifier.background(initialsBg),
-                            contentAlignment = Alignment.Center
-                        ) {
-                             Text(text = initials, color = Color.White, fontWeight = FontWeight.Bold)
-                        }
-                    }
 
                     Spacer(modifier = Modifier.width(16.dp))
 

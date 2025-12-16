@@ -20,6 +20,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.atmiya.innovation.ui.components.UserAvatar
 import com.atmiya.innovation.ui.theme.AtmiyaPrimary
 
 @Composable
@@ -105,33 +106,13 @@ fun DashboardTopSection(
                             )
                         }
                         Spacer(modifier = Modifier.width(8.dp))
-                        if (userPhotoUrl != null) {
-                            AsyncImage(
-                                model = userPhotoUrl,
-                                contentDescription = "Profile",
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.White)
-                                    .clickable { onNavigate("profile_screen") },
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.White)
-                                    .clickable { onNavigate("profile_screen") },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = userName.firstOrNull()?.uppercase() ?: "S",
-                                    color = AtmiyaPrimary,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
+                        UserAvatar(
+                            model = userPhotoUrl,
+                            name = userName,
+                            modifier = Modifier
+                                .clickable { onNavigate("profile_screen") },
+                            size = 44.dp
+                        )
                     }
                 }
                 
