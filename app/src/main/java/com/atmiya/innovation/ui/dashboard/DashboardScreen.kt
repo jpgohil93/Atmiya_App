@@ -556,7 +556,9 @@ fun DashboardScreen(
                     
                     composable("mentor_videos") {
                          MentorVideoScreen(
-                             role = role
+                             role = role,
+                             onBack = { navController.popBackStack() },
+                             onVideoClick = { videoId -> navController.navigate("mentor_video/$videoId") }
                          )
                     }
 
@@ -578,7 +580,9 @@ fun DashboardScreen(
                         val mentorId = backStackEntry.arguments?.getString("mentorId")
                         MentorVideoScreen(
                             role = role,
-                            mentorId = mentorId
+                            mentorId = mentorId,
+                            onBack = { navController.popBackStack() },
+                            onVideoClick = { videoId -> navController.navigate("mentor_video/$videoId") }
                         )
                     }
 

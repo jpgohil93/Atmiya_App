@@ -19,7 +19,7 @@ android {
         targetSdk = 35
         
         // Dynamic Versioning for CI
-        val buildNumber = System.getenv("APPCIRCLE_BUILD_NUMBER")?.toIntOrNull() ?: 18
+        val buildNumber = System.getenv("APPCIRCLE_BUILD_NUMBER")?.toIntOrNull() ?: 19
         versionCode = buildNumber
         versionName = "1.2.$buildNumber"
 

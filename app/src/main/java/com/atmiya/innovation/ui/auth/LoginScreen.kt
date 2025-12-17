@@ -202,7 +202,6 @@ fun LoginScreen(
 
                 withContext(kotlinx.coroutines.Dispatchers.Main) {
                     isLoading = false
-                    // isOtpSent = true // <-- REMOVED, not in LoginScreen state
                     
                     if (authStep == AuthStep.PHONE_INPUT) {
                          authStep = AuthStep.OTP_VERIFICATION
@@ -464,11 +463,18 @@ fun LoginScreen(
                     // We can't check password validity if user doesn't exist.
                     // BUT, if the user enters the magic password, we check Firestore.
                     
-                    if (password == "AIF@2025" || password == "AIF@123") {
-                         // Attempt Lazy Claim
-                         val firestoreRepo = com.atmiya.innovation.repository.FirestoreRepository()
-                                                  scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                     if (password == "AIF@2025" || password == "AIF@123") {
+                          // Attempt Lazy Claim
+                          val firestoreRepo = com.atmiya.innovation.repository.FirestoreRepository()
+                          scope.launch(kotlinx.coroutines.Dispatchers.IO) {
                               try {
+                                  // Ensure network is enabled (fixes potential offline state issues)
+                                  try {
+                                      com.google.firebase.firestore.FirebaseFirestore.getInstance().enableNetwork().await()
+                                  } catch (e: Exception) {
+                                      // Ignore network enable errors
+                                  }
+
                                   // Look up by Phone Number (Original Input) - PUBLIC READ, no auth needed
                                   val existingUid = if (isPhone) firestoreRepo.getBulkInviteUid(phoneNumber) else null
                                   
@@ -491,7 +497,7 @@ fun LoginScreen(
                                          }
                                      } catch (e: Exception) {
                                           android.util.Log.e("LoginScreen", "Activation failed during linkBulkUserToAuth", e)
-                                          val detailedError = "[DEBUG] Link Failed:\n${e::class.simpleName}: ${e.message}\nCause: ${e.cause?.message ?: "None"}"
+                                          val detailedError = "[DEBUG] Link Failed:\n${e::class.simpleName}: ${e.message}"
                                           withContext(kotlinx.coroutines.Dispatchers.Main) {
                                              isLoading = false
                                              passwordError = detailedError
@@ -500,15 +506,23 @@ fun LoginScreen(
                                  } else {
                                      withContext(kotlinx.coroutines.Dispatchers.Main) {
                                          isLoading = false
-                                         passwordError = "Login failed: User not found" // Or standard error
+                                         passwordError = "Login failed: User record not found" 
                                      }
                                  }
                              } catch (e: Exception) {
                                  android.util.Log.e("LoginScreen", "Error during bulk user lookup or claim", e)
-                                 val detailedError = "[DEBUG] Lookup/Claim:\n${e::class.simpleName}: ${e.message}\nCause: ${e.cause?.message ?: "None"}"
+                                 
+                                 val isOffline = e.message?.contains("offline", ignoreCase = true) == true || 
+                                                 (e is com.google.firebase.firestore.FirebaseFirestoreException && e.code == com.google.firebase.firestore.FirebaseFirestoreException.Code.UNAVAILABLE)
+                                 
                                  withContext(kotlinx.coroutines.Dispatchers.Main) {
                                      isLoading = false
-                                     passwordError = detailedError
+                                     if (isOffline) {
+                                         passwordError = "Network Unavailable. Please check your internet connection."
+                                         Toast.makeText(context, "Please check your internet connection and try again.", Toast.LENGTH_LONG).show()
+                                     } else {
+                                         passwordError = "Login Error: ${e.localizedMessage}"
+                                     }
                                  }
                              }
                          }
@@ -770,15 +784,6 @@ fun LoginScreen(
                             text = if (loginMode == LoginMode.OTP) "Get OTP" else "Login",
                             icon = TablerIcons.ArrowRight,
                             isLoading = isLoading
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "Enable push notifications to receive OTP if SMS fails.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(horizontal = 16.dp)
                         )
 
                         Spacer(modifier = Modifier.height(32.dp))

@@ -145,7 +145,13 @@ fun PendingStartupDetailsScreen(
             )
         },
         bottomBar = {
-            SoftCard(modifier = Modifier.fillMaxWidth(), radius = 0.dp, elevation = 16.dp) {
+            SoftCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding(),
+                radius = 0.dp,
+                elevation = 16.dp
+            ) {
                 SoftButton(
                     onClick = { submitDetails() },
                     text = "Submit & Continue",

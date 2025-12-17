@@ -3,6 +3,7 @@ package com.atmiya.innovation.repository
 import com.atmiya.innovation.data.ExecutionPhase
 import com.atmiya.innovation.data.GeneratorInputs
 import com.atmiya.innovation.data.StartupIdea
+import com.atmiya.innovation.utils.GeminiRateLimitManager
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.content
 import kotlinx.coroutines.Dispatchers
@@ -24,7 +25,14 @@ class IdeaGeneratorRepository {
         }
     )
 
-    suspend fun generateStartupIdeas(inputs: GeneratorInputs): List<StartupIdea> = withContext(Dispatchers.IO) {
+    suspend fun generateStartupIdeas(inputs: GeneratorInputs, userId: String = ""): List<StartupIdea> = withContext(Dispatchers.IO) {
+        // Check rate limit before making API call
+        val rateLimitResult = GeminiRateLimitManager.checkAndIncrementUsage(userId)
+        if (rateLimitResult.isFailure) {
+            val error = rateLimitResult.exceptionOrNull()
+            throw error ?: Exception("Daily AI request limit reached. Please try again tomorrow.")
+        }
+        
         val prompt = buildPrompt(inputs)
         
         // Let exceptions propagate to ViewModel for better error messages

@@ -211,14 +211,14 @@ class StorageRepository {
     suspend fun uploadMentorVideo(context: Context, mentorId: String, uri: Uri): String {
         val start = System.currentTimeMillis()
         val fileSize = getFileSize(context, uri)
-        val maxSizeBytes = 50 * 1024 * 1024L // 50MB
+        val maxSizeBytes = 100 * 1024 * 1024L // 100MB
 
         if (fileSize > maxSizeBytes) {
-            throw IllegalArgumentException("Video too large. Max size: 50MB")
+            throw IllegalArgumentException("Video too large. Max size: 100MB")
         }
 
         val filename = UUID.randomUUID().toString() + ".mp4"
-        val path = "mentorVideos/$filename"
+        val path = "mentor_videos/$mentorId/$filename"
         val ref = storage.reference.child(path)
 
         Log.d(TAG, "Starting mentor video upload. Path: $path")
@@ -232,6 +232,54 @@ class StorageRepository {
             }.await().toString().also {
                 Log.d(TAG, "Mentor video upload success. URL: $it")
                 logPerf("uploadMentorVideo", System.currentTimeMillis() - start)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Mentor video upload failed", e)
+            throw e
+        }
+    }
+    
+    /**
+     * Upload mentor video with progress tracking
+     * @param onProgress callback with progress percentage (0-100)
+     */
+    suspend fun uploadMentorVideoWithProgress(
+        context: Context, 
+        mentorId: String, 
+        uri: Uri,
+        onProgress: (Int) -> Unit
+    ): String {
+        val start = System.currentTimeMillis()
+        val fileSize = getFileSize(context, uri)
+        val maxSizeBytes = 100 * 1024 * 1024L // 100MB
+
+        if (fileSize > maxSizeBytes) {
+            throw IllegalArgumentException("Video too large. Max size: 100MB")
+        }
+
+        val filename = UUID.randomUUID().toString() + ".mp4"
+        val path = "mentor_videos/$mentorId/$filename"
+        val ref = storage.reference.child(path)
+
+        Log.d(TAG, "Starting mentor video upload with progress. Path: $path")
+
+        return try {
+            val uploadTask = ref.putFile(uri)
+            
+            // Add progress listener
+            uploadTask.addOnProgressListener { snapshot ->
+                val progress = ((100.0 * snapshot.bytesTransferred) / snapshot.totalByteCount).toInt()
+                onProgress(progress)
+            }
+            
+            uploadTask.continueWithTask { task ->
+                if (!task.isSuccessful) {
+                    task.exception?.let { throw it }
+                }
+                ref.downloadUrl
+            }.await().toString().also {
+                Log.d(TAG, "Mentor video upload success. URL: $it")
+                logPerf("uploadMentorVideoWithProgress", System.currentTimeMillis() - start)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Mentor video upload failed", e)

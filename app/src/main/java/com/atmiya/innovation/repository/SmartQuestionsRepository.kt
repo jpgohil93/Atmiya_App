@@ -3,6 +3,7 @@ package com.atmiya.innovation.repository
 import android.util.Log
 import com.atmiya.innovation.data.SmartQuestionsResponse
 import com.atmiya.innovation.data.Startup
+import com.atmiya.innovation.utils.GeminiRateLimitManager
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.generationConfig
 import kotlinx.coroutines.Dispatchers
@@ -24,7 +25,14 @@ class SmartQuestionsRepository {
         }
     )
 
-    suspend fun generateSmartQuestions(startup: Startup, pitchSummary: String): Result<SmartQuestionsResponse> = withContext(Dispatchers.IO) {
+    suspend fun generateSmartQuestions(startup: Startup, pitchSummary: String, userId: String = ""): Result<SmartQuestionsResponse> = withContext(Dispatchers.IO) {
+        // Check rate limit before making API call
+        val rateLimitResult = GeminiRateLimitManager.checkAndIncrementUsage(userId)
+        if (rateLimitResult.isFailure) {
+            val error = rateLimitResult.exceptionOrNull()
+            return@withContext Result.failure(error ?: Exception("Daily AI request limit reached. Please try again tomorrow."))
+        }
+        
         val prompt = buildPrompt(startup, pitchSummary)
         
         try {

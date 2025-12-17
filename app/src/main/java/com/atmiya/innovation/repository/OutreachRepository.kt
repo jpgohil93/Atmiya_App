@@ -2,6 +2,7 @@ package com.atmiya.innovation.repository
 
 import com.atmiya.innovation.data.Startup
 import com.atmiya.innovation.BuildConfig
+import com.atmiya.innovation.utils.GeminiRateLimitManager
 import com.google.ai.client.generativeai.GenerativeModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -54,14 +55,38 @@ class OutreachRepository {
         style: OutreachStyle,
         investorType: String? = null,
         city: String = "",
-        founderName: String = ""
+        founderName: String = "",
+        userId: String = ""
     ): String = withContext(Dispatchers.IO) {
         try {
+            // Check rate limit before making API call
+            val rateLimitResult = GeminiRateLimitManager.checkAndIncrementUsage(userId)
+            if (rateLimitResult.isFailure) {
+                val error = rateLimitResult.exceptionOrNull()
+                return@withContext if (error is GeminiRateLimitManager.RateLimitExceededException) {
+                    error.message ?: "Daily AI request limit reached. Please try again tomorrow."
+                } else {
+                    "Error: Unable to verify usage limits."
+                }
+            }
+            
             val prompt = buildPrompt(startup, type, style, investorType, city, founderName)
             val response = generativeModel.generateContent(prompt)
             return@withContext response.text?.trim() ?: "Error: No response generated."
         } catch (e: Exception) {
-            return@withContext "Error generating message: ${e.localizedMessage}"
+            android.util.Log.e("OutreachRepo", "Gemini Generation Error", e)
+            val msg = e.localizedMessage?.lowercase() ?: ""
+            return@withContext when {
+                msg.contains("quota") || msg.contains("limit") || msg.contains("429") -> {
+                    "Our AI is currently experiencing high traffic. Please wait a minute and try again."
+                }
+                msg.contains("network") || msg.contains("timeout") -> {
+                    "Network error. Please check your internet connection and try again."
+                }
+                else -> {
+                    "Something went wrong while generating the message. Please try again."
+                }
+            }
         }
     }
 

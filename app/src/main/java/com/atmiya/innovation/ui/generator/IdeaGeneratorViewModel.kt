@@ -45,7 +45,8 @@ class IdeaGeneratorViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
-                val ideas = repository.generateStartupIdeas(_uiState.value.inputs)
+                val userId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                val ideas = repository.generateStartupIdeas(_uiState.value.inputs, userId)
                 if (ideas.isNotEmpty()) {
                     _uiState.update { it.copy(isLoading = false, ideas = ideas, currentStep = 4) } // Jump to results
                 } else {

@@ -32,7 +32,8 @@ class DiagnosisViewModel(
             _uiState.value = DiagnosisUiState.Loading
             
             try {
-                val diagnosis = service.generateDiagnosis(startup)
+                val userId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                val diagnosis = service.generateDiagnosis(startup, userId)
                 _uiState.value = DiagnosisUiState.Success(diagnosis)
             } catch (e: Exception) {
                 // e.g. JSON parse error or API error
@@ -45,7 +46,8 @@ class DiagnosisViewModel(
         viewModelScope.launch {
             _isGeneratingAdvice.value = true
             try {
-                val advice = service.generateAdvice(startup, diagnosis)
+                val userId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                val advice = service.generateAdvice(startup, diagnosis, userId)
                 _adviceState.value = advice
             } catch (e: Exception) {
                 _adviceState.value = "Error generating advice: ${e.message}"

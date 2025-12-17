@@ -115,7 +115,8 @@ fun MentorHome(
              com.atmiya.innovation.ui.dashboard.news.DashboardNewsSection(
                  onViewAllClick = { onNavigate("news_list") },
                  onNewsClick = { url -> 
-                     // Handle generic news click
+                     val encodedUrl = java.net.URLEncoder.encode(url, java.nio.charset.StandardCharsets.UTF_8.toString())
+                     onNavigate("news_detail/$encodedUrl")
                  }
              )
         }

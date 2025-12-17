@@ -1052,6 +1052,12 @@ class FirestoreRepository {
         db.collection("mentorVideos").document(video.id).set(video).await()
         logPerf("addMentorVideo", System.currentTimeMillis() - start)
     }
+    
+    suspend fun deleteMentorVideo(videoId: String) {
+        val start = System.currentTimeMillis()
+        db.collection("mentorVideos").document(videoId).delete().await()
+        logPerf("deleteMentorVideo", System.currentTimeMillis() - start)
+    }
 
     // --- Featured Videos ---
 

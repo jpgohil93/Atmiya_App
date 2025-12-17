@@ -2,12 +2,13 @@ package com.atmiya.innovation.ui.dashboard.diagnosis
 
 import com.atmiya.innovation.BuildConfig
 import com.atmiya.innovation.data.Startup
+import com.atmiya.innovation.utils.GeminiRateLimitManager
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.gson.Gson
 
 interface DiagnosisService {
-    suspend fun generateDiagnosis(startup: Startup): DiagnosisResponse
-    suspend fun generateAdvice(startup: Startup, diagnosis: DiagnosisResponse): String
+    suspend fun generateDiagnosis(startup: Startup, userId: String = ""): DiagnosisResponse
+    suspend fun generateAdvice(startup: Startup, diagnosis: DiagnosisResponse, userId: String = ""): String
 }
 
 class GeminiDiagnosisService : DiagnosisService {
@@ -17,7 +18,14 @@ class GeminiDiagnosisService : DiagnosisService {
         apiKey = BuildConfig.GEMINI_API_KEY
     )
 
-    override suspend fun generateDiagnosis(startup: Startup): DiagnosisResponse {
+    override suspend fun generateDiagnosis(startup: Startup, userId: String): DiagnosisResponse {
+        // Check rate limit before making API call
+        val rateLimitResult = GeminiRateLimitManager.checkAndIncrementUsage(userId)
+        if (rateLimitResult.isFailure) {
+            val error = rateLimitResult.exceptionOrNull()
+            throw error ?: Exception("Daily AI request limit reached. Please try again tomorrow.")
+        }
+        
         val prompt = buildDiagnosisPrompt(startup)
         val response = generativeModel.generateContent(prompt)
         val text = response.text ?: throw Exception("Empty response from AI")
@@ -25,7 +33,14 @@ class GeminiDiagnosisService : DiagnosisService {
         return Gson().fromJson(cleanJson, DiagnosisResponse::class.java)
     }
 
-    override suspend fun generateAdvice(startup: Startup, diagnosis: DiagnosisResponse): String {
+    override suspend fun generateAdvice(startup: Startup, diagnosis: DiagnosisResponse, userId: String): String {
+        // Check rate limit before making API call
+        val rateLimitResult = GeminiRateLimitManager.checkAndIncrementUsage(userId)
+        if (rateLimitResult.isFailure) {
+            val error = rateLimitResult.exceptionOrNull()
+            throw error ?: Exception("Daily AI request limit reached. Please try again tomorrow.")
+        }
+        
         val prompt = buildAdvicePrompt(startup, diagnosis)
         val response = generativeModel.generateContent(prompt)
         return response.text ?: "Could not generate advice."

@@ -96,7 +96,8 @@ class OutreachGeneratorViewModel : ViewModel() {
                 type = _selectedType.value,
                 style = _selectedStyle.value,
                 city = _userCity.value,
-                founderName = _founderName.value
+                founderName = _founderName.value,
+                userId = auth.currentUser?.uid ?: ""
             )
             
             _generatedMessage.value = message

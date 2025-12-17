@@ -27,7 +27,8 @@ class SmartQuestionsViewModel : ViewModel() {
         viewModelScope.launch {
             _uiState.value = SmartQuestionsUiState.Loading
             
-            val result = repository.generateSmartQuestions(startup, pitchSummary)
+            val userId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
+            val result = repository.generateSmartQuestions(startup, pitchSummary, userId)
             
             result.onSuccess { response ->
                 // Validate response structure

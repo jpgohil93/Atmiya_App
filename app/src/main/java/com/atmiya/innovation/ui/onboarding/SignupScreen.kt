@@ -91,7 +91,7 @@ fun SignupScreen(
     var phoneNumber by remember { mutableStateOf("") }
     var otpValue by remember { mutableStateOf("") }
     var verificationId by remember { mutableStateOf<String?>(null) }
-    var isOtpSent by remember { mutableStateOf(false) }
+    var isOtpSent by remember { mutableStateOf(false) } 
     var isOtpError by remember { mutableStateOf(false) }
     var phoneError by remember { mutableStateOf<String?>(null) }
     var ticks by remember { mutableLongStateOf(60L) }
@@ -591,11 +591,12 @@ fun SignupScreen(
                 )
                 // Progress Bar
                 LinearProgressIndicator(
-                    progress = currentStep / totalSteps.toFloat(),
+                    progress = { currentStep / totalSteps.toFloat() },
                     modifier = Modifier.fillMaxWidth(),
                     color = MaterialTheme.colorScheme.primary,
                     trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
                 )
+
             }
         },
         bottomBar = {
@@ -711,16 +712,6 @@ fun SignupScreen(
                             isError = isOtpError
                         )
                         
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        Text(
-                            text = "Enable push notifications to receive OTP if SMS fails.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp) // Added fillMaxWidth
-                        )
-
                         Spacer(modifier = Modifier.height(24.dp))
                         
                         if (isLoading) CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
