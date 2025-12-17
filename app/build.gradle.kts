@@ -19,7 +19,7 @@ android {
         targetSdk = 35
         
         // Dynamic Versioning for CI
-        val buildNumber = System.getenv("APPCIRCLE_BUILD_NUMBER")?.toIntOrNull() ?: 15
+        val buildNumber = System.getenv("APPCIRCLE_BUILD_NUMBER")?.toIntOrNull() ?: 17
         versionCode = buildNumber
         versionName = "1.2.$buildNumber"
 
@@ -138,6 +138,7 @@ dependencies {
     // Coil (Images)
     implementation("io.coil-kt:coil-compose:2.6.0")
     implementation("io.coil-kt:coil-gif:2.6.0")
+    implementation("io.coil-kt:coil-video:2.6.0") // Added for video frame decoding
 
     // QR Code
     implementation("com.google.zxing:core:3.5.2")

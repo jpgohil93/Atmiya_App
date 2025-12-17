@@ -58,19 +58,24 @@ fun IncubatorDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Incubator Details", style = MaterialTheme.typography.titleMedium) },
+                title = { Text("Incubator Details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface
+                )
             )
         },
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         bottomBar = {
             Surface(
                 shadowElevation = 8.dp,
-                color = Color.White
+                color = MaterialTheme.colorScheme.surface
             ) {
                 Button(
                     onClick = {
@@ -86,7 +91,7 @@ fun IncubatorDetailScreen(
                         .padding(16.dp)
                         .height(56.dp),
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = AtmiyaPrimary)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
                     Icon(Icons.Default.Language, contentDescription = null, modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(8.dp))
@@ -100,13 +105,12 @@ fun IncubatorDetailScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(scrollState)
-                .background(Color(0xFFFAFAFA))
         ) {
             // Header Section
             Surface(
-                color = Color.White,
+                color = MaterialTheme.colorScheme.surface,
                 shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp),
-                shadowElevation = 4.dp
+                shadowElevation = 1.dp
             ) {
                 Column(
                     modifier = Modifier
@@ -119,8 +123,6 @@ fun IncubatorDetailScreen(
                         name = name,
                         modifier = Modifier
                             .size(100.dp),
-                            // .clip(RoundedCornerShape(16.dp)) // UserAvatar clips to shape
-                            // .background(Color(0xFFF5F5F5)), // UserAvatar handles bg
                         size = 100.dp,
                         shape = RoundedCornerShape(16.dp),
                         contentScale = ContentScale.Fit
@@ -130,17 +132,17 @@ fun IncubatorDetailScreen(
                         text = name,
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black,
+                        color = MaterialTheme.colorScheme.onSurface,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.LocationOn, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = "$city, $state",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -154,6 +156,7 @@ fun IncubatorDetailScreen(
                     text = "Information",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
                 
@@ -174,9 +177,10 @@ fun IncubatorDetailScreen(
 @Composable
 fun DetailRow(icon: ImageVector, label: String, value: String) {
     Surface(
-        color = Color.White,
+        color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(12.dp),
-        shadowElevation = 1.dp
+        shadowElevation = 0.5.dp, // Reduced elevation for cleaner look, or use border
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha=0.5f))
     ) {
         Row(
             modifier = Modifier
@@ -188,15 +192,15 @@ fun DetailRow(icon: ImageVector, label: String, value: String) {
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(AtmiyaPrimary.copy(alpha = 0.1f)),
+                    .background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, contentDescription = null, tint = AtmiyaPrimary, modifier = Modifier.size(20.dp))
+                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(20.dp))
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column {
-                Text(text = label, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                Text(text = value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = Color.Black)
+                Text(text = label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(text = value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
             }
         }
     }

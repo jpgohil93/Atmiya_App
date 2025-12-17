@@ -74,9 +74,9 @@ fun StartupListingScreen(
     }
 
     Scaffold(
-        containerColor = Color(0xFFF8F9FA), // Soft gray background
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow, // Soft gray background
         topBar = {
-            Column(modifier = Modifier.background(Color.White)) {
+            Column(modifier = Modifier.background(MaterialTheme.colorScheme.surface)) {
                 TopAppBar(
                     title = { 
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -88,24 +88,24 @@ fun StartupListingScreen(
                             Icon(TablerIcons.ArrowLeft, contentDescription = "Back", modifier = Modifier.size(24.dp))
                         }
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
                 )
                 
                 // Search Bar
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    placeholder = { Text("Search startups, sectors...", color = Color.Gray) },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray) },
+                    placeholder = { Text("Search startups, sectors...", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedContainerColor = Color(0xFFF3F4F6),
-                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
                         unfocusedBorderColor = Color.Transparent,
-                        focusedBorderColor = AtmiyaPrimary
+                        focusedBorderColor = MaterialTheme.colorScheme.primary
                     ),
                     singleLine = true
                 )
@@ -121,13 +121,13 @@ fun StartupListingScreen(
                             onClick = { selectedFilter = filter },
                             label = { Text(filter) },
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = AtmiyaPrimary.copy(alpha = 0.1f),
-                                selectedLabelColor = AtmiyaPrimary
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
                             ),
                             border = FilterChipDefaults.filterChipBorder(
                                 enabled = true,
                                 selected = selectedFilter == filter,
-                                borderColor = if (selectedFilter == filter) AtmiyaPrimary else Color.Transparent
+                                borderColor = if (selectedFilter == filter) MaterialTheme.colorScheme.primary else Color.Transparent
                             )
                         )
                     }
@@ -146,7 +146,7 @@ fun StartupListingScreen(
                 Text(
                     "${filteredStartups.size} Startups Found", 
                     style = MaterialTheme.typography.labelLarge,
-                    color = AtmiyaPrimary,
+                    color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -174,7 +174,7 @@ fun ModernStartupCard(
             .clickable(onClick = onClick)
             .shadow(elevation = 2.dp, shape = RoundedCornerShape(16.dp), spotColor = Color(0x1A000000)),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -191,21 +191,32 @@ fun ModernStartupCard(
                         modifier = Modifier
                             .size(56.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFFF3F4F6)),
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
                         contentScale = ContentScale.Crop
                     )
                 } else {
+                    // Generate a consistent color based on startup name
+                    val colors = listOf(
+                        Color(0xFFEF5350), Color(0xFFEC407A), Color(0xFFAB47BC),
+                        Color(0xFF7E57C2), Color(0xFF5C6BC0), Color(0xFF42A5F5),
+                        Color(0xFF29B6F6), Color(0xFF26C6DA), Color(0xFF26A69A),
+                        Color(0xFF66BB6A), Color(0xFF9CCC65), Color(0xFFFFCA28),
+                        Color(0xFFFF7043), Color(0xFF8D6E63), Color(0xFF78909C)
+                    )
+                    val colorIndex = kotlin.math.abs(startup.startupName.hashCode()) % colors.size
+                    val backgroundColor = colors[colorIndex]
+
                     Box(
                         modifier = Modifier
                             .size(56.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFFE0E7FF)),
+                            .background(backgroundColor),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             startup.startupName.take(1).uppercase(),
                             style = MaterialTheme.typography.headlineSmall,
-                            color = AtmiyaPrimary,
+                            color = Color.White,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -237,7 +248,7 @@ fun ModernStartupCard(
                              Text(
                                 text = startup.startupName,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = Color(0xFF1F2937),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = FontWeight.Medium
                             )
                         }
@@ -246,7 +257,7 @@ fun ModernStartupCard(
                              Text(
                                 text = founderName,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = Color(0xFF1F2937),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = FontWeight.Medium
                             )
                         }
@@ -256,24 +267,27 @@ fun ModernStartupCard(
                              Text(
                                  text = startup.sector,
                                  style = MaterialTheme.typography.bodySmall,
-                                 color = Color.Gray
+                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                              )
                              if (startup.stage.isNotBlank()) {
-                                 Text(" • ", color = Color.Gray)
+                                 Text(" • ", color = MaterialTheme.colorScheme.onSurfaceVariant)
                              }
                          }
                          if (startup.stage.isNotBlank()) {
                              Text(
                                  text = startup.stage,
                                  style = MaterialTheme.typography.bodySmall,
-                                 color = Color.Gray
+                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                              )
                          }
                     }
                 }
                 
-                IconButton(onClick = { /* TODO: Save/Bookmark */ }) {
-                    Icon(TablerIcons.Bookmark, contentDescription = "Save", tint = Color.LightGray)
+                val context = androidx.compose.ui.platform.LocalContext.current
+                IconButton(onClick = { 
+                    android.widget.Toast.makeText(context, "Update is coming soon", android.widget.Toast.LENGTH_SHORT).show()
+                }) {
+                    Icon(TablerIcons.Bookmark, contentDescription = "Save", tint = MaterialTheme.colorScheme.outlineVariant)
                 }
             }
 
@@ -284,7 +298,7 @@ fun ModernStartupCard(
                 Text(
                     text = startup.description,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF4B5563), // Cool gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, // Cool gray
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -318,8 +332,8 @@ fun ModernStartupCard(
                     onClick = onClick,
                     shape = RoundedCornerShape(50),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF111827), // Dark Almost Black
-                        contentColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.onSurface, // Dark Almost Black in Light, White in Dark (inverse)
+                        contentColor = MaterialTheme.colorScheme.surface
                     ),
                     contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
                     modifier = Modifier.height(36.dp)

@@ -139,7 +139,8 @@ fun AdminVerificationScreen(
                         icon = { 
                             Icon(
                                 if (index == 0) Icons.Default.Info else Icons.Default.Search, 
-                                contentDescription = null
+                                contentDescription = null,
+                                tint = if (selectedTab == index) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                             ) 
                         }
                     )
@@ -195,8 +196,8 @@ fun AdminVerificationScreen(
                 if (successMessage != null) {
                     Snackbar(
                         modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
-                        containerColor = Color(0xFF4CAF50),
-                        contentColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.primaryContainer, // Or success container if available
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                     ) { Text(successMessage!!) }
                 }
             }
@@ -356,10 +357,10 @@ fun StartupDetailsView(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Status: ", style = MaterialTheme.typography.titleMedium)
                     if (startup.isVerified) {
-                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF4CAF50))
-                        Text(" Verified", color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold)
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
+                        Text(" Verified", color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
                     } else {
-                        Text("Pending", color = AtmiyaSecondary, fontWeight = FontWeight.Bold)
+                        Text("Pending", color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -388,7 +389,7 @@ fun StartupDetailsView(
                 )
             }
         } else {
-            Text("This startup is already verified.", color = Color.Gray)
+            Text("This startup is already verified.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(modifier = Modifier.height(16.dp))
             OutlinedButton(
                 onClick = onCancel,

@@ -33,10 +33,14 @@ fun GenericWebViewScreen(
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface
+                )
             )
         },
-        containerColor = Color.White
+        containerColor = MaterialTheme.colorScheme.surface
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
             var isLoading by remember { mutableStateOf(true) }
@@ -71,7 +75,8 @@ fun GenericWebViewScreen(
             if (isLoading) {
                  LinearProgressIndicator(
                     modifier = Modifier.fillMaxWidth(),
-                    color = com.atmiya.innovation.ui.theme.AtmiyaPrimary
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant
                 )
             }
         }

@@ -533,14 +533,14 @@ fun SignupScreen(
                 LinearProgressIndicator(
                     progress = currentStep / totalSteps.toFloat(),
                     modifier = Modifier.fillMaxWidth(),
-                    color = AtmiyaPrimary,
-                    trackColor = AtmiyaPrimary.copy(alpha = 0.2f)
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
                 )
             }
         },
         bottomBar = {
             if (currentStep > 1) {
-                SoftCard(modifier = Modifier.fillMaxWidth(), radius = 0.dp, elevation = 16.dp) {
+                SoftCard(modifier = Modifier.fillMaxWidth().navigationBarsPadding(), radius = 0.dp, elevation = 16.dp) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         SimpleBackButton(onClick = { currentStep-- }, enabled = !isLoading)
 
@@ -606,7 +606,7 @@ fun SignupScreen(
                     // Step 1: Phone Verification
                     Text("Verify Phone Number", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("We'll send you a verification code.", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                    Text("We'll send you a verification code.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(modifier = Modifier.height(32.dp))
 
                     if (!isOtpSent) {
@@ -633,7 +633,12 @@ fun SignupScreen(
                             modifier = Modifier.fillMaxWidth()
                         )
                     } else {
-                        Text("Enter OTP sent to +91 $phoneNumber", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            text = "Enter OTP sent to +91 $phoneNumber", 
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center, // Added
+                            modifier = Modifier.fillMaxWidth() // Added
+                        )
                         Spacer(modifier = Modifier.height(16.dp))
                         
                         OtpInput(
@@ -651,9 +656,9 @@ fun SignupScreen(
                         Text(
                             text = "Enable push notifications to receive OTP if SMS fails.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(horizontal = 16.dp)
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp) // Added fillMaxWidth
                         )
 
                         Spacer(modifier = Modifier.height(24.dp))
@@ -663,7 +668,7 @@ fun SignupScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                             if (ticks > 0) {
-                                Text("Resend in ${ticks}s", color = Color.Gray)
+                                Text("Resend in ${ticks}s", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             } else {
                                 TextButton(onClick = { sendOtp(phoneNumber, true) }) { Text("Resend OTP") }
                             }
@@ -678,7 +683,7 @@ fun SignupScreen(
                     // Step 2: Role Selection
                     Text("Select your Role", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("Choose the profile that best fits you.", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                    Text("Choose the profile that best fits you.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(modifier = Modifier.height(24.dp))
                     
                     // Startup Card
@@ -707,12 +712,12 @@ fun SignupScreen(
                                     .fillMaxWidth()
                                     .clickable { selectedTrack = "EDP" }
                                     .background(
-                                        if (selectedTrack == "EDP") AtmiyaPrimary.copy(alpha = 0.1f) else Color.Transparent, 
+                                        if (selectedTrack == "EDP") MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else Color.Transparent, 
                                         RoundedCornerShape(8.dp)
                                     )
                                     .border(
                                         1.dp, 
-                                        if (selectedTrack == "EDP") AtmiyaPrimary else Color.LightGray, 
+                                        if (selectedTrack == "EDP") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, 
                                         RoundedCornerShape(8.dp)
                                     )
                                     .padding(12.dp),
@@ -721,11 +726,11 @@ fun SignupScreen(
                                 RadioButton(
                                     selected = selectedTrack == "EDP",
                                     onClick = { selectedTrack = "EDP" },
-                                    colors = RadioButtonDefaults.colors(selectedColor = AtmiyaPrimary)
+                                    colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
                                 )
                                 Column {
                                     Text("EDP (Idea Stage)", fontWeight = FontWeight.SemiBold)
-                                    Text("For new ideas & prototypes", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                    Text("For new ideas & prototypes", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
                             
@@ -737,7 +742,7 @@ fun SignupScreen(
                                     .fillMaxWidth()
                                     .clickable { selectedTrack = "ACC" }
                                     .background(
-                                        if (selectedTrack == "ACC") AtmiyaPrimary.copy(alpha = 0.1f) else Color.Transparent, 
+                                        if (selectedTrack == "ACC") MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else Color.Transparent, 
                                         RoundedCornerShape(8.dp)
                                     )
                                     .border(
@@ -751,11 +756,11 @@ fun SignupScreen(
                                 RadioButton(
                                     selected = selectedTrack == "ACC",
                                     onClick = { selectedTrack = "ACC" },
-                                    colors = RadioButtonDefaults.colors(selectedColor = AtmiyaPrimary)
+                                    colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
                                 )
                                 Column {
-                                    Text("Accelerator (Growth)", fontWeight = FontWeight.SemiBold)
-                                    Text("For existing businesses", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                    Text("Accelerator (Growth)", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                                    Text("For existing businesses", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
                         }
@@ -847,7 +852,7 @@ fun SignupScreen(
                                     Column {
                                         Text("Pitch Deck (PDF) *", fontWeight = FontWeight.Bold)
                                         if (pitchDeckUri != null) {
-                                            Text("Selected: ${pitchDeckUri?.lastPathSegment}", style = MaterialTheme.typography.bodySmall, color = AtmiyaPrimary)
+                                            Text("Selected: ${pitchDeckUri?.lastPathSegment}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                                         } else {
                                             Text("Tap to upload", style = MaterialTheme.typography.bodySmall)
                                         }
@@ -873,7 +878,7 @@ fun SignupScreen(
                                     Column {
                                         Text("Startup Logo (Optional)", fontWeight = FontWeight.Bold)
                                         if (logoUri != null) {
-                                            Text("Selected", style = MaterialTheme.typography.bodySmall, color = AtmiyaPrimary)
+                                            Text("Selected", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                                         } else {
                                             Text("Tap to upload", style = MaterialTheme.typography.bodySmall)
                                         }
@@ -962,7 +967,7 @@ fun SignupScreen(
                 5 -> {
                     // Step 5: Create Password
                     Text("Create Password", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                    Text("Secure your account with a strong password.", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                    Text("Secure your account with a strong password.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(modifier = Modifier.height(24.dp))
                     
                     PasswordTextField(password, { password = it }, "New Password")
@@ -1002,8 +1007,8 @@ fun PasswordTextField(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = AtmiyaPrimary,
-            unfocusedBorderColor = Color.Gray.copy(alpha = 0.5f)
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
         )
     )
 }
@@ -1063,7 +1068,7 @@ fun OtpInput(
                     .background(if (isError) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surface)
                     .border(
                         width = if (isFocused) 2.dp else 1.dp,
-                        color = if (isFocused) AtmiyaPrimary else if (isError) MaterialTheme.colorScheme.error else Color.Gray.copy(alpha = 0.5f),
+                        color = if (isFocused) MaterialTheme.colorScheme.primary else if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                         shape = RoundedCornerShape(12.dp)
                     ),
                 contentAlignment = Alignment.Center

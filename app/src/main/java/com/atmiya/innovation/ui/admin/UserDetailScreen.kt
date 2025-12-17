@@ -70,14 +70,14 @@ fun UserDetailScreen(
                 },
                 colors = TopAppBarDefaults.smallTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = AtmiyaPrimary
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         }
     ) { padding ->
         if (isLoading) {
             Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = AtmiyaPrimary)
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         } else if (user != null) {
             Column(
@@ -99,10 +99,10 @@ fun UserDetailScreen(
                         )
                     } else {
                         Box(
-                            modifier = Modifier.size(80.dp).clip(CircleShape).background(Color.Gray.copy(alpha = 0.2f)),
+                            modifier = Modifier.size(80.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(40.dp), tint = Color.Gray)
+                            Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(40.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                     
@@ -113,12 +113,12 @@ fun UserDetailScreen(
                             text = user!!.name,
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
-                            color = AtmiyaPrimary
+                            color = MaterialTheme.colorScheme.primary
                         )
                         Text(
                             text = user!!.role.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() },
                             style = MaterialTheme.typography.bodyMedium,
-                            color = AtmiyaSecondary
+                            color = MaterialTheme.colorScheme.secondary
                         )
                     }
                 }
@@ -132,7 +132,7 @@ fun UserDetailScreen(
                 DetailItem("Phone", user!!.phoneNumber)
                 DetailItem("City", user!!.city)
                 DetailItem("State", user!!.region)
-                DetailItem("Status", if (user!!.isBlocked) "Blocked" else "Active", if (user!!.isBlocked) MaterialTheme.colorScheme.error else Color.Green)
+                DetailItem("Status", if (user!!.isBlocked) "Blocked" else "Active", if (user!!.isBlocked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.secondary)
 
                 Spacer(modifier = Modifier.height(24.dp))
                 HorizontalDivider()
@@ -153,15 +153,15 @@ fun UserDetailScreen(
                             DetailItem("Description", startup!!.description)
                             if (!startup!!.pitchDeckUrl.isNullOrBlank()) {
                                 Spacer(modifier = Modifier.height(8.dp))
-                                Text("Pitch Deck", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                                Text("Pitch Deck", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text(
                                     text = "View Pitch Deck",
-                                    color = AtmiyaSecondary,
+                                    color = MaterialTheme.colorScheme.secondary,
                                     modifier = Modifier.clickable { /* Open URL */ }
                                 )
                             }
                         } else {
-                            Text("No startup profile found.", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                            Text("No startup profile found.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                     "investor" -> {
@@ -170,7 +170,7 @@ fun UserDetailScreen(
                             DetailItem("Ticket Size", investor!!.ticketSizeMin)
                             DetailItem("Bio", investor!!.bio)
                         } else {
-                            Text("No investor profile found.", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                            Text("No investor profile found.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                     "mentor" -> {
@@ -179,7 +179,7 @@ fun UserDetailScreen(
                             DetailItem("Experience", "${mentor!!.experienceYears} Years")
                             DetailItem("Bio", mentor!!.bio)
                         } else {
-                            Text("No mentor profile found.", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                            Text("No mentor profile found.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -200,7 +200,7 @@ fun UserDetailScreen(
                             }
                         },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (user!!.isBlocked) Color.Green else MaterialTheme.colorScheme.error
+                            containerColor = if (user!!.isBlocked) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error
                         ),
                         modifier = Modifier.weight(1f).height(50.dp),
                         shape = RoundedCornerShape(12.dp)
@@ -255,7 +255,7 @@ fun UserDetailScreen(
 fun DetailItem(label: String, value: String, color: Color = MaterialTheme.colorScheme.onSurface) {
     if (value.isNotEmpty()) {
         Column(modifier = Modifier.padding(vertical = 4.dp)) {
-            Text(text = label, style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+            Text(text = label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(text = value, style = MaterialTheme.typography.bodyLarge)
         }
     }

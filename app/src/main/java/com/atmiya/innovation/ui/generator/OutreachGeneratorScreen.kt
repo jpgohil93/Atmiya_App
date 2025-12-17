@@ -60,11 +60,11 @@ fun OutreachGeneratorScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.surface
                 )
             )
         },
-        containerColor = Color(0xFFF9FAFB)
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     ) { padding ->
         Column(
             modifier = Modifier
@@ -80,7 +80,7 @@ fun OutreachGeneratorScreen(
                 Text(
                     text = "Generating for ${state.startupName}",
                     style = MaterialTheme.typography.labelLarge,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -106,7 +106,7 @@ fun OutreachGeneratorScreen(
                         }
                     )
                     
-                    HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
                     // Language / Style Selection
                     SelectionGroup(
@@ -154,7 +154,7 @@ fun OutreachGeneratorScreen(
                                     clipboard.setPrimaryClip(clip)
                                     Toast.makeText(context, "Copied!", Toast.LENGTH_SHORT).show()
                                 }) {
-                                    Icon(Icons.Default.ContentCopy, contentDescription = "Copy", tint = AtmiyaPrimary)
+                                    Icon(Icons.Default.ContentCopy, contentDescription = "Copy", tint = MaterialTheme.colorScheme.primary)
                                 }
                             }
                         }
@@ -164,14 +164,14 @@ fun OutreachGeneratorScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(Color(0xFFF5F5F5), RoundedCornerShape(8.dp))
-                                .border(1.dp, Color.LightGray.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
                                 .padding(16.dp)
                         ) {
                             Text(
                                 text = generatedMessage,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = Color.Black
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
                         
@@ -180,7 +180,7 @@ fun OutreachGeneratorScreen(
                         Text(
                             text = "Tip: Review and personalize before sending.",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -211,7 +211,7 @@ fun <T> SelectionGroup(
     iconProvider: (T) -> ImageVector? = { null }
 ) {
     Column {
-        Text(title, style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+        Text(title, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(modifier = Modifier.height(8.dp))
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -234,14 +234,14 @@ fun <T> SelectionGroup(
                         }
                     },
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = AtmiyaPrimary.copy(alpha = 0.1f),
-                        selectedLabelColor = AtmiyaPrimary,
-                        selectedLeadingIconColor = AtmiyaPrimary
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer
                     ),
                     border = FilterChipDefaults.filterChipBorder(
                         enabled = true,
                         selected = isSelected,
-                        borderColor = if (isSelected) AtmiyaPrimary else Color.LightGray
+                        borderColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
                     )
                 )
             }

@@ -77,17 +77,17 @@ fun ConnectionsScreen(
                 CenterAlignedTopAppBar(
                     title = { Text("My Connections", fontWeight = FontWeight.Bold) },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.surface
                     )
                 )
                 TabRow(
                     selectedTabIndex = selectedTab,
-                    containerColor = Color.White,
-                    contentColor = AtmiyaPrimary,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.primary,
                     indicator = { tabPositions ->
                         TabRowDefaults.SecondaryIndicator(
                             Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                            color = AtmiyaSecondary
+                            color = MaterialTheme.colorScheme.secondary
                         )
                     }
                 ) {
@@ -100,7 +100,7 @@ fun ConnectionsScreen(
                                     content = { Text(title, fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal) },
                                     badge = {
                                         if (index == 1 && requests.isNotEmpty()) {
-                                            Badge(containerColor = AtmiyaSecondary) { Text("${requests.size}") }
+                                            Badge(containerColor = MaterialTheme.colorScheme.secondary) { Text("${requests.size}") }
                                         }
                                     }
                                 )
@@ -110,12 +110,12 @@ fun ConnectionsScreen(
                 }
             }
         },
-        containerColor = Color.White
+        containerColor = MaterialTheme.colorScheme.surface
     ) { padding ->
         Box(modifier = Modifier.padding(padding)) {
             if (isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = AtmiyaSecondary)
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.secondary)
                 }
             } else {
                 if (selectedTab == 0) {
@@ -230,7 +230,7 @@ fun ConnectionItem(
     val targetId = if (isIncoming) connection.senderId else connection.receiverId
 
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
@@ -249,10 +249,10 @@ fun ConnectionItem(
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = displayName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(text = displayRole.capitalize(), style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                Text(text = displayRole.capitalize(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             IconButton(onClick = { onChatClick(targetId, displayName) }) {
-                Icon(Icons.Default.Email, contentDescription = "Message", tint = AtmiyaSecondary)
+                Icon(Icons.Default.Email, contentDescription = "Message", tint = MaterialTheme.colorScheme.secondary)
             }
         }
     }
@@ -285,9 +285,9 @@ fun RequestItem(
     onIgnore: (ConnectionRequest) -> Unit
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(12.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha=0.5f))
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha=0.5f))
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -300,15 +300,15 @@ fun RequestItem(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(text = request.senderName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Text(text = request.senderRole.capitalize(), style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                    Text(text = "Sent a connection request", style = MaterialTheme.typography.labelSmall, color = AtmiyaPrimary)
+                    Text(text = request.senderRole.capitalize(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(text = "Sent a connection request", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                 }
             }
             Spacer(modifier = Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     onClick = { onAccept(request) },
-                    colors = ButtonDefaults.buttonColors(containerColor = AtmiyaSecondary),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(8.dp)
                 ) {
@@ -337,9 +337,9 @@ fun EmptyState(title: String, subtitle: String) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(title, style = MaterialTheme.typography.titleMedium, color = Color.Gray, fontWeight = FontWeight.Bold)
+        Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(8.dp))
-        Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = Color.LightGray, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
     }
 }
 

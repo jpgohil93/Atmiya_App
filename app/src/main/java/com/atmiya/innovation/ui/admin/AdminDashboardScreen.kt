@@ -26,12 +26,12 @@ fun AdminDashboardScreen(
 
         ScrollableTabRow(
             selectedTabIndex = selectedTab,
-            containerColor = AtmiyaPrimary,
-            contentColor = Color.White,
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
             indicator = { tabPositions ->
                 TabRowDefaults.Indicator(
                     Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                    color = AtmiyaSecondary
+                    color = MaterialTheme.colorScheme.secondary
                 )
             },
             edgePadding = 0.dp
@@ -41,8 +41,8 @@ fun AdminDashboardScreen(
                     text = { Text(title) },
                     selected = selectedTab == index,
                     onClick = { selectedTab = index },
-                    selectedContentColor = AtmiyaSecondary,
-                    unselectedContentColor = Color.White.copy(alpha = 0.7f)
+                    selectedContentColor = MaterialTheme.colorScheme.secondary,
+                    unselectedContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
                 )
             }
         }
@@ -76,7 +76,7 @@ fun AdminDashboardScreen(
                                 Icons.Default.Info,
                                 contentDescription = null,
                                 modifier = Modifier.size(64.dp),
-                                tint = AtmiyaPrimary
+                                tint = MaterialTheme.colorScheme.primary
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
@@ -88,7 +88,7 @@ fun AdminDashboardScreen(
                             Text(
                                 "Scan QR Code or Search by Phone",
                                 style = MaterialTheme.typography.bodyLarge,
-                                color = Color.Gray
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }

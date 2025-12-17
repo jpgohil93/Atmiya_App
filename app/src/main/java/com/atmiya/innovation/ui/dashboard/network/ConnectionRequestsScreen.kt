@@ -71,7 +71,7 @@ fun ConnectionRequestsScreen(
                 Text(
                     text = "Debug Info: UID Length=${currentUserId.length}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Button(onClick = { key++ }) {
                     Text("Retry")
@@ -82,7 +82,7 @@ fun ConnectionRequestsScreen(
                 modifier = Modifier.align(androidx.compose.ui.Alignment.Center),
                 horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
             ) {
-                Text("No pending connection requests.", color = Color.Gray)
+                Text("No pending connection requests.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (currentUserId.isBlank()) {
                     Text("(Debug: UserID is empty)", color = Color.Red, fontSize = 10.sp)
                 }
@@ -139,7 +139,7 @@ fun ConnectionRequestCard(
         name = request.senderName,
         roleOrTitle = request.senderRole.replaceFirstChar { it.uppercase() },
         badges = {
-             PillBadge(text = "Received", backgroundColor = Color(0xFFE3F2FD), contentColor = Color(0xFF1565C0))
+             PillBadge(text = "Received", backgroundColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer)
         },
         infoContent = {
              // No extra info for now, just name/role

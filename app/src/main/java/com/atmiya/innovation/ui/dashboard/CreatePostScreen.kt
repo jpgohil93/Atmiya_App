@@ -20,6 +20,7 @@ import compose.icons.tablericons.PlayerPlay
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import android.widget.Toast
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -67,201 +68,274 @@ fun CreatePostScreen(
         }
     }
 
-    val maxItems = 10 
-    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(maxItems)) { uris ->
+    // Calculate remaining slots for media selection
+    val remainingSlots = (10 - selectedMediaItems.size).coerceAtLeast(0)
+    
+    // Use a constant max limit for the launcher to avoid re-registration issues
+    val imagePicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickMultipleVisualMedia(10)
+    ) { uris ->
         if (uris.isNotEmpty()) {
-            selectedMediaItems = selectedMediaItems + uris.map { it to false }
-            isPollMode = false 
+            val remaining = (10 - selectedMediaItems.size).coerceAtLeast(0)
+            val newItems = uris.take(remaining).map { it to false }
+            selectedMediaItems = selectedMediaItems + newItems
+            if (uris.size > remaining) {
+                Toast.makeText(context, "Max 10 items allowed", Toast.LENGTH_SHORT).show()
+            }
+            isPollMode = false
         }
     }
     
-    val videoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(maxItems)) { uris ->
+    val videoPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickMultipleVisualMedia(10)
+    ) { uris ->
         if (uris.isNotEmpty()) {
-            selectedMediaItems = selectedMediaItems + uris.map { it to true }
-            isPollMode = false 
+            val remaining = (10 - selectedMediaItems.size).coerceAtLeast(0)
+            val newItems = uris.take(remaining).map { it to true }
+            selectedMediaItems = selectedMediaItems + newItems
+             if (uris.size > remaining) {
+                Toast.makeText(context, "Max 10 items allowed", Toast.LENGTH_SHORT).show()
+            }
+            isPollMode = false
         }
     }
 
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
+        )
     ) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text(if (isPollMode) "Create Poll" else "Create Post", fontWeight = FontWeight.SemiBold) },
-                    navigationIcon = {
-                        IconButton(onClick = onDismiss) {
-                            Icon(TablerIcons.X, contentDescription = "Close", modifier = Modifier.size(24.dp))
-                        }
-                    },
-                    actions = {
-                        Button(
-                            onClick = { 
-                                if (isPollMode) {
-                                    if (pollQuestion.isBlank() || pollOptions.any { it.isBlank() } || pollOptions.size < 2) return@Button
-                                     isLoading = true
-                                    onPost("", emptyList(), pollQuestion, pollOptions)
-                                } else {
-                                    if (text.isBlank() && selectedMediaItems.isEmpty()) return@Button
-                                     isLoading = true
-                                    onPost(text, selectedMediaItems, null, emptyList())
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .navigationBarsPadding() // Avoid system navigation bar
+                .imePadding(), // Adjust for keyboard
+            contentAlignment = Alignment.Center
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth(0.95f)
+                    .fillMaxHeight(0.85f) // Reduced size (vertical)
+                    .clip(RoundedCornerShape(28.dp)),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 6.dp
+            ) {
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    topBar = {
+                        TopAppBar(
+                            title = { Text(if (isPollMode) "Create Poll" else "Create Post", fontWeight = FontWeight.SemiBold) },
+                            navigationIcon = {
+                                IconButton(onClick = onDismiss) {
+                                    Icon(TablerIcons.X, contentDescription = "Close", modifier = Modifier.size(24.dp))
                                 }
                             },
-                            enabled = !isLoading && (if (isPollMode) pollQuestion.isNotBlank() && pollOptions.size >= 2 else (text.isNotBlank() || selectedMediaItems.isNotEmpty())),
-                            colors = ButtonDefaults.buttonColors(containerColor = AtmiyaPrimary),
-                            modifier = Modifier.padding(end = 8.dp)
-                        ) {
-                            Text(if (isLoading) "Posting" else "Post")
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
-                )
-            },
-            bottomBar = {
-                if (!isPollMode) {
-                    Column(modifier = Modifier.fillMaxWidth().background(Color.White)) {
-                        Divider()
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text("Add to your post", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                            
-                            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                                IconButton(onClick = { 
-                                    imagePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                                }) {
-                                    Icon(TablerIcons.Photo, contentDescription = "Photo", tint = Color(0xFF4CAF50), modifier = Modifier.size(24.dp))
-                                }
-                                IconButton(onClick = { 
-                                    videoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
-                                }) {
-                                    Icon(TablerIcons.PlayerPlay, contentDescription = "Video", tint = Color(0xFFE91E63), modifier = Modifier.size(24.dp))
-                                }
-                                IconButton(onClick = { isPollMode = true; selectedMediaItems = emptyList() }) {
-                                    Icon(TablerIcons.List, contentDescription = "Poll", tint = AtmiyaPrimary, modifier = Modifier.size(24.dp))
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            containerColor = Color.White
-        ) { padding ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(16.dp)
-                    .verticalScroll(rememberScrollState())
-            ) {
-                // User Info
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    AsyncImage(
-                        model = userPhotoUrl,
-                        contentDescription = null,
-                        modifier = Modifier.size(48.dp).clip(CircleShape).background(Color.Gray),
-                        contentScale = ContentScale.Crop
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(userName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                        Surface(
-                            shape = RoundedCornerShape(4.dp),
-                            color = Color.LightGray.copy(alpha = 0.3f),
-                            modifier = Modifier.padding(top = 2.dp)
-                        ) {
-                            Text(
-                                "Public", 
-                                style = MaterialTheme.typography.labelSmall, 
-                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
-                                color = Color.Gray
-                            )
-                        }
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                if (isPollMode) {
-                    OutlinedTextField(
-                        value = pollQuestion,
-                        onValueChange = { pollQuestion = it },
-                        placeholder = { Text("Ask a question...", fontSize = 20.sp, color = Color.Gray) },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedBorderColor = Color.Transparent,
-                            focusedBorderColor = Color.Transparent
-                        ),
-                        textStyle = MaterialTheme.typography.headlineSmall
-                    )
-                     pollOptions.forEachIndexed { index, option ->
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
-                                OutlinedTextField(
-                                    value = option,
-                                    onValueChange = { newText -> 
-                                        pollOptions = pollOptions.toMutableList().apply { set(index, newText) }
+                            actions = {
+                                Button(
+                                    onClick = { 
+                                        if (isPollMode) {
+                                            if (pollQuestion.isBlank() || pollOptions.any { it.isBlank() } || pollOptions.size < 2) return@Button
+                                             isLoading = true
+                                            onPost("", emptyList(), pollQuestion, pollOptions)
+                                        } else {
+                                            if (text.isBlank() && selectedMediaItems.isEmpty()) return@Button
+                                             isLoading = true
+                                            onPost(text, selectedMediaItems, null, emptyList())
+                                        }
                                     },
-                                    placeholder = { Text("Option ${index + 1}") },
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(12.dp)
-                                )
-                                IconButton(onClick = { 
-                                    if (pollOptions.size > 2) pollOptions = pollOptions.toMutableList().apply { removeAt(index) }
-                                }) {
-                                    Icon(TablerIcons.X, contentDescription = null, modifier = Modifier.size(20.dp))
+                                    enabled = !isLoading && (if (isPollMode) pollQuestion.isNotBlank() && pollOptions.size >= 2 else (text.isNotBlank() || selectedMediaItems.isNotEmpty())),
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                    modifier = Modifier.padding(end = 8.dp)
+                                ) {
+                                    Text(if (isLoading) "Posting" else "Post")
                                 }
-                            }
-                    }
-                    if (pollOptions.size < 5) {
-                        TextButton(onClick = { pollOptions = pollOptions + "" }) {
-                            Text("+ Add Option")
-                        }
-                    }
-
-                } else {
-                    // Text Area
-                    TextField(
-                        value = text,
-                        onValueChange = { text = it },
-                        placeholder = { Text("What's on your mind?", fontSize = 24.sp, color = Color.Gray) }, // Larger placeholder
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = Color.Transparent,
-                            unfocusedContainerColor = Color.Transparent,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent
-                        ),
-                        textStyle = MaterialTheme.typography.headlineSmall
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Media Preview
-                    if (selectedMediaItems.isNotEmpty()) {
-                        // Grid layout logic or just a column of large images
-                         selectedMediaItems.forEachIndexed { index, (uri, isVideo) ->
-                             Box(modifier = Modifier.padding(vertical = 4.dp).clip(RoundedCornerShape(12.dp))) {
-                                AsyncImage(
-                                    model = uri,
-                                    contentDescription = null,
-                                    modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp),
-                                    contentScale = ContentScale.Crop
-                                )
-                                if (isVideo) {
-                                     Box(modifier = Modifier.matchParentSize().background(Color.Black.copy(alpha=0.3f)), contentAlignment = Alignment.Center) {
-                                        Icon(TablerIcons.PlayerPlay, contentDescription = null, tint = Color.White, modifier = Modifier.size(48.dp))
+                            },
+                            colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
+                        )
+                    },
+                    bottomBar = {
+                        if (!isPollMode) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(MaterialTheme.colorScheme.surface)
+                            ) {
+                                HorizontalDivider()
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column {
+                                        Text("Add to your post", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                        if (selectedMediaItems.isNotEmpty()) {
+                                            Text(
+                                                "${selectedMediaItems.size}/10 items",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = if (selectedMediaItems.size >= 10) Color(0xFFE91E63) else MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                    
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        IconButton(
+                                            onClick = { 
+                                                if (selectedMediaItems.size < 10) {
+                                                    imagePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                                }
+                                            },
+                                            enabled = selectedMediaItems.size < 10
+                                        ) {
+                                            Icon(
+                                                TablerIcons.Photo, 
+                                                contentDescription = "Photo", 
+                                                tint = if (selectedMediaItems.size < 10) Color(0xFF4CAF50) else Color.Gray,
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        }
+                                        IconButton(
+                                            onClick = { 
+                                                if (selectedMediaItems.size < 10) {
+                                                    videoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
+                                                }
+                                            },
+                                            enabled = selectedMediaItems.size < 10
+                                        ) {
+                                            Icon(
+                                                TablerIcons.PlayerPlay, 
+                                                contentDescription = "Video", 
+                                                tint = if (selectedMediaItems.size < 10) Color(0xFFE91E63) else Color.Gray,
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        }
+                                        IconButton(onClick = { isPollMode = true; selectedMediaItems = emptyList() }) {
+                                            Icon(TablerIcons.List, contentDescription = "Poll", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                                        }
                                     }
                                 }
-                                IconButton(
-                                    onClick = { selectedMediaItems = selectedMediaItems.toMutableList().apply { removeAt(index) } },
-                                    modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).background(Color.Black.copy(alpha=0.6f), CircleShape)
+                            }
+                        }
+                    },
+                    containerColor = MaterialTheme.colorScheme.surface
+                ) { padding ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(padding)
+                            .padding(16.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        // User Info
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            AsyncImage(
+                                model = userPhotoUrl,
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurfaceVariant),
+                                contentScale = ContentScale.Crop
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(userName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                                    modifier = Modifier.padding(top = 2.dp)
                                 ) {
-                                    Icon(TablerIcons.X, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                    Text(
+                                        "Public", 
+                                        style = MaterialTheme.typography.labelSmall, 
+                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
-                             }
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(24.dp))
+                        
+                        if (isPollMode) {
+                            OutlinedTextField(
+                                value = pollQuestion,
+                                onValueChange = { pollQuestion = it },
+                                placeholder = { Text("Ask a question...", fontSize = 20.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    unfocusedBorderColor = Color.Transparent,
+                                    focusedBorderColor = Color.Transparent
+                                ),
+                                textStyle = MaterialTheme.typography.headlineSmall
+                            )
+                             pollOptions.forEachIndexed { index, option ->
+                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
+                                        OutlinedTextField(
+                                            value = option,
+                                            onValueChange = { newText -> 
+                                                pollOptions = pollOptions.toMutableList().apply { set(index, newText) }
+                                            },
+                                            placeholder = { Text("Option ${index + 1}") },
+                                            modifier = Modifier.weight(1f),
+                                            shape = RoundedCornerShape(12.dp)
+                                        )
+                                        IconButton(onClick = { 
+                                            if (pollOptions.size > 2) pollOptions = pollOptions.toMutableList().apply { removeAt(index) }
+                                        }) {
+                                            Icon(TablerIcons.X, contentDescription = null, modifier = Modifier.size(20.dp))
+                                        }
+                                    }
+                            }
+                            if (pollOptions.size < 5) {
+                                TextButton(onClick = { pollOptions = pollOptions + "" }) {
+                                    Text("+ Add Option")
+                                }
+                            }
+
+                        } else {
+                            // Text Area
+                            TextField(
+                                value = text,
+                                onValueChange = { text = it },
+                                placeholder = { Text("What's on your mind?", fontSize = 24.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }, // Larger placeholder
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color.Transparent,
+                                    unfocusedContainerColor = Color.Transparent,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent
+                                ),
+                                textStyle = MaterialTheme.typography.headlineSmall
+                            )
+                            
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            // Media Preview
+                            if (selectedMediaItems.isNotEmpty()) {
+                                // Grid layout logic or just a column of large images
+                                 selectedMediaItems.forEachIndexed { index, (uri, isVideo) ->
+                                     Box(modifier = Modifier.padding(vertical = 4.dp).clip(RoundedCornerShape(12.dp))) {
+                                        AsyncImage(
+                                            model = uri,
+                                            contentDescription = null,
+                                            modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                        if (isVideo) {
+                                             Box(modifier = Modifier.matchParentSize().background(Color.Black.copy(alpha=0.3f)), contentAlignment = Alignment.Center) {
+                                                Icon(TablerIcons.PlayerPlay, contentDescription = null, tint = Color.White, modifier = Modifier.size(48.dp))
+                                            }
+                                        }
+                                        IconButton(
+                                            onClick = { selectedMediaItems = selectedMediaItems.toMutableList().apply { removeAt(index) } },
+                                            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).background(Color.Black.copy(alpha=0.6f), CircleShape)
+                                        ) {
+                                            Icon(TablerIcons.X, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                        }
+                                     }
+                                }
+                            }
                         }
                     }
                 }

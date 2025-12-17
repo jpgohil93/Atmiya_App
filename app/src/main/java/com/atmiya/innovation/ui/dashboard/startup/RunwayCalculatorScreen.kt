@@ -103,7 +103,7 @@ fun RunwayCalculatorScreen(
                     "Startup Stage",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = AtmiyaPrimary,
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(top = 8.dp)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -235,7 +235,7 @@ fun RunwayCalculatorScreen(
                 Button(
                     onClick = { result = RunwayCalculatorEngine.calculate(inputState) },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = AtmiyaPrimary),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text("Calculate Runway", fontSize = 18.sp, fontWeight = FontWeight.Bold)
@@ -244,7 +244,7 @@ fun RunwayCalculatorScreen(
 
 
             item {
-                Divider(modifier = Modifier.padding(vertical = 16.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
             }
             
             // 5. Results
@@ -262,7 +262,7 @@ fun SectionHeader(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.titleSmall,
-        color = Color.Gray,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         fontWeight = FontWeight.Bold,
         modifier = Modifier.padding(vertical = 8.dp)
     )
@@ -312,14 +312,14 @@ fun DaysSelector(label: String, selected: Int?, onSelect: (Int) -> Unit) {
                         Icon(TablerIcons.CalendarEvent, null, modifier = Modifier.size(16.dp))
                     },
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = AtmiyaPrimary.copy(alpha = 0.1f),
-                        selectedLabelColor = AtmiyaPrimary,
-                        selectedLeadingIconColor = AtmiyaPrimary
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer
                     ),
                     border = FilterChipDefaults.filterChipBorder(
                         enabled = true,
                         selected = isSelected,
-                        borderColor = if (isSelected) AtmiyaPrimary else Color.LightGray
+                        borderColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
                     )
                 )
             }
@@ -368,7 +368,7 @@ fun ResultDashboard(result: CalculationResult) {
         // Main Runway Card
         SoftCard(
             modifier = Modifier.fillMaxWidth(),
-            backgroundColor = if (result.runwayMonths < 3) Color(0xFFFFEBEE) else if (result.runwayMonths > 12) Color(0xFFE8F5E9) else Color(0xFFFFF3E0)
+            backgroundColor = if (result.runwayMonths < 3) MaterialTheme.colorScheme.errorContainer else if (result.runwayMonths > 12) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.tertiaryContainer
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                 Text("ESTIMATED RUNWAY", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
@@ -378,7 +378,7 @@ fun ResultDashboard(result: CalculationResult) {
                         text = if (result.runwayMonths >= 24) "24+ Months" else "${result.runwayMonths} ${pluralize(result.runwayMonths, "Month")}",
                         style = MaterialTheme.typography.displayMedium,
                         fontWeight = FontWeight.ExtraBold,
-                        color = if (result.runwayMonths < 3) Color.Red else if (result.runwayMonths > 12) Color(0xFF2E7D32) else Color(0xFFEF6C00)
+                        color = if (result.runwayMonths < 3) MaterialTheme.colorScheme.error else if (result.runwayMonths > 12) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
                     )
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -392,10 +392,10 @@ fun ResultDashboard(result: CalculationResult) {
                 // Status Badge
                 if (result.validationStatus != ValidationStatus.NA) {
                     val (color, text, icon) = when(result.validationStatus) {
-                        ValidationStatus.ACHIEVABLE -> Triple(Color(0xFF2E7D32), "Validation Achievable", TablerIcons.Check)
-                        ValidationStatus.AT_RISK -> Triple(Color(0xFFEF6C00), "Validation At Risk", TablerIcons.AlertTriangle)
-                        ValidationStatus.NOT_ACHIEVABLE -> Triple(Color.Red, "Not Achievable", TablerIcons.AlertTriangle)
-                        else -> Triple(Color.Gray, "", null)
+                        ValidationStatus.ACHIEVABLE -> Triple(MaterialTheme.colorScheme.primary, "Validation Achievable", TablerIcons.Check)
+                        ValidationStatus.AT_RISK -> Triple(MaterialTheme.colorScheme.tertiary, "Validation At Risk", TablerIcons.AlertTriangle)
+                        ValidationStatus.NOT_ACHIEVABLE -> Triple(MaterialTheme.colorScheme.error, "Not Achievable", TablerIcons.AlertTriangle)
+                        else -> Triple(MaterialTheme.colorScheme.onSurfaceVariant, "", null)
                     }
                     Surface(color = color.copy(alpha=0.1f), shape = RoundedCornerShape(50)) {
                         Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -477,20 +477,20 @@ fun LeverCard(lever: LeverAction) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, AtmiyaPrimary.copy(alpha = 0.3f)),
-        color = Color.White
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
+        color = MaterialTheme.colorScheme.surface
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(TablerIcons.TrendingUp, null, tint = AtmiyaPrimary)
+            Icon(TablerIcons.TrendingUp, null, tint = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(lever.description, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
             }
-            Surface(color = AtmiyaPrimary, shape = RoundedCornerShape(8.dp)) {
-                Text("+${lever.runwayDelta} Mo", color = Color.White, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), style = MaterialTheme.typography.labelSmall)
+            Surface(color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(8.dp)) {
+                Text("+${lever.runwayDelta} Mo", color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), style = MaterialTheme.typography.labelSmall)
             }
         }
     }

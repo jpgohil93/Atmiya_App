@@ -66,6 +66,17 @@ fun SettingsScreen(
     var showThemeDialog by remember { mutableStateOf(false) }
     var feedbackText by remember { mutableStateOf("") }
     var isSubmittingFeedback by remember { mutableStateOf(false) }
+
+    // Change Password State
+    var showPasswordDialog by remember { mutableStateOf(false) }
+    var newPassword by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var passwordError by remember { mutableStateOf<String?>(null) }
+    var isChangingPassword by remember { mutableStateOf(false) }
+    var isPasswordVisible by remember { mutableStateOf(false) }
+    var isConfirmPasswordVisible by remember { mutableStateOf(false) }
+
+
     
     // Notification Permission State
     var isNotificationAllowed by remember { mutableStateOf(false) }
@@ -125,9 +136,9 @@ fun SettingsScreen(
                 navigationIcon = {
                     IconButton(
                         onClick = onBack,
-                        colors = IconButtonDefaults.iconButtonColors(containerColor = Color(0xFFFFF8E1))
+                        colors = IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest)
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.Black)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
@@ -168,6 +179,25 @@ fun SettingsScreen(
                     subtitle = if (userPhone.isNotEmpty()) formatPhoneNumber(userPhone) else "Loading...",
                     onClick = { /* No action requested */ }
                 )
+                
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Change Password
+                SettingsCard(
+                    icon = TablerIcons.Lock,
+                    title = "Change Password",
+                    subtitle = "Update your security",
+                    onClick = { 
+                        newPassword = ""
+                        confirmPassword = ""
+                        passwordError = null
+                        isPasswordVisible = false
+                        isConfirmPasswordVisible = false
+                        showPasswordDialog = true 
+                    }
+                )
+                
+
                 
                 Spacer(modifier = Modifier.height(12.dp))
                 
@@ -242,14 +272,14 @@ fun SettingsScreen(
                 Text(
                     text = "Log out",
                     style = MaterialTheme.typography.titleMedium,
-                    color = Color(0xFFEF5350), // Red
+                    color = MaterialTheme.colorScheme.error, // Red
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ExitToApp,
                     contentDescription = null,
-                    tint = Color(0xFFEF5350),
+                    tint = MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -262,7 +292,7 @@ fun SettingsScreen(
                  Text(
                     text = "netfund © 2025 v${BuildConfig.VERSION_NAME}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray.copy(alpha=0.6f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha=0.6f)
                 )
             }
             
@@ -373,6 +403,107 @@ fun SettingsScreen(
             }
         )
     }
+
+    if (showPasswordDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!isChangingPassword) showPasswordDialog = false },
+            title = { Text("Change Password") },
+            text = {
+                Column {
+                    Text("Enter your new password below.", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    OutlinedTextField(
+                        value = newPassword,
+                        onValueChange = { newPassword = it; passwordError = null },
+                        label = { Text("New Password") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        visualTransformation = if (isPasswordVisible) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                        trailingIcon = {
+                            val image = if (isPasswordVisible) TablerIcons.Eye else TablerIcons.EyeOff
+                            val description = if (isPasswordVisible) "Hide password" else "Show password"
+                            IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
+                                Icon(imageVector = image, contentDescription = description)
+                            }
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = confirmPassword,
+                        onValueChange = { confirmPassword = it; passwordError = null },
+                        label = { Text("Confirm Password") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        visualTransformation = if (isConfirmPasswordVisible) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                        trailingIcon = {
+                            val image = if (isConfirmPasswordVisible) TablerIcons.Eye else TablerIcons.EyeOff
+                            val description = if (isConfirmPasswordVisible) "Hide password" else "Show password"
+                            IconButton(onClick = { isConfirmPasswordVisible = !isConfirmPasswordVisible }) {
+                                Icon(imageVector = image, contentDescription = description)
+                            }
+                        }
+                    )
+                    
+                    if (passwordError != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(text = passwordError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (newPassword.length < 6) {
+                            passwordError = "Password must be at least 6 characters"
+                            return@Button
+                        }
+                        if (newPassword != confirmPassword) {
+                            passwordError = "Passwords do not match"
+                            return@Button
+                        }
+                        
+                        isChangingPassword = true
+                        currentUser?.updatePassword(newPassword)
+                            ?.addOnCompleteListener { task ->
+                                isChangingPassword = false
+                                if (task.isSuccessful) {
+                                    Toast.makeText(context, "Password updated successfully", Toast.LENGTH_SHORT).show()
+                                    showPasswordDialog = false
+                                    newPassword = ""
+                                    confirmPassword = ""
+                                    isPasswordVisible = false
+                                    isConfirmPasswordVisible = false
+                                } else {
+                                    val error = task.exception?.message ?: "Failed to update password"
+                                    if (error.contains("recent authentication", ignoreCase = true)) {
+                                        Toast.makeText(context, "Please log out and log in again to change password.", Toast.LENGTH_LONG).show()
+                                        showPasswordDialog = false
+                                    } else {
+                                        passwordError = error
+                                    }
+                                }
+                            }
+                    },
+                    enabled = !isChangingPassword,
+                    colors = ButtonDefaults.buttonColors(containerColor = AtmiyaPrimary)
+                ) {
+                    if (isChangingPassword) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White)
+                    } else {
+                        Text("Update")
+                    }
+                }
+            },
+            dismissButton = {
+                if (!isChangingPassword) {
+                     TextButton(onClick = { showPasswordDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -385,7 +516,7 @@ fun SettingsSection(
             text = title,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF1F2937), // Dark Gray
+            color = MaterialTheme.colorScheme.onSurface, // Dark Gray
             modifier = Modifier.padding(bottom = 12.dp, start = 4.dp)
         )
         content()
@@ -404,7 +535,7 @@ fun SettingsCard(
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(24.dp), // Highly rounded as per screenshot
-        color = Color(0xFFF3F4F6), // Light gray background
+        color = MaterialTheme.colorScheme.surface, // Pure White in Light, Dark in Dark
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -418,13 +549,13 @@ fun SettingsCard(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(Color.White), // White bg for icon
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest), // Contrast for icon
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = Color(0xFF4B5563), // Dark Gray Icon
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant, // Dark Gray Icon
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -436,12 +567,12 @@ fun SettingsCard(
                     text = title,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1
                 )
             }

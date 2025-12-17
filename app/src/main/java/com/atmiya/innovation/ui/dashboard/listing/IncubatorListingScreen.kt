@@ -57,7 +57,7 @@ fun IncubatorListingScreen(
 
     Scaffold(
         topBar = {
-            Column(modifier = Modifier.background(Color.White)) {
+            Column(modifier = Modifier.background(MaterialTheme.colorScheme.surface)) {
                 TopAppBar(
                     title = { Text("Incubators", fontWeight = FontWeight.Bold) },
                     navigationIcon = {
@@ -65,7 +65,7 @@ fun IncubatorListingScreen(
                             Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                         }
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
                 )
                 // Search Bar
                 OutlinedTextField(
@@ -78,8 +78,8 @@ fun IncubatorListingScreen(
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedContainerColor = Color(0xFFF5F5F5),
-                        focusedContainerColor = Color.White
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer, // Slightly darker than surface
+                        focusedContainerColor = MaterialTheme.colorScheme.surface
                     ),
                     singleLine = true
                 )
@@ -111,11 +111,11 @@ fun IncubatorListingScreen(
                 HorizontalDivider(color = Color.LightGray.copy(alpha = 0.2f))
             }
         },
-        containerColor = Color(0xFFFAFAFA)
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow // Contrast for Surface Cards
     ) { paddingValues ->
         if (isLoading) {
             Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = AtmiyaPrimary)
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         } else {
             LazyColumn(
@@ -169,8 +169,8 @@ fun FilterButton(text: String, isActive: Boolean, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(20.dp),
-        color = if (isActive) AtmiyaPrimary.copy(alpha = 0.1f) else Color.White,
-        border = androidx.compose.foundation.BorderStroke(1.dp, if (isActive) AtmiyaPrimary else Color.Gray.copy(alpha=0.3f))
+        color = if (isActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(1.dp, if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -179,7 +179,7 @@ fun FilterButton(text: String, isActive: Boolean, onClick: () -> Unit) {
             Text(
                 text = text,
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (isActive) AtmiyaPrimary else Color.Black,
+                color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                 fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal
             )
             Spacer(modifier = Modifier.width(4.dp))
@@ -187,7 +187,7 @@ fun FilterButton(text: String, isActive: Boolean, onClick: () -> Unit) {
                 if (isActive) Icons.Default.Close else Icons.Default.FilterList,
                 contentDescription = null,
                 modifier = Modifier.size(14.dp),
-                tint = if (isActive) AtmiyaPrimary else Color.Gray
+                tint = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -212,7 +212,7 @@ fun FilterSheetContent(
                         .clickable { onSelect(null) }
                         .padding(vertical = 12.dp),
                     fontWeight = if (selectedOption == null) FontWeight.Bold else FontWeight.Normal,
-                    color = if (selectedOption == null) AtmiyaPrimary else Color.Black
+                    color = if (selectedOption == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                 )
             }
             items(options) { option ->
@@ -223,9 +223,9 @@ fun FilterSheetContent(
                         .clickable { onSelect(option) }
                         .padding(vertical = 12.dp),
                     fontWeight = if (selectedOption == option) FontWeight.Bold else FontWeight.Normal,
-                    color = if (selectedOption == option) AtmiyaPrimary else Color.Black
+                    color = if (selectedOption == option) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                 )
-                HorizontalDivider(color = Color.LightGray.copy(alpha = 0.2f))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
             }
         }
     }
@@ -234,7 +234,7 @@ fun FilterSheetContent(
 @Composable
 fun IncubatorCard(incubator: Incubator, onClick: () -> Unit) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(16.dp),
         modifier = Modifier.fillMaxWidth().clickable { onClick() }
@@ -248,7 +248,7 @@ fun IncubatorCard(incubator: Incubator, onClick: () -> Unit) {
                    modifier = Modifier
                        .size(60.dp)
                        .clip(RoundedCornerShape(8.dp))
-                       .background(Color(0xFFF5F5F5)),
+                        .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                    contentScale = ContentScale.Fit, // Changed to Fit to avoid cropping logos
                    error = rememberAsyncImagePainter(model = R.drawable.ic_launcher_foreground),
                    placeholder = rememberAsyncImagePainter(model = R.drawable.ic_launcher_foreground)
@@ -260,20 +260,20 @@ fun IncubatorCard(incubator: Incubator, onClick: () -> Unit) {
                         text = incubator.name,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 2,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                     Text(
                         text = "${incubator.city}, ${incubator.state}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
             
             Spacer(modifier = Modifier.height(16.dp))
-            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.2f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
             Spacer(modifier = Modifier.height(12.dp))
             
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -288,7 +288,7 @@ fun IncubatorCard(incubator: Incubator, onClick: () -> Unit) {
 @Composable
 fun InfoItem(label: String, value: String) {
     Column {
-        Text(text = label, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-        Text(text = value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = Color.Black)
+        Text(text = label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(text = value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
     }
 }

@@ -79,19 +79,19 @@ fun UserListScreen(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             placeholder = { Text("Search by name, email, or phone...") },
-            leadingIcon = { Icon(TablerIcons.Search, contentDescription = null, tint = Color.Gray) },
+            leadingIcon = { Icon(TablerIcons.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
             trailingIcon = {
                 if (searchQuery.isNotBlank()) {
                     IconButton(onClick = { viewModel.setSearchQuery("") }) {
-                        Icon(TablerIcons.X, contentDescription = "Clear", tint = Color.Gray)
+                        Icon(TablerIcons.X, contentDescription = "Clear", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             },
             singleLine = true,
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = AtmiyaPrimary,
-                unfocusedBorderColor = Color.Gray.copy(alpha = 0.3f)
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
             )
         )
         
@@ -115,7 +115,7 @@ fun UserListScreen(
 
         if (isLoading && users.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = AtmiyaPrimary)
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         } else {
             LazyColumn(
@@ -176,10 +176,10 @@ fun UserCard(user: User, onClick: () -> Unit) {
                 )
             } else {
                 Box(
-                    modifier = Modifier.size(48.dp).clip(CircleShape).background(Color.Gray.copy(alpha = 0.2f)),
+                    modifier = Modifier.size(48.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(TablerIcons.User, contentDescription = null, modifier = Modifier.size(24.dp), tint = Color.Gray)
+                    Icon(TablerIcons.User, contentDescription = null, modifier = Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             
@@ -194,20 +194,20 @@ fun UserCard(user: User, onClick: () -> Unit) {
                 Text(
                     text = user.email.ifEmpty { "No Email" },
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                  if (user.phoneNumber.isNotEmpty()) {
                     Text(
                         text = user.phoneNumber,
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 if (user.isBlocked) {
                     Text(
                         text = "BLOCKED",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.Red,
+                        color = MaterialTheme.colorScheme.error,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -215,7 +215,7 @@ fun UserCard(user: User, onClick: () -> Unit) {
             Icon(
                 imageVector = TablerIcons.ArrowRight,
                 contentDescription = null,
-                tint = Color.Gray
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

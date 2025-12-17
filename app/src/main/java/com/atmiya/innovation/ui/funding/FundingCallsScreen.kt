@@ -187,7 +187,7 @@ fun FundingCallsScreen(
 
     SoftScaffold(
         topBar = {
-            Column(modifier = Modifier.background(Color.White)) {
+            Column(modifier = Modifier.background(MaterialTheme.colorScheme.surface)) {
                 TopAppBar(
                     title = { Text("Funding Opportunities", fontWeight = FontWeight.Bold) },
                     navigationIcon = {
@@ -196,8 +196,8 @@ fun FundingCallsScreen(
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.White,
-                        titleContentColor = AtmiyaPrimary
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        titleContentColor = MaterialTheme.colorScheme.primary
                     )
                 )
                 
@@ -214,7 +214,7 @@ fun FundingCallsScreen(
                         onValueChange = { searchQuery = it },
                         label = "",
                         placeholder = "Search funding calls...",
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = AtmiyaPrimary) },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                         minLines = 1
                     )
                     
@@ -225,13 +225,13 @@ fun FundingCallsScreen(
                     if (tabs.size > 3) {
                          ScrollableTabRow(
                             selectedTabIndex = selectedTab,
-                            containerColor = Color.White,
-                            contentColor = AtmiyaPrimary,
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            contentColor = MaterialTheme.colorScheme.primary,
                             edgePadding = 0.dp,
                             indicator = { tabPositions ->
                                 TabRowDefaults.SecondaryIndicator(
                                     Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                                    color = AtmiyaPrimary
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                             }
                         ) {
@@ -246,12 +246,12 @@ fun FundingCallsScreen(
                     } else {
                          TabRow(
                             selectedTabIndex = selectedTab,
-                            containerColor = Color.White,
-                            contentColor = AtmiyaPrimary,
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            contentColor = MaterialTheme.colorScheme.primary,
                             indicator = { tabPositions ->
                                 TabRowDefaults.SecondaryIndicator(
                                     Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                                    color = AtmiyaPrimary
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                             }
                         ) {
@@ -288,23 +288,23 @@ fun FundingCallsScreen(
                                 onClick = { selectedCategory = category },
                                 label = { Text(category) },
                                 colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = AtmiyaPrimary.copy(alpha = 0.1f),
-                                    selectedLabelColor = AtmiyaPrimary
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                    selectedLabelColor = MaterialTheme.colorScheme.primary
                                 )
                             )
                         }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                 }
-                HorizontalDivider(color = Color.LightGray.copy(alpha = 0.1f))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.1f))
             }
         },
         floatingActionButton = {
             if (role == "investor") {
                 FloatingActionButton(
                     onClick = { onNavigate("create_funding_call") },
-                    containerColor = AtmiyaPrimary,
-                    contentColor = Color.White,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
                 ) {
                     Icon(Icons.Default.Add, contentDescription = "Create Call")
@@ -354,12 +354,12 @@ fun FundingCallsScreen(
             Box(modifier = Modifier.fillMaxSize()) {
                 if (isLoading && !isRefreshing) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = AtmiyaPrimary)
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     }
                 } else if (filteredCalls.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.Info, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(48.dp))
+                            Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(48.dp))
                             Spacer(modifier = Modifier.height(16.dp))
                             
                             val emptyText = if (role == "investor") {
@@ -375,7 +375,7 @@ fun FundingCallsScreen(
                             
                             Text(
                                 text = emptyText,
-                                color = Color.Gray,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                                 style = MaterialTheme.typography.bodyLarge
                             )
@@ -406,7 +406,7 @@ fun FundingCallsScreen(
                                     Box(
                                         modifier = Modifier
                                             .matchParentSize()
-                                            .background(Color.White.copy(alpha = 0.3f))
+                                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.3f))
                                             .clickable { /* Consumes click but maybe we want to allow viewing details */
                                                 onNavigate("funding_call/${call.id}")
                                             }

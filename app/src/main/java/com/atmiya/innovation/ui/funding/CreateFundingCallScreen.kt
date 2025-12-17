@@ -133,15 +133,15 @@ fun CreateFundingCallScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White,
-                    titleContentColor = AtmiyaPrimary
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.primary
                 )
             )
         }
     ) { innerPadding ->
         if (isLoadingInitial) {
             Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = AtmiyaPrimary)
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         } else {
             Column(
@@ -258,8 +258,8 @@ fun CreateFundingCallScreen(
                                 },
                                 label = { Text(sector) },
                                 colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = AtmiyaPrimary.copy(alpha = 0.1f),
-                                    selectedLabelColor = AtmiyaPrimary
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                    selectedLabelColor = MaterialTheme.colorScheme.primary
                                 )
                             )
                         }
@@ -278,8 +278,8 @@ fun CreateFundingCallScreen(
                                 },
                                 label = { Text(stage) },
                                 colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = AtmiyaSecondary.copy(alpha = 0.1f),
-                                    selectedLabelColor = AtmiyaSecondary
+                                    selectedContainerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f),
+                                    selectedLabelColor = MaterialTheme.colorScheme.secondary
                                 )
                             )
                         }
@@ -323,12 +323,12 @@ fun CreateFundingCallScreen(
                                     }
                                     showDatePicker = false
                                 }) {
-                                    Text("OK", color = AtmiyaPrimary)
+                                    Text("OK", color = MaterialTheme.colorScheme.primary)
                                 }
                             },
                             dismissButton = {
                                 TextButton(onClick = { showDatePicker = false }) {
-                                    Text("Cancel", color = AtmiyaPrimary)
+                                    Text("Cancel", color = MaterialTheme.colorScheme.primary)
                                 }
                             }
                         ) {
@@ -343,8 +343,11 @@ fun CreateFundingCallScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     OutlinedButton(
                         onClick = { docPicker.launch(arrayOf("application/pdf", "application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation")) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp), // Added height for consistency
+                        shape = RoundedCornerShape(12.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) // Added border with MaterialTheme color
                     ) {
                         Icon(Icons.Outlined.Add, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
@@ -356,14 +359,14 @@ fun CreateFundingCallScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(Color.Gray.copy(alpha = 0.05f), RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
                                 .padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(name, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                             IconButton(onClick = { attachments.removeAt(index) }) {
-                                Icon(Icons.Outlined.Close, contentDescription = "Remove", tint = Color.Gray)
+                                Icon(Icons.Outlined.Close, contentDescription = "Remove", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                         Spacer(modifier = Modifier.height(4.dp))
@@ -482,7 +485,7 @@ fun SectionHeader(title: String) {
         text = title,
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.Bold,
-        color = AtmiyaPrimary
+        color = MaterialTheme.colorScheme.primary
     )
 }
 

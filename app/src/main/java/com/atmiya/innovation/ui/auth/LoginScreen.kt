@@ -594,11 +594,11 @@ fun LoginScreen(
                     TabRow(
                         selectedTabIndex = if (loginMode == LoginMode.OTP) 0 else 1,
                         containerColor = Color.Transparent,
-                        contentColor = AtmiyaPrimary,
+                        contentColor = MaterialTheme.colorScheme.primary,
                         indicator = { tabPositions ->
                             TabRowDefaults.Indicator(
                                 Modifier.tabIndicatorOffset(tabPositions[if (loginMode == LoginMode.OTP) 0 else 1]),
-                                color = AtmiyaSecondary
+                                color = MaterialTheme.colorScheme.secondary
                             )
                         }
                     ) {
@@ -609,7 +609,7 @@ fun LoginScreen(
                                 Text(
                                     "OTP Login", 
                                     fontWeight = if (loginMode == LoginMode.OTP) FontWeight.Bold else FontWeight.Normal,
-                                    color = if (loginMode == LoginMode.OTP) AtmiyaPrimary else Color.Gray
+                                    color = if (loginMode == LoginMode.OTP) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                                 ) 
                             }
                         )
@@ -620,7 +620,7 @@ fun LoginScreen(
                                 Text(
                                     "Password Login", 
                                     fontWeight = if (loginMode == LoginMode.PASSWORD) FontWeight.Bold else FontWeight.Normal,
-                                    color = if (loginMode == LoginMode.PASSWORD) AtmiyaPrimary else Color.Gray
+                                    color = if (loginMode == LoginMode.PASSWORD) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                                 ) 
                             }
                         )
@@ -634,7 +634,7 @@ fun LoginScreen(
                             text = "Welcome Back",
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
-                            color = AtmiyaPrimary,
+                            color = MaterialTheme.colorScheme.primary,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -667,7 +667,7 @@ fun LoginScreen(
                                     "+91",
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.padding(start = 16.dp, end = 8.dp),
-                                    color = AtmiyaPrimary
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                             },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -698,7 +698,7 @@ fun LoginScreen(
                                     Icon(
                                         imageVector = TablerIcons.Lock,
                                         contentDescription = null,
-                                        tint = Color.Gray
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 },
                                 trailingIcon = {
@@ -723,8 +723,8 @@ fun LoginScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
                                 colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = AtmiyaPrimary,
-                                    unfocusedBorderColor = Color.Gray.copy(alpha = 0.5f)
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                                 )
                             )
                             
@@ -747,7 +747,7 @@ fun LoginScreen(
                                         phoneError = "Enter valid phone number first"
                                     }
                                 }) {
-                                    Text("Forgot Password?", color = AtmiyaSecondary)
+                                    Text("Forgot Password?", color = MaterialTheme.colorScheme.secondary)
                                 }
                             }
                         }
@@ -775,7 +775,7 @@ fun LoginScreen(
                         Text(
                             text = "Enable push notifications to receive OTP if SMS fails.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.padding(horizontal = 16.dp)
                         )
@@ -786,7 +786,7 @@ fun LoginScreen(
                             onClick = onSignupClick,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("New to Netfund? Sign Up", color = AtmiyaPrimary)
+                            Text("New to Netfund? Sign Up", color = MaterialTheme.colorScheme.primary)
                         }
                     }
 

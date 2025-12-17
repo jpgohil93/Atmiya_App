@@ -2,7 +2,11 @@ package com.atmiya.innovation
 
 import android.app.Application
 
-class AtmiyaApp : Application() {
+import coil.ImageLoader
+import coil.ImageLoaderFactory
+import coil.decode.VideoFrameDecoder
+
+class AtmiyaApp : Application(), ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
         // Enable Firestore offline persistence
@@ -15,5 +19,12 @@ class AtmiyaApp : Application() {
         // YoutubeDL init removed
     }
 
-
+    override fun newImageLoader(): ImageLoader {
+        return ImageLoader.Builder(this)
+            .components {
+                add(VideoFrameDecoder.Factory())
+            }
+            .crossfade(true)
+            .build()
+    }
 }

@@ -203,9 +203,9 @@ fun DashboardScreen(
                 "settings_screen" -> { scope.launch { drawerState.close() }; navController.navigate("settings_screen") }
                 "funding_calls_list" -> { scope.launch { drawerState.close() }; navController.navigate("funding_calls_list") }
                 "events_list" -> { scope.launch { drawerState.close() }; navController.navigate("events_list") }
-                "network" -> { scope.launch { drawerState.close() }; navController.navigate("network_hub") }
-                "connection_requests" -> { scope.launch { drawerState.close() }; navController.navigate("network_hub?tab=2") }
-                else -> { scope.launch { drawerState.close() }; navController.navigate(route) }
+                "network" -> { scope.launch { drawerState.close(); pagerState.scrollToPage(0) }; navController.navigate("network_hub") }
+                "connection_requests" -> { scope.launch { drawerState.close(); pagerState.scrollToPage(0) }; navController.navigate("network_hub?tab=2") }
+                else -> { scope.launch { drawerState.close(); pagerState.scrollToPage(0) }; navController.navigate(route) }
             }
         },
         onLogout = onLogout

@@ -78,7 +78,7 @@ fun CsvImportScreen(
                             viewModel.clearValidation()
                             launcher.launch("*/*") 
                         }, 
-                        colors = ButtonDefaults.buttonColors(containerColor = AtmiyaPrimary),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                         modifier = Modifier.weight(1f)
                     ) {
                         Spacer(modifier = Modifier.width(8.dp))
@@ -128,7 +128,7 @@ fun CsvImportScreen(
                                 deleteConfirmText = ""
                             },
                             enabled = deleteConfirmText == "DELETE",
-                            colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                         ) {
                             Text("Delete All")
                         }
@@ -159,25 +159,25 @@ fun CsvImportScreen(
                     // Indeterminate progress for cloud upload
                     LinearProgressIndicator(
                         modifier = Modifier.fillMaxWidth(0.8f),
-                        color = AtmiyaPrimary,
+                        color = MaterialTheme.colorScheme.primary,
                     )
                 } else {
                     // Determinate progress for local upload
                     LinearProgressIndicator(
                         progress = { uploadProgress },
                         modifier = Modifier.fillMaxWidth(0.8f),
-                        color = AtmiyaPrimary,
+                        color = MaterialTheme.colorScheme.primary,
                     )
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(if (uploadStatusText.isNotBlank()) uploadStatusText else "Processing...", color = Color.Gray)
+                Text(if (uploadStatusText.isNotBlank()) uploadStatusText else "Processing...", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else if (uploadResult != null) {
             // Final Report
             val result = uploadResult!!
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFF0FDF4)), // Light green bg
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer), // Light green bg substitute
                 elevation = CardDefaults.cardElevation(2.dp)
             ) {
                 Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -185,7 +185,7 @@ fun CsvImportScreen(
                         if (result.failureCount == 0) androidx.compose.material.icons.Icons.Default.CheckCircle else androidx.compose.material.icons.Icons.Default.Warning,
                         contentDescription = null,
                         modifier = Modifier.size(64.dp),
-                        tint = if (result.failureCount == 0) Color(0xFF4CAF50) else Color(0xFFFF9800)
+                        tint = if (result.failureCount == 0) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
@@ -196,9 +196,9 @@ fun CsvImportScreen(
                     Spacer(modifier = Modifier.height(24.dp))
                     
                     Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
-                        SummaryCard("Total", result.totalCount.toString(), Color.Black)
-                        SummaryCard("Success", result.successCount.toString(), Color(0xFF4CAF50))
-                        SummaryCard("Failed", result.failureCount.toString(), if (result.failureCount > 0) Color.Red else Color.Black)
+                        SummaryCard("Total", result.totalCount.toString(), MaterialTheme.colorScheme.onSurface)
+                        SummaryCard("Success", result.successCount.toString(), MaterialTheme.colorScheme.secondary)
+                        SummaryCard("Failed", result.failureCount.toString(), if (result.failureCount > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
                     }
                     
                     if (result.failureCount > 0) {
@@ -214,7 +214,7 @@ fun CsvImportScreen(
                                 }
                                 context.startActivity(android.content.Intent.createChooser(sendIntent, "Share Error Log"))
                             },
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red)
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
                         ) {
                             Text("Download Error Log")
                         }
@@ -236,19 +236,19 @@ fun CsvImportScreen(
                 SummaryCard(
                     "Total Rows", 
                     validationSummary.totalRows.toString(), 
-                    Color.Blue,
+                    MaterialTheme.colorScheme.primary,
                     modifier = Modifier.weight(1f)
                 )
                 SummaryCard(
                     "Valid", 
                     validationSummary.validRows.toString(), 
-                    if(validationSummary.invalidRows == 0 && validationSummary.validRows > 0) Color(0xFF4CAF50) else Color.Black,
+                    if(validationSummary.invalidRows == 0 && validationSummary.validRows > 0) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f)
                 )
                 SummaryCard(
                     "Invalid", 
                     validationSummary.invalidRows.toString(), 
-                    if(validationSummary.invalidRows > 0) Color.Red else Color.Black,
+                    if(validationSummary.invalidRows > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -284,14 +284,14 @@ fun CsvImportScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    Text("All rows are valid!", style = MaterialTheme.typography.titleLarge, color = Color.Green)
+                    Text("All rows are valid!", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.secondary)
                     Spacer(modifier = Modifier.height(8.dp))
                     
                     if (validationSummary.validRows > 500) {
-                        Text("Large dataset detected (${validationSummary.validRows} rows)", color = Color.Gray)
-                        Text("Fast server-side processing available", color = Color.Gray, style = MaterialTheme.typography.bodySmall)
+                        Text("Large dataset detected (${validationSummary.validRows} rows)", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Fast server-side processing available", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                     } else {
-                        Text("Ready for upload (${validationSummary.validRows} rows)", color = Color.Gray)
+                        Text("Ready for upload (${validationSummary.validRows} rows)", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     
                     Spacer(modifier = Modifier.height(24.dp))
@@ -320,7 +320,7 @@ fun CsvImportScreen(
                     } else {
                         Button(
                             onClick = { viewModel.uploadValidRows() },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                             modifier = Modifier.fillMaxWidth(0.5f).height(50.dp)
                         ) {
                             Text("Upload to Server", fontWeight = FontWeight.Bold)

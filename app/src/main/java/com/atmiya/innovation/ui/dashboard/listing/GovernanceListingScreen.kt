@@ -57,13 +57,13 @@ fun GovernanceListingScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White,
-                    titleContentColor = Color.Black,
-                    navigationIconContentColor = Color.Black
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         },
-        containerColor = Color(0xFFF5F5F5) // Light gray background
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow // Light gray background in Light, dark in Dark
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -74,7 +74,7 @@ fun GovernanceListingScreen(
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.background(Color.White)
+                modifier = Modifier.background(MaterialTheme.colorScheme.surface)
             ) {
                 items(categories) { category ->
                     FilterChip(
@@ -87,7 +87,7 @@ fun GovernanceListingScreen(
             
             if (isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = AtmiyaPrimary)
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                 }
             } else {
                 LazyColumn(
@@ -112,7 +112,7 @@ fun SchemeCard(
     onClick: (String) -> Unit
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(12.dp),
         modifier = Modifier.fillMaxWidth().clickable { onClick(scheme.applyUrl) }
@@ -123,13 +123,13 @@ fun SchemeCard(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFFFFF3E0)), // Light Orange
+                        .background(MaterialTheme.colorScheme.secondaryContainer), // Light Orange/Secondary
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         Icons.Default.Home,
                         contentDescription = null,
-                        tint = Color(0xFFFF9800), // Orange
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer, // Orange/OnSecondary
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -139,12 +139,12 @@ fun SchemeCard(
                         text = scheme.name,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = "Ministry: ${scheme.ministry}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -154,13 +154,13 @@ fun SchemeCard(
             Text(
                 text = scheme.description,
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.DarkGray,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis
             )
             
             Spacer(modifier = Modifier.height(12.dp))
-            Divider(color = Color.LightGray.copy(alpha = 0.3f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
             Spacer(modifier = Modifier.height(12.dp))
             
             // Benefits Preview
@@ -169,15 +169,15 @@ fun SchemeCard(
                     text = "Benefits:",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Row(verticalAlignment = Alignment.Top) {
-                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = AtmiyaPrimary, modifier = Modifier.size(14.dp).padding(top = 2.dp))
+                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp).padding(top = 2.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = scheme.benefits,
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -186,7 +186,7 @@ fun SchemeCard(
             
             Button(
                 onClick = { onClick(scheme.applyUrl) },
-                colors = ButtonDefaults.buttonColors(containerColor = AtmiyaPrimary),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.fillMaxWidth(),
                 contentPadding = PaddingValues(vertical = 10.dp)

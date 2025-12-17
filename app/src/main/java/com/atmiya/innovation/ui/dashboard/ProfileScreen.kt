@@ -20,19 +20,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import com.atmiya.innovation.repository.FirestoreRepository
 import com.atmiya.innovation.repository.StorageRepository
 import com.atmiya.innovation.ui.components.DetailRow
 import com.atmiya.innovation.ui.components.SectionHeader
 import com.atmiya.innovation.ui.components.UserAvatar
-import com.atmiya.innovation.ui.theme.AtmiyaPrimary
-import com.atmiya.innovation.ui.theme.AtmiyaSecondary
+// import com.atmiya.innovation.ui.theme.AtmiyaPrimary // REMOVED
+// import com.atmiya.innovation.ui.theme.AtmiyaSecondary // REMOVED
 import com.google.firebase.auth.FirebaseAuth
 import compose.icons.TablerIcons
 import compose.icons.tablericons.*
@@ -249,7 +247,7 @@ fun ProfileScreen(
     }
 
     Scaffold(
-        containerColor = Color.White
+        containerColor = MaterialTheme.colorScheme.surface // Refactored
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
@@ -272,7 +270,7 @@ fun ProfileScreen(
                         fontSize = MaterialTheme.typography.displayLarge.fontSize
                     )
                     
-                    // Smooth Gradient (3-stop fade)
+                    // Smooth Gradient (3-stop fade) for readability
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -280,8 +278,8 @@ fun ProfileScreen(
                                 Brush.verticalGradient(
                                     colorStops = arrayOf(
                                         0.0f to Color.Transparent,
-                                        0.6f to Color.Transparent,
-                                        1.0f to Color.White // Seamless blend to background
+                                        0.5f to Color.Black.copy(alpha = 0.3f), // Mild darken middle
+                                        1.0f to MaterialTheme.colorScheme.surface // Seamless blend to background
                                     )
                                 )
                             )
@@ -294,16 +292,16 @@ fun ProfileScreen(
                     ) {
                         IconButton(
                             onClick = onBack,
-                            colors = IconButtonDefaults.iconButtonColors(containerColor = Color.Black.copy(alpha=0.3f))
+                            colors = IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha=0.3f))
                         ) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
                         }
                         if (isEditing) {
                             IconButton(
                                 onClick = { imagePickerLauncher.launch("image/*") },
-                                colors = IconButtonDefaults.iconButtonColors(containerColor = AtmiyaSecondary)
+                                colors = IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.secondary)
                             ) {
-                                Icon(TablerIcons.Pencil, contentDescription = "Edit Photo", tint = Color.White, modifier = Modifier.size(20.dp))
+                                Icon(TablerIcons.Pencil, contentDescription = "Edit Photo", tint = MaterialTheme.colorScheme.onSecondary, modifier = Modifier.size(20.dp))
                             }
                         }
                     }
@@ -318,9 +316,9 @@ fun ProfileScreen(
                                 onValueChange = { userName = it },
                                 label = { Text("Full Name") },
                                 colors = OutlinedTextFieldDefaults.colors(
-                                    focusedContainerColor = Color.White.copy(alpha=0.9f),
-                                    unfocusedContainerColor = Color.White.copy(alpha=0.7f),
-                                    focusedBorderColor = AtmiyaSecondary,
+                                    focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha=0.9f),
+                                    unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha=0.7f),
+                                    focusedBorderColor = MaterialTheme.colorScheme.secondary,
                                     unfocusedBorderColor = Color.Transparent
                                 ),
                                 modifier = Modifier.fillMaxWidth()
@@ -332,13 +330,13 @@ fun ProfileScreen(
                                     style = MaterialTheme.typography.displaySmall.copy(
                                         fontWeight = FontWeight.Bold
                                     ),
-                                    color = Color(0xFF1F2937) // Dark Text on White Gradient
+                                    color = MaterialTheme.colorScheme.onSurface // Responsive Text
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Icon(
                                     Icons.Outlined.CheckCircle, 
                                     contentDescription = "Verified", 
-                                    tint = AtmiyaSecondary, 
+                                    tint = MaterialTheme.colorScheme.secondary, 
                                     modifier = Modifier.size(24.dp)
                                 )
                             }
@@ -347,7 +345,7 @@ fun ProfileScreen(
                          Text(
                             text = displayRole,
                             style = MaterialTheme.typography.titleMedium,
-                            color = AtmiyaPrimary,
+                            color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
@@ -367,7 +365,7 @@ fun ProfileScreen(
                     ProfileField(label = "About", value = userBio, isEditing = isEditing, minLines = 3, icon = TablerIcons.InfoCircle) { userBio = it }
                     
                     Spacer(modifier = Modifier.height(24.dp))
-                    HorizontalDivider(color = Color.LightGray.copy(alpha=0.3f))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     Spacer(modifier = Modifier.height(24.dp))
                     
                     SectionHeader("Role Details")
@@ -397,21 +395,21 @@ fun ProfileScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(TablerIcons.Photo, contentDescription = null, tint = Color(0xFF9CA3AF))
+                                    Icon(TablerIcons.Photo, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                     Spacer(modifier = Modifier.width(16.dp))
                                     Column {
-                                        Text("Startup Logo", style = MaterialTheme.typography.bodyMedium)
+                                        Text("Startup Logo", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
                                         if (startupLogoUrl != null) {
-                                            Text("Uploaded", style = MaterialTheme.typography.bodySmall, color = AtmiyaPrimary)
+                                            Text("Uploaded", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                                         } else {
-                                            Text("No logo uploaded", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                            Text("No logo uploaded", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
                                     }
                                 }
                                 if (isEditing) {
                                     Button(
                                         onClick = { logoLauncher.launch("image/*") },
-                                        colors = ButtonDefaults.buttonColors(containerColor = AtmiyaSecondary)
+                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                                     ) {
                                         Text("Upload")
                                     }
@@ -427,21 +425,21 @@ fun ProfileScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(TablerIcons.Presentation, contentDescription = null, tint = Color(0xFF9CA3AF))
+                                    Icon(TablerIcons.Presentation, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                     Spacer(modifier = Modifier.width(16.dp))
                                     Column {
-                                        Text("Pitch Deck", style = MaterialTheme.typography.bodyMedium)
+                                        Text("Pitch Deck", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
                                         if (startupPitchDeckUrl != null) {
-                                            Text("Uploaded", style = MaterialTheme.typography.bodySmall, color = AtmiyaPrimary)
+                                            Text("Uploaded", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                                         } else {
-                                            Text("No deck uploaded", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                            Text("No deck uploaded", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
                                     }
                                 }
                                 if (isEditing) {
                                     Button(
                                         onClick = { pitchDeckLauncher.launch("application/pdf") },
-                                        colors = ButtonDefaults.buttonColors(containerColor = AtmiyaSecondary)
+                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                                     ) {
                                         Text("Upload")
                                     }
@@ -471,7 +469,7 @@ fun ProfileScreen(
                          TextButton(
                              onClick = onLogout,
                              modifier = Modifier.fillMaxWidth().height(50.dp),
-                             colors = ButtonDefaults.textButtonColors(contentColor = Color.Red.copy(alpha=0.8f))
+                             colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                          ) {
                              Icon(TablerIcons.Logout, contentDescription = null, modifier = Modifier.size(20.dp))
                              Spacer(modifier = Modifier.width(8.dp))
@@ -548,12 +546,12 @@ fun ProfileScreen(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(24.dp),
-                containerColor = if (isEditing) AtmiyaPrimary else AtmiyaSecondary,
-                contentColor = Color.White,
+                containerColor = if (isEditing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
                 shape = CircleShape
             ) {
                  if (isSaving) {
-                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                     CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(24.dp))
                  } else {
                      Icon(if(isEditing) Icons.Outlined.Save else Icons.Outlined.Edit, contentDescription = if(isEditing) "Save" else "Edit")
                  }
@@ -564,8 +562,8 @@ fun ProfileScreen(
                  SmallFloatingActionButton(
                     onClick = { isEditing = false },
                     modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 90.dp, end = 32.dp),
-                    containerColor = Color(0xFFE5E7EB),
-                    contentColor = Color(0xFF4B5563),
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     shape = CircleShape
                 ) {
                     Icon(Icons.Outlined.Close, contentDescription = "Cancel")
@@ -591,10 +589,12 @@ fun ProfileField(
             label = { Text(label) },
             modifier = Modifier.fillMaxWidth().padding(vertical=4.dp),
             minLines = minLines,
-            leadingIcon = if (icon != null) { { Icon(icon, contentDescription=null, tint=AtmiyaSecondary) } } else null,
+            leadingIcon = if (icon != null) { { Icon(icon, contentDescription=null, tint=MaterialTheme.colorScheme.secondary) } } else null,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = AtmiyaSecondary,
-                focusedLabelColor = AtmiyaSecondary
+                focusedBorderColor = MaterialTheme.colorScheme.secondary,
+                focusedLabelColor = MaterialTheme.colorScheme.secondary,
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
             ),
             shape = RoundedCornerShape(12.dp)
         )

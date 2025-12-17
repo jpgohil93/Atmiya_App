@@ -67,7 +67,7 @@ import java.util.UUID
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import androidx.media3.common.MediaItem
-
+import java.util.concurrent.atomic.AtomicReference
 import androidx.compose.material3.Text
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -82,7 +82,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
-
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 
@@ -183,19 +182,19 @@ fun WallScreen(
                                 ) {
                                     Text(
                                         text = "What's on your mind?",
-                                        color = Color.Gray,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         style = MaterialTheme.typography.bodyMedium,
                                         modifier = Modifier.weight(1f)
                                     )
                                     Icon(
                                         TablerIcons.Photo,
                                         contentDescription = null,
-                                        tint = AtmiyaPrimary,
+                                        tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(24.dp)
                                     )
                                 }
                             }
-                            Divider(color = Color.LightGray.copy(alpha = 0.3f), thickness = 8.dp)
+                            Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f), thickness = 8.dp)
                         }
 
                         if (posts.isEmpty() && !isLoading) {
@@ -237,7 +236,7 @@ fun WallScreen(
                                         onNavigateToFundingCall(callId)
                                     }
                                 )
-                                HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f), thickness = 8.dp)
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f), thickness = 8.dp)
                                 
                                 // Pagination Trigger
                                 if (post == posts.last()) {
@@ -599,7 +598,7 @@ fun PostCard(
     // Full Width Card
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = Color.White,
+        color = MaterialTheme.colorScheme.surface,
         shadowElevation = 0.dp // Flat design
     ) {
         Column {
@@ -627,12 +626,12 @@ fun PostCard(
                          Text(
                             text = formatTimestampIST(post.createdAt),
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
                              text = " • ",
                              style = MaterialTheme.typography.bodySmall,
-                             color = Color.Gray
+                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         RoleBadge(role = post.authorRole.ifBlank { "User" })
                     }
@@ -661,7 +660,7 @@ fun PostCard(
                             connectionStatus = "pending_sent" // Optimistic Update
                         },
                         colors = ButtonDefaults.textButtonColors(
-                            contentColor = if (connectionStatus == "pending_sent") Color.Gray else AtmiyaPrimary
+                            contentColor = if (connectionStatus == "pending_sent") MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary
                         ),
                         enabled = connectionStatus == "none" || connectionStatus == "declined"
                     ) {
@@ -692,21 +691,21 @@ fun PostCard(
                         }
 
                         IconButton(onClick = { expanded = true }) {
-                            Icon(TablerIcons.DotsVertical, contentDescription = "More", tint = Color.Gray, modifier = Modifier.size(20.dp))
+                            Icon(TablerIcons.DotsVertical, contentDescription = "More", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                         }
                         DropdownMenu(
                             expanded = expanded,
                             onDismissRequest = { expanded = false },
-                            modifier = Modifier.background(Color.White)
+                            modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainer)
                         ) {
                             DropdownMenuItem(
-                                text = { Text("Delete", color = Color.Red, fontWeight = FontWeight.Normal) },
+                                text = { Text("Delete", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Normal) },
                                 onClick = {
                                     expanded = false
                                     showDeleteDialog = true
                                 },
                                 leadingIcon = {
-                                    Icon(TablerIcons.Trash, contentDescription = null, tint = Color.Red, modifier = Modifier.size(20.dp))
+                                    Icon(TablerIcons.Trash, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
                                 }
                             )
                         }
@@ -741,18 +740,18 @@ fun PostCard(
                     ) {
                         Column {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(TablerIcons.Coin, contentDescription = null, tint = AtmiyaPrimary, modifier = Modifier.size(24.dp))
+                                Icon(TablerIcons.Coin, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Funding Opportunity", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = AtmiyaPrimary)
+                                Text("Funding Opportunity", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                             if (!post.sector.isNullOrBlank()) {
-                                Text("Sector: ${post.sector}", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                                Text("Sector: ${post.sector}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Spacer(modifier = Modifier.height(12.dp))
                             Button(
                                 onClick = { post.fundingCallId?.let { onFundingCallClick(it) } },
-                                colors = ButtonDefaults.buttonColors(containerColor = AtmiyaPrimary),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                                 shape = RoundedCornerShape(50),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
@@ -811,7 +810,16 @@ fun PostCard(
                                 showFullScreenMedia = true
                             }) { 
                                 if (attachment.type == "video") {
-                                    VideoPlayerWithPreview(videoUrl = attachment.url, thumbnailUrl = attachment.thumbnailUrl)
+                                    VideoPlayerWithPreview(
+                                        videoUrl = attachment.url, 
+                                        thumbnailUrl = attachment.thumbnailUrl, 
+                                        shouldStop = showFullScreenMedia,
+                                        modifier = Modifier.fillMaxSize(), // Fill the square pager item
+                                        onFullScreenRequest = {
+                                            initialMediaIndex = page
+                                            showFullScreenMedia = true
+                                        }
+                                    )
                                 } else {
                                     AsyncImage(
                                         model = ImageRequest.Builder(context)
@@ -872,7 +880,19 @@ fun PostCard(
                            initialMediaIndex = 0
                            showFullScreenMedia = true
                      }) {
-                        VideoPlayerWithPreview(videoUrl = post.mediaUrl, thumbnailUrl = post.thumbnailUrl)
+                        VideoPlayerWithPreview(
+                            videoUrl = post.mediaUrl, 
+                            thumbnailUrl = post.thumbnailUrl, 
+                            shouldStop = showFullScreenMedia,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(250.dp)
+                                .clip(RoundedCornerShape(12.dp)), // Retain original single post style
+                            onFullScreenRequest = {
+                                initialMediaIndex = 0
+                                showFullScreenMedia = true
+                            }
+                        )
                      }
                 }
             }
@@ -1020,12 +1040,27 @@ fun FullScreenMediaDialog(
                 val item = mediaItems[page]
                 if (item.type == "video") {
                     val context = LocalContext.current
+                    
+                    // PURGE: Ensure everything else is dead before we start
+                    DisposableEffect(Unit) {
+                        GlobalVideoManager.stopAll()
+                        onDispose { }
+                    }
+
                     val exoPlayer = remember {
+                        // Double tap: Stop again just in case
+                        GlobalVideoManager.stopAll()
+                        
                         ExoPlayer.Builder(context).build().apply {
                             setMediaItem(MediaItem.fromUri(item.url))
                             prepare()
                             playWhenReady = true // Auto-play in fullscreen
                         }
+                    }
+                    
+                    LaunchedEffect(exoPlayer) {
+                        GlobalVideoManager.register(exoPlayer, context)
+                         // Toast.makeText(context, "Debug: Full Screen Video Started", Toast.LENGTH_SHORT).show()
                     }
                     
                     DisposableEffect(Unit) {
@@ -1088,101 +1123,7 @@ fun FullScreenMediaDialog(
     }
 }
 
-@Composable
-fun VideoPlayer(videoUrl: String) {
-    val context = LocalContext.current
-    var isFullScreen by remember { mutableStateOf(false) }
-    
-    val exoPlayer = remember {
-        ExoPlayer.Builder(context).build().apply {
-            setMediaItem(MediaItem.fromUri(videoUrl))
-            prepare()
-        }
-    }
 
-    DisposableEffect(Unit) {
-        onDispose {
-            exoPlayer.release()
-        }
-    }
-
-    if (isFullScreen) {
-        androidx.compose.ui.window.Dialog(
-            onDismissRequest = { isFullScreen = false },
-            properties = androidx.compose.ui.window.DialogProperties(
-                usePlatformDefaultWidth = false,
-                dismissOnBackPress = true
-            )
-        ) {
-            Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-                AndroidView(
-                    factory = { ctx ->
-                        PlayerView(ctx).apply {
-                            player = exoPlayer
-                            useController = true
-                            setShowNextButton(false)
-                            setShowPreviousButton(false)
-                            setControllerOnFullScreenModeChangedListener { 
-                                isFullScreen = false 
-                            }
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize()
-                )
-                // Fallback close button if controller hides
-                IconButton(
-                    onClick = { isFullScreen = false },
-                    modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)
-                ) {
-                    Icon(TablerIcons.X, contentDescription = "Close Full Screen", tint = Color.White, modifier = Modifier.size(24.dp))
-                }
-            }
-        }
-    }
-
-    // Inline Player
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(250.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color.Black)
-    ) {
-        if (!isFullScreen) {
-            AndroidView(
-                factory = { ctx ->
-                    PlayerView(ctx).apply {
-                        player = exoPlayer
-                        useController = true
-                        setShowNextButton(false)
-                        setShowPreviousButton(false)
-                        setControllerOnFullScreenModeChangedListener { 
-                             isFullScreen = true
-                        }
-                    }
-                },
-                modifier = Modifier.fillMaxSize()
-            )
-            // Manual Overlay Button (optional if controller has it, but good for visibility)
-            IconButton(
-                onClick = { isFullScreen = true },
-                modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
-            ) {
-                 // Using ZoomOutMap as a proxy for Fullscreen if Fullscreen icon is missing/extended
-                 // Or create a custom vector if needed. For now using an available default.
-                 // If Icons.Default.Fullscreen is available, use it. If not, fallback.
-                 // Checking commonly available: Icons.Default.Add is definitely there.
-                 // Let's rely on controller mostly, but keep this as "Expand"
-                 Icon(TablerIcons.InfoCircle, contentDescription = "Full Screen", tint = Color.White, modifier = Modifier.size(24.dp)) 
-            }
-        } else {
-            // Placeholder when fullscreen is active
-            Box(modifier = Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
-                Text("Playing in Full Screen", color = Color.White)
-            }
-        }
-    }
-}
 
 // Helper for Hashtags
 fun getAnnotatedString(text: String): androidx.compose.ui.text.AnnotatedString {
@@ -1428,40 +1369,106 @@ fun InlineCommentsSection(
 }
 
 @Composable
-fun VideoPlayerWithPreview(videoUrl: String, thumbnailUrl: String?) {
-    var isPlaying by remember { mutableStateOf(false) }
+fun VideoPlayerWithPreview(
+    videoUrl: String, 
+    thumbnailUrl: String?, 
+    shouldStop: Boolean = false,
+    modifier: Modifier = Modifier, // Add modifier parameter
+    onFullScreenRequest: () -> Unit = {}
+) {
+    // REFACTOR: No inline playback. Direct full screen on click.
+    val context = LocalContext.current
 
-    if (isPlaying) {
-        VideoPlayer(videoUrl = videoUrl)
-    } else {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(250.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color.Black)
-                .clickable { isPlaying = true },
-            contentAlignment = Alignment.Center
-        ) {
-            if (!thumbnailUrl.isNullOrBlank()) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(thumbnailUrl)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            }
-            // Play Icon
-            Icon(
-                imageVector = TablerIcons.PlayerPlay,
-                contentDescription = "Play",
-                tint = Color.White,
-                modifier = Modifier.size(64.dp)
-            )
+    Box(
+        modifier = modifier
+            .background(Color.Black)
+            .clickable { 
+                onFullScreenRequest() 
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        val modelToLoad = if (!thumbnailUrl.isNullOrBlank()) thumbnailUrl else videoUrl
+        
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(modelToLoad)
+                .crossfade(true)
+                .build(),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+
+        // Play Icon
+        Icon(
+            imageVector = TablerIcons.PlayerPlay,
+            contentDescription = "Play",
+            tint = Color.White,
+            modifier = Modifier.size(64.dp)
+        )
+    }
+}
+
+@Composable
+fun VideoPlayer(videoUrl: String, onFullScreenRequest: () -> Unit) {
+    val context = LocalContext.current
+    
+    // We do NOT use 'remember' for the builder itself in a way that risks retaining old ones excessively,
+    // but we do need the player instance to be stable across recompositions of THIS specific VideoPlayer call.
+    val exoPlayer = remember {
+        ExoPlayer.Builder(context).build().apply {
+            setMediaItem(MediaItem.fromUri(videoUrl))
+            prepare()
+            playWhenReady = true
         }
+    }
+    
+    // FORCE REGISTER: Ensure this is the ONLY active player globally.
+    LaunchedEffect(exoPlayer) {
+        GlobalVideoManager.register(exoPlayer, context)
+        Toast.makeText(context, "Debug: Video Started (Global Check)", Toast.LENGTH_SHORT).show()
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            // Debug Toast
+            GlobalVideoManager.unregister(exoPlayer) // Remove from set
+            // Toast.makeText(context, "Debug: Video Disposed", Toast.LENGTH_SHORT).show()
+            try {
+                if (exoPlayer.isPlaying) {
+                    exoPlayer.stop()
+                }
+                exoPlayer.release()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // Inline Player
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(250.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.Black)
+    ) {
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    player = exoPlayer
+                    useController = true
+                    setShowNextButton(false)
+                    setShowPreviousButton(false)
+                    // Explicitly hide native fullscreen button where possible
+                    // Use post to wait for layout inflation
+                    this.post {
+                         recursiveHideFullscreen(this)
+                    }
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }
 
@@ -1514,5 +1521,71 @@ fun CommentItem(
             Spacer(modifier = Modifier.height(4.dp))
             Text(comment.text, style = MaterialTheme.typography.bodyMedium)
         }
+    }
+}
+
+// GLOBAL VIDEO MANAGER
+// Limits the app to exactly one active ExoPlayer at a time to prevent audio overlap.
+object GlobalVideoManager {
+    // using WeakReference to prevent leaks if disposal fails manually (though we try to release)
+    private val activePlayers = java.util.Collections.newSetFromMap(java.util.WeakHashMap<ExoPlayer, Boolean>())
+    // Count observable for debug
+    var activePlayerCount by mutableStateOf(0)
+
+    fun register(player: ExoPlayer, context: android.content.Context) {
+        // Stop EVERYONE else
+        stopAll(except = player)
+        
+        activePlayers.add(player)
+        activePlayerCount = activePlayers.size
+        // android.widget.Toast.makeText(context, "GlobalVM: New Registered. Total: ${activePlayers.size}", android.widget.Toast.LENGTH_SHORT).show()
+    }
+
+    fun stopAll(except: ExoPlayer? = null) {
+        val iterator = activePlayers.iterator()
+        while (iterator.hasNext()) {
+            val player = iterator.next()
+            if (player != except) {
+                try {
+                    if (player.isPlaying) {
+                        player.pause() // or stop()
+                        player.stop()
+                    }
+                    // We don't release here immediately if we want to resume, but for now we release to be safe?
+                    // actually releasing might be too aggressive if scrolling back? 
+                    // Let's just STOP.
+                } catch (e: Exception) {
+                   e.printStackTrace()
+                }
+            }
+        }
+        activePlayerCount = activePlayers.size
+    }
+
+    fun releaseCurrent() {
+         stopAll() // Stop everyone
+    }
+    
+    fun unregister(player: ExoPlayer) {
+        activePlayers.remove(player)
+        activePlayerCount = activePlayers.size
+    }
+}
+// End of file
+
+// Helper to aggressively find and hide the fullscreen button
+fun recursiveHideFullscreen(view: android.view.View) {
+    try {
+        if (view.id == androidx.media3.ui.R.id.exo_fullscreen || view.contentDescription == "Full screen") {
+            view.visibility = android.view.View.GONE
+            return
+        }
+        if (view is android.view.ViewGroup) {
+            for (i in 0 until view.childCount) {
+                recursiveHideFullscreen(view.getChildAt(i))
+            }
+        }
+    } catch (e: Exception) {
+        // Ignore
     }
 }

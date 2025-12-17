@@ -108,28 +108,28 @@ fun FundingCallDetailScreen(
                 actions = {}, // Edit button removed as requested
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Transparent,
-                    titleContentColor = Color(0xFF111827)
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         }
     ) { innerPadding ->
         if (isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = AtmiyaPrimary)
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         } else if (errorText != null) {
              Box(modifier = Modifier.fillMaxSize().padding(innerPadding).padding(16.dp)) {
                 androidx.compose.foundation.text.selection.SelectionContainer {
                     Text(
                         text = "DEBUG ERROR:\n$errorText",
-                        color = Color.Red,
+                        color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
             }
         } else if (call == null) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Funding Call not found.", style = MaterialTheme.typography.bodyLarge, color = Color.Gray)
+                Text("Funding Call not found.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             val c = call!!
@@ -159,13 +159,13 @@ fun FundingCallDetailScreen(
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .background(AtmiyaPrimary.copy(alpha = 0.1f)),
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     c.investorName.take(1).uppercase(),
                                     style = MaterialTheme.typography.displayLarge,
-                                    color = AtmiyaPrimary,
+                                    color = MaterialTheme.colorScheme.primary,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -210,7 +210,7 @@ fun FundingCallDetailScreen(
                                 c.investorName, 
                                 style = MaterialTheme.typography.displaySmall.copy(fontSize = 26.sp), // Big
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1F2937)
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
                         Spacer(modifier = Modifier.height(8.dp))
@@ -219,7 +219,7 @@ fun FundingCallDetailScreen(
                             c.title, 
                             style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp), // Small
                             fontWeight = FontWeight.Medium,
-                            color = AtmiyaPrimary, // Use Primary for the sub-title/role
+                            color = MaterialTheme.colorScheme.primary, // Use Primary for the sub-title/role
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                     }
@@ -270,9 +270,9 @@ fun FundingCallDetailScreen(
                            .fillMaxWidth()
                            .padding(horizontal = 16.dp),
                         shape = RoundedCornerShape(24.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF3F4F6))
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                     ) {
                         Column(modifier = Modifier.padding(24.dp)) {
                             
@@ -281,16 +281,16 @@ fun FundingCallDetailScreen(
                              Text(
                                 c.description,
                                 style = MaterialTheme.typography.bodyLarge,
-                                color = Color(0xFF4B5563),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 lineHeight = 24.sp
                             )
                             
                             Spacer(modifier = Modifier.height(24.dp))
-                            HorizontalDivider(color = Color.LightGray.copy(alpha=0.3f))
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha=0.3f))
                             Spacer(modifier = Modifier.height(24.dp))
                             
                             // Detailed Info
-                            Text("Funding Details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = AtmiyaPrimary)
+                            Text("Funding Details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                             Spacer(modifier = Modifier.height(16.dp))
                             
                             DetailRow("Firm Name", c.investorName, TablerIcons.Building)
@@ -319,7 +319,7 @@ fun FundingCallDetailScreen(
                             // Attachments
                             if (c.attachments.isNotEmpty()) {
                                 Spacer(modifier = Modifier.height(16.dp))
-                                Text("Attachments", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFF9CA3AF))
+                                Text("Attachments", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Spacer(modifier = Modifier.height(8.dp))
                                 c.attachments.forEach { attachment ->
                                     val name = attachment["name"] ?: "Document"
@@ -328,7 +328,7 @@ fun FundingCallDetailScreen(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .padding(vertical = 4.dp)
-                                            .background(Color(0xFFF9FAFB), RoundedCornerShape(8.dp))
+                                            .background(MaterialTheme.colorScheme.surfaceContainerHighest, RoundedCornerShape(8.dp))
                                             .padding(12.dp)
                                             .clickable { 
                                                 if (url.isNotEmpty()) {
@@ -338,9 +338,9 @@ fun FundingCallDetailScreen(
                                             },
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Icon(TablerIcons.FileText, contentDescription = null, tint = AtmiyaPrimary, modifier = Modifier.size(20.dp))
+                                        Icon(TablerIcons.FileText, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Text(name, color = AtmiyaPrimary, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                                        Text(name, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
                                     }
                                 }
                             }
@@ -379,12 +379,12 @@ fun FundingCallDetailScreen(
                                     enabled = c.isActive,
                                     modifier = Modifier.weight(1f).height(50.dp),
                                     shape = RoundedCornerShape(12.dp),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, if(c.isActive) Color.Red else Color.LightGray),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, if(c.isActive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outlineVariant),
                                     colors = ButtonDefaults.outlinedButtonColors(
-                                        containerColor = Color.White,
-                                        contentColor = Color.Red,
-                                        disabledContainerColor = Color(0xFFF3F4F6),
-                                        disabledContentColor = Color.Gray
+                                        containerColor = MaterialTheme.colorScheme.surface,
+                                        contentColor = MaterialTheme.colorScheme.error,
+                                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 ) {
                                     Text(if (c.isActive) "Close Call" else "Closed")
@@ -396,7 +396,7 @@ fun FundingCallDetailScreen(
                                     enabled = c.isActive,
                                     modifier = Modifier.weight(1f).height(50.dp),
                                     shape = RoundedCornerShape(12.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = AtmiyaPrimary)
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                                 ) {
                                     Text("Extend")
                                 }
@@ -417,7 +417,7 @@ fun FundingCallDetailScreen(
                                                 // Refresh local state
                                                 call = call?.copy(isActive = false)
                                             }
-                                        }) { Text("Confirm", color = Color.Red) }
+                                        }) { Text("Confirm", color = MaterialTheme.colorScheme.error) }
                                     },
                                     dismissButton = {
                                         TextButton(onClick = { showCloseConfirm = false }) { Text("Cancel") }
@@ -465,8 +465,8 @@ fun FundingCallDetailScreen(
                                 onClick = {},
                                 enabled = false,
                                 colors = ButtonDefaults.buttonColors(
-                                    disabledContainerColor = Color(0xFFF3F4F6),
-                                    disabledContentColor = Color.Gray
+                                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                                 ),
                                 modifier = Modifier.fillMaxWidth().height(50.dp),
                                 shape = RoundedCornerShape(12.dp)
@@ -491,34 +491,34 @@ fun FundingCallDetailScreen(
                                 Surface(
                                     modifier = Modifier.fillMaxWidth().height(50.dp),
                                     shape = RoundedCornerShape(12.dp),
-                                    color = Color(0xFFF3F4F6), // Gray
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.Gray)
+                                    color = MaterialTheme.colorScheme.surfaceVariant, // Gray
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                                 ) {
                                     Row(
                                         modifier = Modifier.fillMaxSize(),
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.Center
                                     ) {
-                                        Icon(TablerIcons.Lock, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(24.dp))
+                                        Icon(TablerIcons.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Text(if (isExpired) "Deadline Passed" else "Applications Closed", color = Color.Gray, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                        Text(if (isExpired) "Deadline Passed" else "Applications Closed", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                                     }
                                 }
                             } else if (hasApplied) {
                                 Surface(
                                     modifier = Modifier.fillMaxWidth().height(50.dp),
                                     shape = RoundedCornerShape(12.dp),
-                                    color = Color(0xFFECFDF5), // Light Green Background
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF10B981))
+                                    color = MaterialTheme.colorScheme.secondaryContainer, // Light Green Background
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.secondary)
                                 ) {
                                     Row(
                                         modifier = Modifier.fillMaxSize(),
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.Center
                                     ) {
-                                        Icon(TablerIcons.CircleCheck, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(24.dp))
+                                        Icon(TablerIcons.CircleCheck, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(24.dp))
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Application Submitted", color = Color(0xFF065F46), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                        Text("Application Submitted", color = MaterialTheme.colorScheme.onSecondaryContainer, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                                     }
                                 }
                             } else if (isEligible) {
@@ -553,12 +553,12 @@ fun FundingCallDetailScreen(
                                         }
                                     },
                                     enabled = !isSubmitting,
-                                    colors = ButtonDefaults.buttonColors(containerColor = AtmiyaPrimary),
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                                     modifier = Modifier.fillMaxWidth().height(50.dp),
                                     shape = RoundedCornerShape(12.dp)
                                 ) {
                                     if(isSubmitting) {
-                                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                                        CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(24.dp))
                                     } else {
                                         Text("Apply Now", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                                     }
@@ -568,20 +568,20 @@ fun FundingCallDetailScreen(
                                 Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .background(Color(0xFFFEF2F2), RoundedCornerShape(8.dp))
+                                        .background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(8.dp))
                                         .padding(12.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(TablerIcons.InfoCircle, contentDescription = null, tint = Color(0xFFEF4444), modifier = Modifier.size(20.dp))
+                                        Icon(TablerIcons.InfoCircle, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Eligibility Check", style = MaterialTheme.typography.titleSmall, color = Color(0xFFEF4444), fontWeight = FontWeight.Bold)
+                                        Text("Eligibility Check", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
                                     }
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
                                         "This funding call is for ${c.sectors.joinToString(", ")} startups.\nYour profile is listed as '$userSectorString'.",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = Color(0xFF7F1D1D),
+                                        color = MaterialTheme.colorScheme.onErrorContainer,
                                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                                     )
                                 }

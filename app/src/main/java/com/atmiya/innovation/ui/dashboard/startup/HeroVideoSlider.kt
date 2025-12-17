@@ -128,8 +128,16 @@ fun VideoBannerItem(video: FeaturedVideo) {
         }
     }
 
+    // When entering fullscreen, we don't render the inline player anymore
     if (showFullScreen) {
-        BannerFullScreenPlayer(video = video, onDismiss = { showFullScreen = false })
+        BannerFullScreenPlayer(
+            video = video, 
+            onDismiss = { 
+                showFullScreen = false
+                // Resume inline playback after exiting fullscreen
+                isPlaying = true
+            }
+        )
     }
 
     Box(
@@ -139,7 +147,8 @@ fun VideoBannerItem(video: FeaturedVideo) {
             .background(Color.Black)
             .clickable { isPlaying = !isPlaying }
     ) {
-        if (isPlaying) {
+        // Only show inline player when NOT in fullscreen mode
+        if (isPlaying && !showFullScreen) {
             BannerVideoPlayer(videoUrl = video.videoUrl)
         } else {
             // Thumbnail
@@ -218,7 +227,11 @@ fun VideoBannerItem(video: FeaturedVideo) {
         ) {
             // Fullscreen Button
             IconButton(
-                onClick = { showFullScreen = true },
+                onClick = { 
+                    // If video was playing, stop inline player before showing fullscreen
+                    isPlaying = false
+                    showFullScreen = true 
+                },
                 modifier = Modifier
                      .background(Color.Black.copy(alpha = 0.4f), CircleShape)
                      .size(32.dp)

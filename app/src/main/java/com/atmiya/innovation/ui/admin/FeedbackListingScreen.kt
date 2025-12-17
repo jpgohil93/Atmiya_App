@@ -47,7 +47,7 @@ fun FeedbackListingScreen() {
 @Composable
 fun FeedbackCard(feedback: Feedback) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(12.dp),
         modifier = Modifier.fillMaxWidth()
@@ -70,7 +70,7 @@ fun FeedbackCard(feedback: Feedback) {
                     Text(
                         text = feedback.userPhone,
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Spacer(modifier = Modifier.weight(1f))
@@ -79,17 +79,17 @@ fun FeedbackCard(feedback: Feedback) {
                     Text(
                         text = sdf.format(feedback.createdAt.toDate()),
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.LightGray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha=0.7f)
                     )
                 }
             }
             
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color.LightGray.copy(alpha=0.2f))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha=0.5f))
             
             Text(
                 text = feedback.message,
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.DarkGray
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
     }
