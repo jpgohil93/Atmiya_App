@@ -19,7 +19,7 @@ android {
         targetSdk = 35
         
         // Dynamic Versioning for CI
-        val buildNumber = System.getenv("APPCIRCLE_BUILD_NUMBER")?.toIntOrNull() ?: 19
+        val buildNumber = System.getenv("APPCIRCLE_BUILD_NUMBER")?.toIntOrNull() ?: 20
         versionCode = buildNumber
         versionName = "1.2.$buildNumber"
 
@@ -89,7 +89,9 @@ android {
             excludes += "META-INF/NOTICE*"
             excludes += "META-INF/*.kotlin_module"
         }
-
+        jniLibs {
+            useLegacyPackaging = true
+        }
     }
 
     compileOptions {
