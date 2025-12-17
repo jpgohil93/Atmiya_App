@@ -47,8 +47,9 @@ fun ForceUpdateScreen(appConfig: AppConfig) {
                 verticalArrangement = Arrangement.Center
             ) {
                 // Logo
+                val logoRes = if (androidx.compose.foundation.isSystemInDarkTheme()) R.drawable.netfund_logo_dark else R.drawable.netfund_logo
                 Image(
-                    painter = painterResource(id = R.drawable.netfund_logo),
+                    painter = painterResource(id = logoRes),
                     contentDescription = "Netfund Logo",
                     modifier = Modifier
                         .width(200.dp)

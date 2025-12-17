@@ -216,12 +216,17 @@ fun LoginScreen(
                 withContext(kotlinx.coroutines.Dispatchers.Main) {
                     isLoading = false
                     val errorMsg = if (e is com.google.firebase.functions.FirebaseFunctionsException) {
-                        "Code: ${e.code}, Msg: ${e.message}"
+                        if (e.code == com.google.firebase.functions.FirebaseFunctionsException.Code.RESOURCE_EXHAUSTED) {
+                            "Please wait a moment before requesting another OTP."
+                        } else {
+                            // Only show safe messages or generic error
+                            e.message ?: "An error occurred. Please try again."
+                        }
                     } else {
                         e.message ?: "Unknown Error"
                     }
                     android.util.Log.e("Auth", "Dynamic OTP Send Failed: $errorMsg", e)
-                    Toast.makeText(context, "Failed: $errorMsg", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -576,8 +581,9 @@ fun LoginScreen(
             // Logo Card
             // Logo
             // Logo
+            val logoRes = if (androidx.compose.foundation.isSystemInDarkTheme()) R.drawable.netfund_logo_dark else R.drawable.netfund_logo
             Image(
-                painter = painterResource(id = R.drawable.netfund_logo),
+                painter = painterResource(id = logoRes),
                 contentDescription = "Netfund Logo",
                 modifier = Modifier
                     .width(400.dp) // Maximized width

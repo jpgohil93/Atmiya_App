@@ -490,7 +490,7 @@ exports.sendOtp = functions.https.onCall(async (data, context) => {
     const now = Date.now();
     if (doc.exists) {
         const lastSent = doc.data().createdAt;
-        if (now - lastSent < 10000) { // 10 seconds
+        if (now - lastSent < 1000) { // 1 second
             throw new functions.https.HttpsError('resource-exhausted', 'Please wait before requesting another OTP');
         }
     }
@@ -508,31 +508,56 @@ exports.sendOtp = functions.https.onCall(async (data, context) => {
 
     // Send SMS via Provider
     try {
-        const config = functions.config().sms;
-        const apiKey = config.key;
-        const senderId = config.sender_id;
-        const baseUrl = config.base_url;
+        // Use Hardcoded credentials for reliability (since user provided them directly)
+        const apiKey = "jun5mj4zX4FzyEq2";
+        const senderId = "HLCALE";
+        const baseUrl = "http://sms.lifeweblink.com/vb/apikey.php";
 
         // Format: http://sms.lifeweblink.com/vb/apikey.php?apikey=...&senderid=...&number=...&message=...
-        const message = `Your Atmiya Innovation OTP is ${otp}. Valid for 5 minutes.`;
+        const message = `Your OTP is ${otp} Use this code to complete your verification. Do not share this code with anyone. HL2SCALE`;
 
-        // Parse/Clean Phone Number
-        let targetPhone = phone.replace(/\D/g, '');
-        // Heuristic: If > 10 chars take last 10 (India). 
-        // Provider specific logic might vary.
-        if (targetPhone.length > 10) {
-            targetPhone = targetPhone.substring(targetPhone.length - 10);
+        // Parse/Clean Phone Number - FORMAT MUST BE 91XXXXXXXXXX (12 digits)
+        let targetPhone = phone.replace(/\D/g, ''); // Strip non-digits
+        // If it starts with 91 and is 12 digits, keep it.
+        // If it is 10 digits, add 91.
+        if (targetPhone.length === 10) {
+            targetPhone = '91' + targetPhone;
+        } else if (targetPhone.length > 10 && !targetPhone.startsWith('91')) {
+            // If weird format, strip to last 10 and add 91
+            targetPhone = '91' + targetPhone.substring(targetPhone.length - 10);
         }
+        // If it was already 12 digits starting with 91, targetPhone is correct.
 
         const url = `${baseUrl}?apikey=${apiKey}&senderid=${senderId}&number=${targetPhone}&message=${encodeURIComponent(message)}`;
 
         console.log(`Sending OTP to ${phone} (target: ${targetPhone})`);
 
         // Make the GET request
-        const response = await axios.get(url);
-        console.log('SMS Provider Response:', response.data);
+        let response;
+        try {
+            response = await axios.get(url);
+            console.log('SMS Provider Response Status:', response.status);
+            console.log('SMS Provider Response Data:', response.data);
 
-        // --- Push Notification Fallback ---
+            // Check for provider specific error codes if known, or just log success
+            if (response.data && response.data.toString().includes('Error')) {
+                console.error('SMS Provider returned error in body:', response.data);
+                // We might want to throw here if we want to fail the client, but for now let's just log
+                throw new Error('Provider Error: ' + response.data);
+            }
+
+        } catch (smsError) {
+            console.error('Failed to call SMS Provider URL:', url); // Be careful logging full URL with keys in prod, but needed for debug now
+            console.error('SMS Error Details:', smsError.message);
+            if (smsError.response) {
+                console.error('SMS Error Response:', smsError.response.data);
+                console.error('SMS Error Status:', smsError.response.status);
+            }
+            throw new functions.https.HttpsError('internal', 'Failed to send SMS: ' + smsError.message);
+        }
+
+        // --- Push Notification Fallback (DISABLED) ---
+        /*
         const fcmToken = data.fcmToken;
         let pushResult = "Not attempted";
 
@@ -557,8 +582,10 @@ exports.sendOtp = functions.https.onCall(async (data, context) => {
                 pushResult = "Failed: " + pushError.message;
             }
         }
+        */
+        let pushResult = "Disabled";
 
-        return { success: true, providerResponse: response.data, pushResult: pushResult };
+        return { success: true, providerResponse: response ? response.data : "No response", pushResult: pushResult };
     } catch (error) {
         console.error('SMS Provider Error:', error);
         throw new functions.https.HttpsError('internal', 'Failed to send SMS');

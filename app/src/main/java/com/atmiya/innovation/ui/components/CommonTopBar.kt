@@ -32,8 +32,9 @@ fun CommonTopBar(
     CenterAlignedTopAppBar(
         title = {
             // Netfund Logo
+            val logoRes = if (androidx.compose.foundation.isSystemInDarkTheme()) R.drawable.netfund_logo_dark else R.drawable.netfund_logo
             AsyncImage(
-                model = R.drawable.netfund_logo,
+                model = logoRes,
                 contentDescription = "Netfund",
                 modifier = Modifier.height(60.dp),
                 contentScale = ContentScale.Fit

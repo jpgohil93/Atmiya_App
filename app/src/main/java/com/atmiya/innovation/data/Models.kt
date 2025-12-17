@@ -28,8 +28,10 @@ data class User(
     val fcmToken: String? = null, // For Push Notifications
     val createdVia: String = "app", // "app", "bulk"
     val organization: String = "", // Added for bulk upload compatibility
-    val hasCompletedBasicDetails: Boolean = true,
-    val hasCompletedRoleDetails: Boolean = true
+    @get:com.google.firebase.firestore.PropertyName("hasCompletedBasicDetails")
+    val hasCompletedBasicDetails: Boolean = false,
+    @get:com.google.firebase.firestore.PropertyName("hasCompletedRoleDetails")
+    val hasCompletedRoleDetails: Boolean = false
 )
 
 data class Startup(

@@ -217,6 +217,59 @@ fun SignupScreen(
         }
     }
 
+    fun handleAuthSuccess(uid: String) {
+        scope.launch {
+            // isLoading remains true here
+            try {
+                val user = firestoreRepository.getUser(uid)
+                if (user != null) {
+                    android.util.Log.d("SignupDebug", "User Found: UID=${user.uid}, Onboard=${user.isOnboardingComplete}, RoleDetails=${user.hasCompletedRoleDetails}, Role=${user.role}")
+                    
+                    if (user.isOnboardingComplete) {
+                        Toast.makeText(context, "User already registered. Logging in...", Toast.LENGTH_SHORT).show()
+                        onSignupComplete(user.role)
+                    } else {
+                        // Bulk User / Pending
+                        // Check if Role Details are already completed via Bulk Upload
+                        if (user.hasCompletedRoleDetails) {
+                             Toast.makeText(context, "Welcome back! Logging you in...", Toast.LENGTH_SHORT).show()
+                             onSignupComplete(user.role)
+                        } else {
+                            Toast.makeText(context, "Welcome! Please complete your profile.", Toast.LENGTH_SHORT).show()
+                            name = user.name
+                            email = user.email
+                            
+                            // Smart Routing based on what info is already there
+                            if (user.role.isNotBlank()) {
+                                selectedRole = user.role
+                                
+                                if (name.isNotBlank() && email.isNotBlank()) {
+                                    // Skip to Step 4 (Role Specific Details)
+                                    currentStep = 4
+                                } else {
+                                    // Missing Basic Details -> Step 3
+                                    currentStep = 3
+                                }
+                            } else {
+                                // Missing Role -> Step 2
+                                currentStep = 2
+                            }
+                        }
+                    }
+                } else {
+                    // New User
+                    currentStep = 2
+                }
+            } catch (e: Exception) {
+                // Determine new user or error?
+                // Proceed as new user
+                currentStep = 2
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
     fun sendDynamicOtp(phone: String, isResend: Boolean = false) {
         scope.launch {
             isLoading = true
@@ -263,13 +316,18 @@ fun SignupScreen(
 
             } catch (e: Exception) {
                 isLoading = false
-                 val errorMsg = if (e is FirebaseFunctionsException) {
-                    "Code: ${e.code}, Msg: ${e.message}"
-                } else {
-                    e.message ?: "Unknown Error"
-                }
-                android.util.Log.e("Auth", "Dynamic OTP Send Failed: $errorMsg", e)
-                Toast.makeText(context, "Failed: $errorMsg", Toast.LENGTH_LONG).show()
+                    val errorMsg = if (e is com.google.firebase.functions.FirebaseFunctionsException) {
+                        if (e.code == com.google.firebase.functions.FirebaseFunctionsException.Code.RESOURCE_EXHAUSTED) {
+                            "Please wait a moment before requesting another OTP."
+                        } else {
+                            e.message ?: "An error occurred. Please try again."
+                        }
+                    } else {
+                        e.message ?: "Unknown Error"
+                    }
+                    
+                    android.util.Log.e("Auth", "Dynamic OTP Send Failed: $errorMsg", e)
+                    Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -294,10 +352,10 @@ fun SignupScreen(
                 
                 if (token != null) {
                     auth.signInWithCustomToken(token).addOnCompleteListener { task ->
-                        isLoading = false
                         if (task.isSuccessful) {
-                            currentStep = 2 // Proceed to Role Selection
+                            handleAuthSuccess(auth.currentUser!!.uid)
                         } else {
+                            isLoading = false
                             Toast.makeText(context, "Auth Failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
                         }
                     }
@@ -322,6 +380,8 @@ fun SignupScreen(
              }
         }
     }
+
+
 
     fun sendOtp(phone: String, isResend: Boolean = false) {
         if (isLoading && !isResend) return
@@ -381,10 +441,10 @@ fun SignupScreen(
         val credential = PhoneAuthProvider.getCredential(vid, otp)
         
         auth.signInWithCredential(credential).addOnCompleteListener { task ->
-            isLoading = false
             if (task.isSuccessful) {
-                currentStep = 2 
+                handleAuthSuccess(auth.currentUser!!.uid)
             } else {
+                isLoading = false
                 isOtpError = true
                 otpValue = ""
                 Toast.makeText(context, "Invalid OTP", Toast.LENGTH_SHORT).show()
