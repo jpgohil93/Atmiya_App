@@ -125,7 +125,7 @@ fun PendingStartupDetailsScreen(
 
                 onComplete()
             } catch (e: Exception) {
-                Toast.makeText(context, "Error updating profile: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "Failed to update profile. Please try again.", Toast.LENGTH_LONG).show()
             } finally {
                 isLoading = false
             }

@@ -275,14 +275,9 @@ fun LoginScreen(
                     isOtpError = true
                     otpValue = "" // Clear OTP on error
                     
-                    val errorMsg = if (e is com.google.firebase.functions.FirebaseFunctionsException) {
-                        "Code: ${e.code}, Msg: ${e.message}"
-                    } else {
-                        e.message ?: "Unknown Verify Error"
-                    }
-                    
-                    android.util.Log.e("Auth", "Dynamic OTP Verification Failed: $errorMsg", e)
-                    Toast.makeText(context, "Verify Failed: $errorMsg", Toast.LENGTH_LONG).show()
+                    // Sanitize error message
+                    android.util.Log.e("Auth", "Dynamic OTP Verification Failed", e)
+                    Toast.makeText(context, "Verification failed. Please check your OTP.", Toast.LENGTH_LONG).show()
                  }
              }
         }
@@ -334,7 +329,7 @@ fun LoginScreen(
                 override fun onVerificationFailed(e: FirebaseException) {
                     isLoading = false
                     android.util.Log.e("Auth", "Verification Failed", e)
-                    Toast.makeText(context, "Login failed: ${e.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, "Login failed. Please try again.", Toast.LENGTH_LONG).show()
                 }
 
                 override fun onCodeSent(

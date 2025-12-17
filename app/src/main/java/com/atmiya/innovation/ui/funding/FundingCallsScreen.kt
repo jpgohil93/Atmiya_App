@@ -85,7 +85,7 @@ fun FundingCallsScreen(
                     if (msg.contains("Already connected") || msg.contains("pending")) {
                          android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
                     } else {
-                         android.widget.Toast.makeText(context, "Error: $msg", android.widget.Toast.LENGTH_SHORT).show()
+                         android.widget.Toast.makeText(context, "Failed to send connection request. Please try again.", android.widget.Toast.LENGTH_SHORT).show()
                          android.util.Log.e("FundingScreen", "Connect Error", e)
                     }
                 }

@@ -156,7 +156,7 @@ fun SignupScreen(
         } else {
             val exception = result.error
             if (exception != null) {
-                Toast.makeText(context, "Crop failed: ${exception.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Failed to crop image.", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -356,7 +356,7 @@ fun SignupScreen(
                             handleAuthSuccess(auth.currentUser!!.uid)
                         } else {
                             isLoading = false
-                            Toast.makeText(context, "Auth Failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Authentication failed. Please try again.", Toast.LENGTH_SHORT).show()
                         }
                     }
                 } else {

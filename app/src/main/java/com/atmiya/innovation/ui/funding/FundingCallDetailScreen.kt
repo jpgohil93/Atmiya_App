@@ -546,7 +546,7 @@ fun FundingCallDetailScreen(
                                                 Toast.makeText(context, "Application Sent Successfully!", Toast.LENGTH_LONG).show()
                                             } catch (e: Exception) {
                                                 android.util.Log.e("FundingDetail", "Error applying", e)
-                                                Toast.makeText(context, "Failed to apply: ${e.message}", Toast.LENGTH_LONG).show()
+                                                Toast.makeText(context, "Failed to submit application. Please try again.", Toast.LENGTH_LONG).show()
                                             } finally {
                                                 isSubmitting = false
                                             }
