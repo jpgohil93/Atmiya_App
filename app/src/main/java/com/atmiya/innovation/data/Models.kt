@@ -49,6 +49,7 @@ data class Startup(
     val website: String = "",
     val socialLinks: String = "",
     val demoVideoUrl: String? = null, // Added
+    val uploadedVideoFileName: String? = null, // Added for UI display
     val revenue: String = "",
     val description: String = "",
     val founderNames: String = "",

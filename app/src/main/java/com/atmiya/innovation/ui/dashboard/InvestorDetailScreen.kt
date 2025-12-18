@@ -190,7 +190,7 @@ fun InvestorDetailScreen(
                             i.name.ifBlank { "Unknown Investor" }, 
                             style = MaterialTheme.typography.displaySmall, 
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1F2937),
+                            color = MaterialTheme.colorScheme.onBackground,
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(4.dp))
@@ -198,7 +198,7 @@ fun InvestorDetailScreen(
                             i.firmName.ifBlank { "Independent Investor" },
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
-                            color = AtmiyaPrimary,
+                            color = MaterialTheme.colorScheme.primary,
                              textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                     }
@@ -234,9 +234,9 @@ fun InvestorDetailScreen(
                            .fillMaxWidth()
                            .padding(horizontal = 16.dp),
                         shape = RoundedCornerShape(24.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF3F4F6))
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
                     ) {
                         Column(modifier = Modifier.padding(24.dp)) {
                             
@@ -245,16 +245,16 @@ fun InvestorDetailScreen(
                              Text(
                                 i.bio.ifBlank { "No biography provided." },
                                 style = MaterialTheme.typography.bodyLarge,
-                                color = Color(0xFF4B5563),
+                                color = MaterialTheme.colorScheme.onSurface,
                                 lineHeight = 24.sp
                             )
                             
                             Spacer(modifier = Modifier.height(24.dp))
-                            HorizontalDivider(color = Color.LightGray.copy(alpha=0.3f))
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                             Spacer(modifier = Modifier.height(24.dp))
                             
                             // Detailed Info
-                            Text("Investment Details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = AtmiyaPrimary)
+                            Text("Investment Details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                             Spacer(modifier = Modifier.height(16.dp))
                             
                             DetailRow("Firm Name", i.firmName.ifBlank { "Independent" }, TablerIcons.Building)
@@ -275,10 +275,10 @@ fun InvestorDetailScreen(
                             // Contact Info (Revealed if connected)
                             if (connectionStatus == "connected" || connectionStatus == "connected_auto") { 
                                 Spacer(modifier = Modifier.height(24.dp))
-                                HorizontalDivider(color = Color.LightGray.copy(alpha=0.3f))
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                                 Spacer(modifier = Modifier.height(24.dp))
 
-                                Text("Contact Information", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = AtmiyaPrimary)
+                                Text("Contact Information", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                 Spacer(modifier = Modifier.height(16.dp))
                                 
                                 targetUser?.let { user ->
@@ -348,7 +348,8 @@ fun InvestorDetailScreen(
                                  // Removed fillMaxWidth, let it wrap content or set fixed width if needed
                                  // But since it's in a Row with weight(1f) text, it should be fine.
                                  colors = ButtonDefaults.buttonColors(
-                                     containerColor = if (btnText == "Connect Now") AtmiyaSecondary else Color.Gray
+                                     containerColor = if (btnText == "Connect Now") AtmiyaSecondary else Color.Gray,
+                                     contentColor = Color.White
                                  ),
                                  shape = RoundedCornerShape(12.dp)
                              ) {

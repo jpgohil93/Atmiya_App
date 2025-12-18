@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.atmiya.innovation.data.Startup
+import com.atmiya.innovation.data.AppConstants
 import com.atmiya.innovation.repository.FirestoreRepository
 import com.atmiya.innovation.ui.theme.AtmiyaPrimary
 import com.atmiya.innovation.ui.theme.AtmiyaSecondary
@@ -49,7 +50,7 @@ fun StartupListingScreen(
     // -- State --
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("All") }
-    val filterOptions = listOf("All", "FinTech", "EdTech", "HealthTech", "AgriTech", "SaaS")
+    val filterOptions = remember { listOf("All") + AppConstants.SECTOR_OPTIONS }
 
     val startupsFlow = remember { repository.getStartupsFlow() }
     val allStartups by startupsFlow.collectAsState(initial = emptyList())

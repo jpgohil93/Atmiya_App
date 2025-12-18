@@ -139,35 +139,39 @@ fun NetworkHubScreen(
         }.filter { it.uid != currentUser.uid }
     }
 
+    val isDark = androidx.compose.foundation.isSystemInDarkTheme()
+
     Scaffold(
-        containerColor = Color(0xFFF8F9FA),
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            Column(modifier = Modifier.background(Color.White)) {
+            Column(modifier = Modifier.background(MaterialTheme.colorScheme.surface)) {
                 CenterAlignedTopAppBar(
-                    title = { Text("My Network", fontWeight = FontWeight.Bold) },
+                    title = { Text("My Network", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface) },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
                         }
                     },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.White)
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
                 )
                 
                 // Search Bar
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    placeholder = { Text("Search network...", color = Color.Gray) },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray) },
+                    placeholder = { Text("Search network...", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedContainerColor = Color(0xFFF3F4F6),
-                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
                         unfocusedBorderColor = Color.Transparent,
-                        focusedBorderColor = AtmiyaPrimary
+                        focusedBorderColor = AtmiyaPrimary,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                     ),
                     singleLine = true
                 )
@@ -180,7 +184,7 @@ fun NetworkHubScreen(
                         .clip(RoundedCornerShape(12.dp))
                         .clickable { selectedFilter = "Requests" },
                     shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Row(
@@ -191,10 +195,10 @@ fun NetworkHubScreen(
                             modifier = Modifier
                                 .size(40.dp)
                                 .clip(CircleShape)
-                                .background(Color(0xFFF3F4F6)),
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
                             contentAlignment = Alignment.Center
                         ) {
-                             Icon(Icons.Default.Notifications, contentDescription = null, tint = AtmiyaPrimary, modifier = Modifier.size(20.dp))
+                             Icon(Icons.Default.Notifications, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                         }
                         
                         Spacer(modifier = Modifier.width(16.dp))
@@ -203,7 +207,8 @@ fun NetworkHubScreen(
                             text = "Connection Requests", 
                             style = MaterialTheme.typography.titleSmall, 
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         
                         // Counter
@@ -226,14 +231,14 @@ fun NetworkHubScreen(
                              Text(
                                 "0",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = Color.Gray,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = FontWeight.Medium
                              )
                         }
                         
                         Spacer(modifier = Modifier.width(12.dp))
                         
-                        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color.Gray)
+                        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
 
@@ -252,13 +257,14 @@ fun NetworkHubScreen(
                             onClick = { selectedFilter = filter },
                             label = { Text(filter) },
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = AtmiyaPrimary.copy(alpha = 0.1f),
-                                selectedLabelColor = AtmiyaPrimary
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                labelColor = MaterialTheme.colorScheme.onSurfaceVariant
                             ),
                             border = FilterChipDefaults.filterChipBorder(
                                 enabled = true,
                                 selected = isSelected,
-                                borderColor = if (isSelected) AtmiyaPrimary else Color.Transparent
+                                borderColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                             )
                         )
                     }
@@ -387,7 +393,7 @@ fun SectionHeader(title: String) {
         text = title,
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.Bold,
-        color = AtmiyaPrimary,
+        color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(vertical = 4.dp)
     )
 }
@@ -421,11 +427,10 @@ fun NetworkUserCard(
             .fillMaxWidth()
             .shadow(elevation = 2.dp, shape = RoundedCornerShape(16.dp), spotColor = Color(0x1A000000)),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Photo
                 // Photo
                 UserAvatar(
                     model = user.photoUrl,
@@ -437,9 +442,9 @@ fun NetworkUserCard(
                 Spacer(modifier = Modifier.width(16.dp))
                 
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(finalName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                    Text(finalName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
                     if (finalDesc.isNotBlank()) {
-                         Text(finalDesc, style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                         Text(finalDesc, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     
                     // Role Tag
@@ -476,7 +481,10 @@ fun NetworkUserCard(
                     OutlinedButton(
                         onClick = onSecondaryAction,
                         shape = RoundedCornerShape(50),
-                        modifier = Modifier.weight(1f).height(40.dp)
+                        modifier = Modifier.weight(1f).height(40.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.onSurface
+                        )
                     ) {
                         Text(secondaryLabel)
                     }
@@ -491,7 +499,9 @@ fun NetworkUserCard(
                         enabled = isPrimaryEnabled,
                         shape = RoundedCornerShape(50),
                         modifier = if (onSecondaryAction == null) Modifier.fillMaxWidth(0.5f).height(40.dp) else Modifier.weight(1f).height(40.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Black)
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.onSurface
+                        )
                     ) {
                         Text(primaryLabel)
                     }
@@ -502,10 +512,10 @@ fun NetworkUserCard(
                         shape = RoundedCornerShape(50),
                         modifier = if (onSecondaryAction == null) Modifier.fillMaxWidth(0.5f).height(40.dp) else Modifier.weight(1f).height(40.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isPrimaryEnabled) Color(0xFF111827) else Color(0xFFF3F4F6),
-                            contentColor = if (isPrimaryEnabled) Color.White else Color.Gray,
-                            disabledContainerColor = Color(0xFFF3F4F6),
-                            disabledContentColor = Color.LightGray
+                            containerColor = if (isPrimaryEnabled) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (isPrimaryEnabled) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     ) {
                         Text(primaryLabel)
@@ -525,14 +535,14 @@ fun RequestsListContent(
 ) {
     if (requests.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { 
-            Text("No pending requests", color = Color.Gray) 
+            Text("No pending requests", color = MaterialTheme.colorScheme.onSurfaceVariant) 
         }
     } else {
         LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             items(requests) { req ->
                 Card(
                     modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(16.dp)),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Column(Modifier.padding(16.dp)) {
@@ -545,8 +555,8 @@ fun RequestsListContent(
                            )
                            Spacer(modifier = Modifier.width(12.dp))
                            Column {
-                               Text(req.senderName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                               Text(req.senderRole.capitalize(Locale.ROOT), style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                               Text(req.senderName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+                               Text(req.senderRole.capitalize(Locale.ROOT), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                            }
                         }
                         Spacer(modifier = Modifier.height(16.dp))
@@ -561,7 +571,10 @@ fun RequestsListContent(
                             OutlinedButton(
                                 onClick = { onIgnore(req) }, 
                                 modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(50)
+                                shape = RoundedCornerShape(50),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.onSurface
+                                )
                             ) { Text("Ignore") }
                         }
                     }

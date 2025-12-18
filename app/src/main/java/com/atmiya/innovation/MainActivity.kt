@@ -153,7 +153,54 @@ class MainActivity : ComponentActivity() {
                                 lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
                                     try {
                                         val start = System.currentTimeMillis()
-                                        val user = firestoreRepository.getUser(uid)
+                                        var user = firestoreRepository.getUser(uid)
+                                        
+                                        // Auto-Claim Logic for Bulk Users (If Auth UID != Bulk UUID)
+                                        if (user == null) {
+                                            var phone = auth.currentUser?.phoneNumber
+                                            val email = auth.currentUser?.email
+                                            
+                                            // Fallback: Extract phone from synthetic email if phone property is null
+                                            if (phone == null && email != null && email.endsWith("@atmiya.com")) {
+                                                phone = email.removeSuffix("@atmiya.com")
+                                                android.util.Log.d("SessionCheck", "Extracted phone from email: $phone")
+                                            }
+                                            
+                                            if (phone != null) {
+                                                android.util.Log.d("SessionCheck", "User null. Checking for bulk invite for phone $phone")
+                                                // Try formats: With and without +91 and raw
+                                                // The repo expects the document ID to match exactly what was stored.
+                                                // We try raw phone first.
+                                                // If phone starts with +91, try removing it.
+                                                // If phone doesn't start with +91, try adding it.
+                                                
+                                                var bulkUid = firestoreRepository.getBulkInviteUid(phone)
+                                                
+                                                if (bulkUid == null) {
+                                                     if (phone.startsWith("+91")) {
+                                                         bulkUid = firestoreRepository.getBulkInviteUid(phone.substring(3))
+                                                     } else {
+                                                         bulkUid = firestoreRepository.getBulkInviteUid("+91$phone")
+                                                     }
+                                                }
+                                                
+                                                if (bulkUid != null) {
+                                                    android.util.Log.d("SessionCheck", "Found bulk invite UID: $bulkUid. Linking to $uid")
+                                                    try {
+                                                        firestoreRepository.linkBulkUserToAuth(bulkUid, uid)
+                                                        user = firestoreRepository.getUser(uid) // Refetch new user
+                                                        android.util.Log.d("SessionCheck", "Link success. Refetched user: ${user?.uid}")
+                                                    } catch (e: Exception) {
+                                                        android.util.Log.e("SessionCheck", "Failed to link bulk user", e)
+                                                    }
+                                                } else {
+                                                    android.util.Log.d("SessionCheck", "No bulk invite found for phone $phone")
+                                                }
+                                            } else {
+                                                android.util.Log.d("SessionCheck", "Phone is null, cannot do lookup.")
+                                            }
+                                        }
+
                                         android.util.Log.d("Perf", "SessionCheck: getUser took ${System.currentTimeMillis() - start} ms")
                                         
                                         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
@@ -186,33 +233,33 @@ class MainActivity : ComponentActivity() {
                                                 currentScreen = "dashboard"
                                             } else {
                                                 // Check for Pending Role Details (Bulk Users - not yet onboarded)
-                                                android.util.Log.d("SessionCheck", "User check: uid=$uid, user=${user != null}, createdVia=${user?.createdVia}, hasCompletedRoleDetails=${user?.hasCompletedRoleDetails}, isOnboardingComplete=${user?.isOnboardingComplete}, role=${user?.role}")
+                                                android.util.Log.d("SessionCheck", "User check: uid=$uid, role=${user?.role}, hasCompletedRoleDetails=${user?.hasCompletedRoleDetails}")
                                                 
                                                 if (user == null) {
-                                                    // User not found - might be first-time bulk login where doc doesn't exist yet
-                                                    android.util.Log.d("SessionCheck", "User is null for uid=$uid - Going to Signup")
+                                                    // User not found - Auto-claim handled above. If still null, Signup.
+                                                    android.util.Log.d("SessionCheck", "User is null => Signup")
                                                     currentScreen = "signup"
-                                                } else if (user.createdVia == "bulk") {
-                                                    // Bulk users: check if they need to complete startup details
-                                                    // Either hasCompletedRoleDetails is false, OR it wasn't set (defaults to true but hasCompletedOnboarding is still false)
-                                                    if (!user.hasCompletedRoleDetails || !user.isOnboardingComplete) {
-                                                        android.util.Log.d("SessionCheck", "Bulk user needs to complete details - Redirecting to Pending Details")
+                                                } else {
+                                                    // User Exists. Determine destination.
+                                                    
+                                                    // 1. Check if Role is missing (New User)
+                                                    if (user.role.isEmpty()) {
+                                                        android.util.Log.d("SessionCheck", "No Role => Signup")
+                                                        currentScreen = "signup"
+                                                    } 
+                                                    // 2. Check if Startup needs to complete details
+                                                    // Applies to BOTH Bulk users and normal Startups who haven't finished this step.
+                                                    else if (user.role == "startup" && !user.hasCompletedRoleDetails) {
+                                                        android.util.Log.d("SessionCheck", "Startup incomplete details => Pending Details")
                                                         currentScreen = "pending_details"
-                                                    } else {
-                                                        android.util.Log.d("SessionCheck", "Bulk user completed onboarding - Going to Dashboard")
+                                                    }
+                                                    // 3. Fallback for incomplete onboarding if we want to catch general cases?
+                                                    // But effectively, if they have a role, they go to dashboard unless trapped above.
+                                                    else {
+                                                        android.util.Log.d("SessionCheck", "Role ${user.role} ready => Dashboard")
                                                         selectedRole = user.role
                                                         currentScreen = "dashboard"
                                                     }
-                                                } else if (user.isOnboardingComplete && user.role == "startup" && !user.hasCompletedRoleDetails) {
-                                                    android.util.Log.d("SessionCheck", "Startup without role details - Redirecting to Pending Details")
-                                                    currentScreen = "pending_details"
-                                                } else if (user.isOnboardingComplete && user.role.isNotEmpty()) {
-                                                    android.util.Log.d("SessionCheck", "Navigating to Dashboard. Role: ${user.role}")
-                                                    selectedRole = user.role
-                                                    currentScreen = "dashboard"
-                                                } else {
-                                                    android.util.Log.d("SessionCheck", "Fallthrough - Navigating to Signup. isOnboardingComplete=${user.isOnboardingComplete}, role=${user.role}")
-                                                    currentScreen = "signup"
                                                 }
                                             }
                                             
@@ -281,6 +328,7 @@ class MainActivity : ComponentActivity() {
                             // Subscribe to topics if Startup
                             LaunchedEffect(selectedRole) {
                                 if (selectedRole == "startup") {
+                                    com.google.firebase.messaging.FirebaseMessaging.getInstance().subscribeToTopic("startups")
                                     val user = firestoreRepository.getUser(auth.currentUser?.uid ?: "")
                                     if (user != null && user.startupCategory.isNotEmpty()) {
                                         val topic = "startup_category_${user.startupCategory.replace(" ", "_")}"

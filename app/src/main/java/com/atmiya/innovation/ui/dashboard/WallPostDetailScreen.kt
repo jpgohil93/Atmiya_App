@@ -24,7 +24,9 @@ import kotlinx.coroutines.tasks.await
 fun WallPostDetailScreen(
     postId: String,
     onBack: () -> Unit,
-    onFundingCallClick: (String) -> Unit
+    onFundingCallClick: (String) -> Unit,
+
+    onNavigateToUserProfile: (String, String) -> Unit
 ) {
     val repository = remember { FirestoreRepository() }
     val auth = FirebaseAuth.getInstance()
@@ -141,7 +143,10 @@ fun WallPostDetailScreen(
                              }
                         }
                     },
-                    onFundingCallClick = onFundingCallClick
+                    onFundingCallClick = onFundingCallClick,
+                    onProfileClick = {
+                        onNavigateToUserProfile(safePost.authorUserId, safePost.authorRole)
+                    }
                 )
             }
         }

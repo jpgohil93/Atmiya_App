@@ -93,6 +93,7 @@ fun WallScreen(
     onNavigateToSettings: () -> Unit,
     onNavigateToDashboard: () -> Unit, // Added callback
     onNavigateToFundingCall: (String) -> Unit, // Added
+    onNavigateToUserProfile: (String, String) -> Unit, // Added for Profile Navigation
     onLogout: () -> Unit,
     onOpenDrawer: () -> Unit
 ) {
@@ -234,6 +235,9 @@ fun WallScreen(
                                     },
                                     onFundingCallClick = { callId ->
                                         onNavigateToFundingCall(callId)
+                                    },
+                                    onProfileClick = {
+                                        onNavigateToUserProfile(post.authorUserId, post.authorRole)
                                     }
                                 )
                                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f), thickness = 8.dp)
@@ -575,7 +579,8 @@ fun PostCard(
     onVote: (String) -> Unit,
     onConnect: () -> Unit,
     onDelete: () -> Unit, // Added callback
-    onFundingCallClick: (String) -> Unit // Added
+    onFundingCallClick: (String) -> Unit, // Added
+    onProfileClick: () -> Unit // Added
 ) {
     val repository = remember { FirestoreRepository() }
     val context = LocalContext.current
@@ -605,7 +610,10 @@ fun PostCard(
             // Header
             Row(
                 verticalAlignment = Alignment.CenterVertically, 
-                modifier = Modifier.padding(12.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onProfileClick() }
+                    .padding(12.dp)
             ) {
                 UserAvatar(
                     model = post.authorPhotoUrl,

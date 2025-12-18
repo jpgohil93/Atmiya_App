@@ -31,6 +31,8 @@ import com.atmiya.innovation.data.StartupIdea
 import compose.icons.TablerIcons
 import compose.icons.tablericons.Bulb
 import compose.icons.tablericons.DeviceFloppy
+import com.atmiya.innovation.ui.theme.AtmiyaPrimary
+import com.atmiya.innovation.ui.theme.AtmiyaSecondary
 
 // ...
 
@@ -51,8 +53,8 @@ fun IdeaGeneratorEntryCard(
             modifier = Modifier.background(
                 brush = androidx.compose.ui.graphics.Brush.linearGradient(
                     colors = listOf(
-                        MaterialTheme.colorScheme.primary,
-                        MaterialTheme.colorScheme.tertiary
+                        AtmiyaPrimary,
+                        AtmiyaSecondary
                     )
                 )
             )

@@ -54,6 +54,7 @@ import androidx.compose.foundation.clickable
 import compose.icons.tablericons.Lock
 import compose.icons.tablericons.Mail
 import compose.icons.tablericons.Phone
+import compose.icons.tablericons.PlayerPlay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -119,7 +120,8 @@ fun StartupDetailScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Transparent, 
-                    titleContentColor = Color(0xFF111827)
+                    titleContentColor = MaterialTheme.colorScheme.onBackground,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onBackground
                 )
             )
         }
@@ -191,7 +193,7 @@ fun StartupDetailScreen(
                             if (u.name.isNotBlank()) u.name else "Founder", 
                             style = MaterialTheme.typography.displaySmall, 
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1F2937),
+                            color = MaterialTheme.colorScheme.onBackground,
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                         
@@ -201,25 +203,25 @@ fun StartupDetailScreen(
                             s.startupName, 
                             style = MaterialTheme.typography.titleMedium, 
                             fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF4B5563), 
+                            color = MaterialTheme.colorScheme.onSurfaceVariant, 
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             s.sector, 
                             style = MaterialTheme.typography.titleMedium, 
-                            color = AtmiyaPrimary,
+                            color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Medium
                         )
                         // Location
                         if (u.city.isNotBlank() || u.region.isNotBlank()) {
                              Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
-                                 Icon(TablerIcons.MapPin, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.Gray)
+                                 Icon(TablerIcons.MapPin, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                  Spacer(modifier = Modifier.width(4.dp))
                                  Text(
                                      listOf(u.city, u.region).filter { it.isNotBlank() }.joinToString(", "),
                                      style = MaterialTheme.typography.bodyMedium,
-                                     color = Color.Gray
+                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                  )
                              }
                         }
@@ -254,9 +256,9 @@ fun StartupDetailScreen(
                            .fillMaxWidth()
                            .padding(horizontal = 16.dp),
                         shape = RoundedCornerShape(24.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF3F4F6))
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
                     ) {
                         Column(modifier = Modifier.padding(24.dp)) {
                             
@@ -265,17 +267,50 @@ fun StartupDetailScreen(
                             Text(
                                 s.description.ifBlank { "No description provided." },
                                 style = MaterialTheme.typography.bodyLarge,
-                                color = Color(0xFF4B5563),
+                                color = MaterialTheme.colorScheme.onSurface,
                                 lineHeight = 24.sp
                             )
                              
                             Spacer(modifier = Modifier.height(24.dp))
-                            HorizontalDivider(color = Color.LightGray.copy(alpha=0.3f))
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                             Spacer(modifier = Modifier.height(24.dp))
 
                             // Details Header
-                            Text("Details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = AtmiyaPrimary)
+                            Text("Details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                             Spacer(modifier = Modifier.height(16.dp))
+                            
+                            // Product Demo Section
+                            if (!s.demoVideoUrl.isNullOrBlank()) {
+                                 Text("Product Demo", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = Color.Gray)
+                                 Spacer(modifier = Modifier.height(8.dp))
+                                 
+                                 if (!s.uploadedVideoFileName.isNullOrBlank()) {
+                                     // Play Uploaded Video
+                                     com.atmiya.innovation.ui.components.VideoPlayer(
+                                         videoUrl = s.demoVideoUrl,
+                                         modifier = Modifier
+                                             .fillMaxWidth()
+                                             .height(200.dp)
+                                             .clip(RoundedCornerShape(12.dp))
+                                             .background(Color.Black)
+                                     )
+                                 } else {
+                                     // External Link
+                                     val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+                                     OutlinedButton(
+                                         onClick = { uriHandler.openUri(s.demoVideoUrl) },
+                                         modifier = Modifier.fillMaxWidth(),
+                                         shape = RoundedCornerShape(12.dp)
+                                     ) {
+                                         Icon(TablerIcons.PlayerPlay, contentDescription = null, modifier = Modifier.size(18.dp))
+                                         Spacer(modifier = Modifier.width(8.dp))
+                                         Text("Watch Demo Video")
+                                     }
+                                 }
+                                 Spacer(modifier = Modifier.height(24.dp))
+                                 HorizontalDivider(color = Color.LightGray.copy(alpha=0.3f))
+                                 Spacer(modifier = Modifier.height(24.dp))
+                            }
 
                             DetailRow("Founder Name(s)", u.name, TablerIcons.User)
                             DetailRow("City", u.city, TablerIcons.MapPin)
@@ -424,7 +459,8 @@ fun StartupDetailScreen(
                                     enabled = btnEnabled,
                                     shape = RoundedCornerShape(50),
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = if (btnEnabled) Color(0xFF111827) else Color.Gray
+                                        containerColor = if (btnEnabled) AtmiyaPrimary else Color.Gray,
+                                        contentColor = Color.White
                                     ),
                                     modifier = Modifier.height(50.dp)
                                 ) {

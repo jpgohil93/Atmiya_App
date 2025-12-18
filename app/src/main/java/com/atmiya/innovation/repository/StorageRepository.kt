@@ -287,6 +287,63 @@ class StorageRepository {
         }
     }
 
+    /**
+     * Upload Startup Demo Video with progress tracking
+     * @param onProgress callback with progress percentage (0-100)
+     */
+    suspend fun uploadStartupDemoVideo(
+        context: Context, 
+        userId: String, 
+        uri: Uri,
+        onProgress: (Int) -> Unit
+    ): String {
+        val start = System.currentTimeMillis()
+        val fileSize = getFileSize(context, uri)
+        val maxSizeBytes = 100 * 1024 * 1024L // 100MB
+
+        if (fileSize > maxSizeBytes) {
+            throw IllegalArgumentException("Video too large. Max size: 100MB")
+        }
+
+        // Use a consistent filename or UUID. Currently using filename to allow easy replacement/identification?
+        // Actually UUID is safer to avoid collisions or caching issues, but user asked for "replace".
+        // If we use UUID, we get a new file every time. 
+        // Let's use "demo_video.mp4" to overwrite easily? 
+        // User asked: "once they upload the video there should be option to replace that as well".
+        // Best practice: Use UUID for uniqueness, but if we overwrite, we save storage.
+        // Let's use a fixed name "demo.mp4" per user for simplicity and auto-replacement? 
+        // "Yes store it as per the current logic" -> current logic uses UUID typically.
+        // Let's stick to UUID but we need to return the filename for UI.
+        
+        val filename = UUID.randomUUID().toString() + ".mp4"
+        val path = "startups/$userId/videos/$filename"
+        val ref = storage.reference.child(path)
+
+        Log.d(TAG, "Starting startup demo video upload. Path: $path")
+
+        return try {
+            val uploadTask = ref.putFile(uri)
+            
+            uploadTask.addOnProgressListener { snapshot ->
+                val progress = ((100.0 * snapshot.bytesTransferred) / snapshot.totalByteCount).toInt()
+                onProgress(progress)
+            }
+            
+            uploadTask.continueWithTask { task ->
+                if (!task.isSuccessful) {
+                    task.exception?.let { throw it }
+                }
+                ref.downloadUrl
+            }.await().toString().also {
+                Log.d(TAG, "Startup video upload success. URL: $it")
+                logPerf("uploadStartupDemoVideo", System.currentTimeMillis() - start)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Startup video upload failed", e)
+            throw e
+        }
+    }
+
     fun validateWallMedia(context: Context, uri: Uri, isVideo: Boolean) {
         val fileSize = getFileSize(context, uri)
         val maxSizeBytes = if (isVideo) 20 * 1024 * 1024L else 5 * 1024 * 1024L

@@ -23,6 +23,9 @@ import compose.icons.tablericons.Upload
 import compose.icons.tablericons.Rocket
 import compose.icons.tablericons.ChartLine
 import compose.icons.tablericons.School
+import compose.icons.tablericons.Movie
+import compose.icons.tablericons.X
+import androidx.core.net.toUri
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -135,6 +138,26 @@ fun SignupScreen(
     var topicsToTeach by remember { mutableStateOf("") }
     var experienceYears by remember { mutableStateOf("") }
     var bio by remember { mutableStateOf("") }
+
+    // Video Upload State
+    var isVideoUploadMode by remember { mutableStateOf(false) } // Default to Link
+    var videoUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    var isVideoUploading by remember { mutableStateOf(false) }
+    var uploadProgress by remember { mutableStateOf(0f) }
+    var uploadedVideoFileName by remember { mutableStateOf<String?>(null) }
+
+    val videoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: android.net.Uri? ->
+        if (uri != null) {
+            val fileSize = context.contentResolver.openFileDescriptor(uri, "r")?.statSize ?: 0
+            if (fileSize > 100 * 1024 * 1024) { // 100MB
+                Toast.makeText(context, "Video file too large (Max 100MB)", Toast.LENGTH_LONG).show()
+            } else {
+                videoUri = uri
+            }
+        }
+    }
 
     // Step 5: Create Password
     var password by remember { mutableStateOf("") }
@@ -524,6 +547,7 @@ fun SignupScreen(
                             description = supportNeeded, 
                             website = websiteUrl,
                             demoVideoUrl = demoLink,
+                            uploadedVideoFileName = uploadedVideoFileName, // Added
                             socialLinks = socialLinks
                         )
                         firestoreRepository.createStartup(startup)
@@ -938,7 +962,69 @@ fun SignupScreen(
                             }
 
                             Spacer(modifier = Modifier.height(16.dp))
-                            ValidatedTextField(demoLink, { demoLink = it }, "Product Demo Link (Optional)")
+                            // Product Demo Section (Video Upload / Link)
+                            Text("Product Demo (Optional)", style = MaterialTheme.typography.titleMedium)
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(selected = isVideoUploadMode, onClick = { isVideoUploadMode = true })
+                                Text("Upload Video")
+                                Spacer(modifier = Modifier.width(16.dp))
+                                RadioButton(selected = !isVideoUploadMode, onClick = { isVideoUploadMode = false })
+                                Text("External Link")
+                            }
+
+                            if (isVideoUploadMode) {
+                                // Video Upload Card
+                                OutlinedCard(
+                                    onClick = { 
+                                        if (!isVideoUploading) {
+                                            videoLauncher.launch("video/mp4")
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(TablerIcons.Movie, contentDescription = null, modifier = Modifier.size(24.dp))
+                                        Spacer(modifier = Modifier.width(16.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text("Product Demo Video (Max 100MB)", fontWeight = FontWeight.Bold)
+                                            if (videoUri != null) {
+                                                Text("Selected: ${videoUri!!.lastPathSegment}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                                            } else {
+                                                Text("Tap to upload MP4", style = MaterialTheme.typography.bodySmall)
+                                            }
+                                        }
+                                        if (videoUri != null) {
+                                            IconButton(onClick = { videoUri = null }) {
+                                                Icon(TablerIcons.X, contentDescription = "Remove")
+                                            }
+                                        }
+                                    }
+                                    
+                                    if (isVideoUploading) {
+                                        LinearProgressIndicator(
+                                            progress = { uploadProgress },
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                                        )
+                                        Text(
+                                            text = "${(uploadProgress * 100).toInt()}%",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            modifier = Modifier
+                                                .align(Alignment.End)
+                                                .padding(end = 16.dp, bottom = 8.dp)
+                                        )
+                                    }
+                                }
+                            } else {
+                                // External Link and Website
+                                ValidatedTextField(demoLink, { demoLink = it }, "Product Demo Link (Optional)")
+                            }
                             Spacer(modifier = Modifier.height(16.dp))
                             ValidatedTextField(websiteUrl, { websiteUrl = it }, "Website URL (Optional)")
                             Spacer(modifier = Modifier.height(16.dp))

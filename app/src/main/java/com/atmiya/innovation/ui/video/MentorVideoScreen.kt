@@ -182,7 +182,7 @@ fun MentorVideoScreen(
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.background,
-                        titleContentColor = AtmiyaPrimary
+                        titleContentColor = if (androidx.compose.foundation.isSystemInDarkTheme()) androidx.compose.ui.graphics.Color.White else AtmiyaPrimary
                     )
                 )
             },
@@ -580,6 +580,15 @@ fun UploadVideoDialog(
     var thumbnailUrl by remember { mutableStateOf("") }
     var duration by remember { mutableStateOf("") }
     
+    // Validation State
+    var videoLinkError by remember { mutableStateOf<String?>(null) }
+    
+    fun isValidVideoUrl(url: String): Boolean {
+        if (url.isBlank()) return true
+        val regex = Regex("^(https?://)?(www\\.)?(youtube\\.com|youtu\\.?be|vimeo\\.com)/.+", RegexOption.IGNORE_CASE)
+        return regex.matches(url)
+    }
+    
     // Upload mode: 0 = YouTube/Link, 1 = Device Upload
     var uploadMode by remember { mutableStateOf(0) }
     var selectedVideoUri by remember { mutableStateOf<android.net.Uri?>(null) }
@@ -649,8 +658,9 @@ fun UploadVideoDialog(
                 
                 OutlinedTextField(
                     value = title, 
-                    onValueChange = { title = it }, 
+                    onValueChange = { if (it.length <= 100) title = it }, 
                     label = { Text("Video Title") },
+                    supportingText = { Text("${title.length}/100") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 
@@ -660,8 +670,18 @@ fun UploadVideoDialog(
                     // YouTube/Link Mode
                     OutlinedTextField(
                         value = url, 
-                        onValueChange = { url = it }, 
+                        onValueChange = { 
+                            url = it 
+                            videoLinkError = if (isValidVideoUrl(it)) null else "Only YouTube or Vimeo links allowed"
+                        }, 
                         label = { Text("Video URL / Link") },
+                        placeholder = { Text("https://youtube.com/...") },
+                        isError = videoLinkError != null,
+                        supportingText = { 
+                            if (videoLinkError != null) {
+                                Text(videoLinkError!!, color = MaterialTheme.colorScheme.error)
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(8.dp))
@@ -733,7 +753,7 @@ fun UploadVideoDialog(
         },
         confirmButton = {
             val isValid = title.isNotBlank() && (
-                (uploadMode == 0 && url.isNotBlank()) || 
+                (uploadMode == 0 && url.isNotBlank() && videoLinkError == null) || 
                 (uploadMode == 1 && selectedVideoUri != null)
             )
             

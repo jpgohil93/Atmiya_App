@@ -26,6 +26,7 @@ import kotlinx.coroutines.launch
 fun AppNavigationDrawer(
     drawerState: DrawerState,
     user: User?,
+    connectionRequestCount: Int = 0, // Added param
     onNavigate: (String) -> Unit, 
     onLogout: () -> Unit,
     content: @Composable () -> Unit
@@ -130,7 +131,7 @@ fun AppNavigationDrawer(
                         Triple("My Ideas", TablerIcons.Bulb, "saved_ideas"),
                         Triple("Events", TablerIcons.CalendarEvent, "events_list"),
                         Triple("Profile", TablerIcons.User, "profile_screen"),
-                        Triple("My Network", TablerIcons.Share, "connection_requests"),
+                        Triple("My Network", TablerIcons.Share, "network"),
                         Triple("Settings", TablerIcons.Settings, "settings_screen")
                     )
 
@@ -142,7 +143,23 @@ fun AppNavigationDrawer(
 
                     menuItems.forEach { (label, icon, route) ->
                          NavigationDrawerItem(
-                            label = { Text(label, fontWeight = FontWeight.Medium) },
+                            label = { 
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(label, fontWeight = FontWeight.Medium)
+                                    if (label == "My Network" && connectionRequestCount > 0) {
+                                        Spacer(modifier = Modifier.weight(1f))
+                                        Badge(
+                                            containerColor = MaterialTheme.colorScheme.error,
+                                            contentColor = MaterialTheme.colorScheme.onError
+                                        ) {
+                                            Text(
+                                                text = connectionRequestCount.toString(),
+                                                style = MaterialTheme.typography.labelSmall
+                                            )
+                                        }
+                                    }
+                                }
+                            },
                             icon = { Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp)) },
                             selected = false,
                             onClick = {

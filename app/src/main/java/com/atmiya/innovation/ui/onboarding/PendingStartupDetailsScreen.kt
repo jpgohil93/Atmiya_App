@@ -55,7 +55,33 @@ fun PendingStartupDetailsScreen(
     var socialLinks by remember { mutableStateOf("") }
     var organization by remember { mutableStateOf("") }
 
+    var videoUri by remember { mutableStateOf<Uri?>(null) }
+    var videoFileName by remember { mutableStateOf<String?>(null) }
+    var uploadedVideoFileName by remember { mutableStateOf<String?>(null) } // Current existing one
+    var uploadProgress by remember { mutableStateOf(0f) }
+    var isVideoUploading by remember { mutableStateOf(false) }
+    var isVideoUploadMode by remember { mutableStateOf(true) }
+
     var showErrors by remember { mutableStateOf(false) }
+    var videoLinkError by remember { mutableStateOf<String?>(null) } // Validation state
+
+    fun isValidVideoUrl(url: String): Boolean {
+        if (url.isBlank()) return true
+        val regex = Regex("^(https?://)?(www\\.)?(youtube\\.com|youtu\\.?be|vimeo\\.com)/.+", RegexOption.IGNORE_CASE)
+        return regex.matches(url)
+    }
+    
+    fun onVideoSelected(uri: Uri) {
+        videoUri = uri
+        // Get generic name or query
+         val cursor = context.contentResolver.query(uri, null, null, null, null)
+         val nameIndex = cursor?.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+         cursor?.moveToFirst()
+         videoFileName = if (nameIndex != null && nameIndex >= 0) cursor.getString(nameIndex) else "video.mp4"
+         cursor?.close()
+         // Clear link if upload selected? Or keep them separate. Logic says preference to upload.
+         demoLink = "" 
+    }
 
     // Load Initial Data
     LaunchedEffect(Unit) {
@@ -74,6 +100,15 @@ fun PendingStartupDetailsScreen(
                     startupName = "" 
                 } else {
                     startupName = startup.startupName
+                    demoLink = startup.demoVideoUrl ?: ""
+                    uploadedVideoFileName = startup.uploadedVideoFileName
+                    // Heuristic: If we have a filename, assume it was an upload mode
+                    if (!uploadedVideoFileName.isNullOrEmpty()) {
+                         // Keep upload mode true
+                    } else if (demoLink.isNotEmpty()) {
+                        // If link exists but no filename, likely external link
+                        // isVideoUploadMode = false // But keep default true as user might want to upgrade
+                    }
                 }
             }
         }
@@ -89,7 +124,7 @@ fun PendingStartupDetailsScreen(
 
     fun submitDetails() {
         showErrors = true
-        val isValid = startupName.isNotBlank() && startupSector != null && startupStage != null && pitchDeckUri != null
+        val isValid = startupName.isNotBlank() && startupSector != null && startupStage != null && pitchDeckUri != null && (isVideoUploadMode || videoLinkError == null)
         
         if (!isValid) return
 
@@ -101,6 +136,18 @@ fun PendingStartupDetailsScreen(
                 // Upload Files
                 val uploadedLogoUrl = logoUri?.let { storageRepository.uploadStartupLogo(context, uid, it) }
                 val uploadedPitchDeckUrl = pitchDeckUri?.let { storageRepository.uploadPitchDeck(context, uid, it, true) }
+                
+                var finalDemoUrl = demoLink
+                var finalUploadedFileName = uploadedVideoFileName
+
+                if (isVideoUploadMode && videoUri != null) {
+                    isVideoUploading = true
+                    finalDemoUrl = storageRepository.uploadStartupDemoVideo(context, uid, videoUri!!) { progress ->
+                        uploadProgress = progress / 100f
+                    }
+                    finalUploadedFileName = videoFileName
+                    isVideoUploading = false
+                }
 
                 // Update Startup Doc
                 val updates = mutableMapOf<String, Any>(
@@ -111,7 +158,8 @@ fun PendingStartupDetailsScreen(
                     "fundingAsk" to fundingAsk,
                     "supportNeeded" to supportNeeded,
                     "website" to websiteUrl,
-                    "demoVideoUrl" to demoLink,
+                    "demoVideoUrl" to finalDemoUrl,
+                    "uploadedVideoFileName" to (finalUploadedFileName ?: ""),
                     "socialLinks" to socialLinks,
                     "organization" to organization
                 )
@@ -245,7 +293,67 @@ fun PendingStartupDetailsScreen(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-            ValidatedTextField(demoLink, { demoLink = it }, "Product Demo Link (Optional)")
+
+            Spacer(modifier = Modifier.height(24.dp))
+            Text("Product Demo", style = MaterialTheme.typography.titleMedium)
+            
+            // var isVideoUploadMode moved to top scope
+            val videoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+                if (uri != null) {
+                    onVideoSelected(uri)
+                }
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(selected = isVideoUploadMode, onClick = { isVideoUploadMode = true })
+                Text("Upload Video")
+                Spacer(modifier = Modifier.width(16.dp))
+                RadioButton(selected = !isVideoUploadMode, onClick = { isVideoUploadMode = false })
+                Text("External Link")
+            }
+
+            if (isVideoUploadMode) {
+                OutlinedCard(
+                    onClick = { videoLauncher.launch("video/*") },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(TablerIcons.Upload, contentDescription = null, modifier = Modifier.size(24.dp))
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column {
+                                Text("Upload Demo Video (Max 100MB)", fontWeight = FontWeight.Bold)
+                                if (videoUri != null) {
+                                    Text("Selected: ${videoFileName}", style = MaterialTheme.typography.bodySmall, color = AtmiyaPrimary)
+                                } else if (uploadedVideoFileName != null && demoLink.isNotEmpty()) {
+                                     Text("Current: $uploadedVideoFileName", style = MaterialTheme.typography.bodySmall, color = AtmiyaPrimary)
+                                } else {
+                                    Text("Tap to select video", style = MaterialTheme.typography.bodySmall)
+                                }
+                            }
+                        }
+                        
+                        if (isVideoUploading) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            LinearProgressIndicator(
+                                progress = uploadProgress, 
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Text("${(uploadProgress * 100).toInt()}% Uploading...", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            } else {
+                 ValidatedTextField(
+                     value = demoLink, 
+                     onValueChange = { 
+                         demoLink = it 
+                         videoLinkError = if (isValidVideoUrl(it)) null else "Only YouTube/Vimeo allowed"
+                     }, 
+                     label = "Product Demo Link (YouTube/Vimeo)", 
+                     errorMessage = videoLinkError
+                 )
+            }
             Spacer(modifier = Modifier.height(16.dp))
             ValidatedTextField(websiteUrl, { websiteUrl = it }, "Website URL (Optional)")
             Spacer(modifier = Modifier.height(16.dp))

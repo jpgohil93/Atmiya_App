@@ -110,6 +110,15 @@ fun DashboardScreen(
         }
     }.collectAsState(initial = null)
 
+    val connectionRequests by remember(currentUserId) {
+        if (currentUserId != null) {
+            firestoreRepo.getIncomingConnectionRequests(currentUserId)
+        } else {
+            kotlinx.coroutines.flow.flowOf(emptyList())
+        }
+    }.collectAsState(initial = emptyList())
+    val connectionRequestCount = connectionRequests.size
+
     val navController = rememberNavController()
     
     // Main Tabs Pager State
@@ -194,6 +203,7 @@ fun DashboardScreen(
     AppNavigationDrawer(
         drawerState = drawerState,
         user = currentUser,
+        connectionRequestCount = connectionRequestCount, // Pass count
         onNavigate = { route ->
              // ... existing nav logic ...
             when(route) {
@@ -277,6 +287,18 @@ fun DashboardScreen(
                                     onNavigateToSettings = { navController.navigate("settings_screen") },
                                     onNavigateToDashboard = { coroutineScope.launch { pagerState.animateScrollToPage(0) } },
                                     onNavigateToFundingCall = { id -> navController.navigate("funding_call/$id") }, // Added
+                                    onNavigateToUserProfile = { userId, role ->
+                                        if (userId == currentUserId) {
+                                            navController.navigate("profile_screen")
+                                        } else {
+                                            when (role.lowercase()) {
+                                                "startup" -> navController.navigate("startup_detail/$userId")
+                                                "investor" -> navController.navigate("investor_detail/$userId")
+                                                "mentor" -> navController.navigate("mentor_detail/$userId")
+                                                else -> navController.navigate("basic_profile/$userId")
+                                            }
+                                        }
+                                    },
                                     onLogout = onLogout,
                                     onOpenDrawer = { scope.launch { drawerState.open() } }
                                 )
@@ -594,7 +616,19 @@ fun DashboardScreen(
                         WallPostDetailScreen(
                             postId = postId,
                             onBack = { navController.popBackStack() },
-                            onFundingCallClick = { callId -> navController.navigate("funding_call/$callId") }
+                            onFundingCallClick = { callId -> navController.navigate("funding_call/$callId") },
+                            onNavigateToUserProfile = { userId, role ->
+                                if (userId == currentUserId) {
+                                    navController.navigate("profile_screen")
+                                } else {
+                                    when (role.lowercase()) {
+                                        "startup" -> navController.navigate("startup_detail/$userId")
+                                        "investor" -> navController.navigate("investor_detail/$userId")
+                                        "mentor" -> navController.navigate("mentor_detail/$userId")
+                                        else -> navController.navigate("basic_profile/$userId")
+                                    }
+                                }
+                            }
                         )
                     }
 
@@ -666,6 +700,17 @@ fun DashboardScreen(
                     ) { backStackEntry ->
                         val userId = backStackEntry.arguments?.getString("userId") ?: return@composable
                         com.atmiya.innovation.ui.admin.UserDetailScreen(
+                            userId = userId,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+
+                    composable(
+                        "basic_profile/{userId}",
+                        arguments = listOf(navArgument("userId") { type = NavType.StringType })
+                    ) { backStackEntry ->
+                        val userId = backStackEntry.arguments?.getString("userId") ?: return@composable
+                        BasicProfileScreen(
                             userId = userId,
                             onBack = { navController.popBackStack() }
                         )

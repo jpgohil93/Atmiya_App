@@ -35,6 +35,9 @@ import com.google.firebase.auth.FirebaseAuth
 import compose.icons.TablerIcons
 import compose.icons.tablericons.*
 import kotlinx.coroutines.launch
+import androidx.compose.ui.draw.clip
+import compose.icons.tablericons.PlayerPlay
+import compose.icons.tablericons.DeviceTv
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -78,7 +81,17 @@ fun ProfileScreen(
     var startupSocial by remember { mutableStateOf("") } // Added
     var startupPitchDeckUrl by remember { mutableStateOf<String?>(null) } // Added
     var startupLogoUrl by remember { mutableStateOf<String?>(null) } // Added
+    var startupDemoVideoUrl by remember { mutableStateOf<String?>(null) } // Added
+    var startupUploadedFileName by remember { mutableStateOf<String?>(null) } // Added
+    var isVideoUploadMode by remember { mutableStateOf(true) } // Added for separating logic
+    var videoLinkError by remember { mutableStateOf<String?>(null) } // Validation state
     
+    fun isValidVideoUrl(url: String): Boolean {
+        if (url.isBlank()) return true
+        val regex = Regex("^(https?://)?(www\\.)?(youtube\\.com|youtu\\.?be|vimeo\\.com)/.+", RegexOption.IGNORE_CASE)
+        return regex.matches(url)
+    }
+
     // Investor Fields
     var investorFirm by remember { mutableStateOf("") }
     var investorTicketMin by remember { mutableStateOf("") }
@@ -122,10 +135,18 @@ fun ProfileScreen(
                             startupSocial = startup.socialLinks
                             startupPitchDeckUrl = startup.pitchDeckUrl
                             startupLogoUrl = startup.logoUrl
+                            startupDemoVideoUrl = startup.demoVideoUrl
+                            startupUploadedFileName = startup.uploadedVideoFileName
+                            // Determine initial mode
+                            if (!startupUploadedFileName.isNullOrBlank()) {
+                                isVideoUploadMode = true
+                            } else if (!startupDemoVideoUrl.isNullOrBlank()) {
+                                isVideoUploadMode = false
+                            }
                             userBio = startup.description
                             displayRole = "Startup"
                         }
-                    }
+                    } // End startup check
                     "investor" -> {
                         val investor = firestoreRepository.getInvestor(user.uid)
                         if (investor != null) {
@@ -241,6 +262,49 @@ fun ProfileScreen(
                     Toast.makeText(context, "Pitch Deck Updated", Toast.LENGTH_SHORT).show()
                 } catch (e: Exception) {
                     Toast.makeText(context, "Pitch Deck Upload Failed", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+    // Video Launcher (Immediate Upload to match other assets in this screen)
+    var isVideoUploading by remember { mutableStateOf(false) }
+    var uploadProgress by remember { mutableStateOf(0f) }
+
+    val videoLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
+    ) { uri: android.net.Uri? ->
+        if (uri != null && user != null) {
+            scope.launch {
+                try {
+                    isVideoUploading = true
+                    // Get filename
+                    val cursor = context.contentResolver.query(uri, null, null, null, null)
+                    val nameIndex = cursor?.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    cursor?.moveToFirst()
+                    val fileName = if (nameIndex != null && nameIndex >= 0) cursor.getString(nameIndex) else "video.mp4"
+                    cursor?.close()
+
+                    Toast.makeText(context, "Uploading Video... This may take a while.", Toast.LENGTH_SHORT).show()
+                    
+                    val url = storageRepository.uploadStartupDemoVideo(context, user.uid, uri) { progress ->
+                        uploadProgress = progress / 100f
+                    }
+                    
+                    startupDemoVideoUrl = url
+                    startupUploadedFileName = fileName
+                    
+                    // Immediate Update
+                    firestoreRepository.updateStartup(user.uid, mapOf(
+                        "demoVideoUrl" to url,
+                        "uploadedVideoFileName" to fileName
+                    ))
+                    Toast.makeText(context, "Video Uploaded Successfully", Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    android.util.Log.e("ProfileScreen", "Video upload failed", e)
+                    Toast.makeText(context, "Video Upload Failed: ${e.message}", Toast.LENGTH_LONG).show()
+                } finally {
+                    isVideoUploading = false
+                    uploadProgress = 0f
                 }
             }
         }
@@ -362,7 +426,9 @@ fun ProfileScreen(
                     }
                     ProfileField(label = "City", value = userCity, isEditing = isEditing, icon = TablerIcons.MapPin) { userCity = it }
                     ProfileField(label = "Region", value = userRegion, isEditing = isEditing, icon = TablerIcons.World) { userRegion = it }
-                    ProfileField(label = "About", value = userBio, isEditing = isEditing, minLines = 3, icon = TablerIcons.InfoCircle) { userBio = it }
+                    ProfileField(label = "About", value = userBio, isEditing = isEditing, minLines = 3, icon = TablerIcons.InfoCircle) { 
+                        if (userRole != "mentor" || it.length <= 100) userBio = it 
+                    }
                     
                     Spacer(modifier = Modifier.height(24.dp))
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -445,6 +511,112 @@ fun ProfileScreen(
                                     }
                                 }
                             }
+                            // Product Demo Field
+                            Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(TablerIcons.DeviceTv, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Spacer(modifier = Modifier.width(16.dp))
+                                    Text("Product Demo", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                                }
+                                
+                                if (isEditing) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    // Radio Buttons
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        RadioButton(selected = isVideoUploadMode, onClick = { isVideoUploadMode = true })
+                                        Text("Upload Video", style = MaterialTheme.typography.bodySmall)
+                                        Spacer(modifier = Modifier.width(16.dp))
+                                        RadioButton(selected = !isVideoUploadMode, onClick = { isVideoUploadMode = false })
+                                        Text("External Link", style = MaterialTheme.typography.bodySmall)
+                                    }
+                                    
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    
+                                    if (isVideoUploadMode) {
+                                        // UPLOAD MODE
+                                        if (isVideoUploading) {
+                                            LinearProgressIndicator(progress = uploadProgress, modifier = Modifier.fillMaxWidth())
+                                            Text("Uploading... ${(uploadProgress * 100).toInt()}%", style = MaterialTheme.typography.bodySmall)
+                                        } else {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically, 
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    if (!startupUploadedFileName.isNullOrBlank()) {
+                                                        Text("File: $startupUploadedFileName", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                                        Text("Tap 'Upload' to replace", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                                    } else {
+                                                        Text("No video selected", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                                    }
+                                                }
+                                                Button(
+                                                    onClick = { videoLauncher.launch("video/*") },
+                                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                                                ) {
+                                                    Text("Upload")
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        // EXTERNAL LINK MODE
+                                       OutlinedTextField(
+                                           value = if (startupDemoVideoUrl != null && startupUploadedFileName.isNullOrBlank()) startupDemoVideoUrl!! else "",
+                                           onValueChange = { 
+                                               startupDemoVideoUrl = it 
+                                               startupUploadedFileName = null 
+                                               videoLinkError = if (isValidVideoUrl(it)) null else "Only YouTube or Vimeo links allowed"
+                                           },
+                                           placeholder = { Text("https://youtube.com/...") },
+                                           label = { Text("External Video Link") },
+                                           isError = videoLinkError != null,
+                                           supportingText = if (videoLinkError != null) { { Text(videoLinkError!!, color = MaterialTheme.colorScheme.error) } } else null,
+                                           textStyle = MaterialTheme.typography.bodySmall,
+                                           modifier = Modifier.fillMaxWidth()
+                                       )
+                                    }
+                                } else {
+                                    // View Mode UI
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    if (!startupDemoVideoUrl.isNullOrBlank()) {
+                                        if (!startupUploadedFileName.isNullOrBlank()) {
+                                            Text("Uploaded: $startupUploadedFileName", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 40.dp))
+                                        } else {
+                                            Text("External Link", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 40.dp))
+                                        }
+                                    } else {
+                                        Text("No demo uploaded", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 40.dp))
+                                    }
+                                }
+                            }
+                            
+                            // Video Player (View Only)
+                            if (!isEditing && !startupDemoVideoUrl.isNullOrBlank() && !startupUploadedFileName.isNullOrBlank()) {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                com.atmiya.innovation.ui.components.VideoPlayer(
+                                    videoUrl = startupDemoVideoUrl!!,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(200.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(Color.Black)
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                            } else if (!isEditing && !startupDemoVideoUrl.isNullOrBlank() && startupUploadedFileName.isNullOrBlank()) {
+                                // External Link Button
+                                val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+                                OutlinedButton(
+                                    onClick = { uriHandler.openUri(startupDemoVideoUrl!!) },
+                                    modifier = Modifier.fillMaxWidth().padding(top=8.dp),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Icon(TablerIcons.PlayerPlay, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Watch Demo Video")
+                                }
+                                Spacer(modifier = Modifier.height(16.dp))
+                            }
                         }
                         "investor" -> {
                             ProfileField(label = "Firm Name", value = investorFirm, isEditing = isEditing, icon = TablerIcons.Building) { investorFirm = it }
@@ -455,7 +627,9 @@ fun ProfileScreen(
                             ProfileField(label = "Website / LinkedIn", value = investorWebsite, isEditing = isEditing, icon = TablerIcons.World) { investorWebsite = it }
                         }
                         "mentor" -> {
-                            ProfileField(label = "Job Title", value = mentorTitle, isEditing = isEditing, icon = TablerIcons.Id) { mentorTitle = it }
+                            ProfileField(label = "Job Title", value = mentorTitle, isEditing = isEditing, icon = TablerIcons.Id) { 
+                                if (it.length <= 100) mentorTitle = it 
+                            }
                             ProfileField(label = "Organization", value = mentorOrg, isEditing = isEditing, icon = TablerIcons.Building) { mentorOrg = it }
                             ProfileField(label = "Experience (Years)", value = mentorExperience, isEditing = isEditing, icon = TablerIcons.Clock) { mentorExperience = it }
                             ProfileField(label = "Expertise (Comma sep)", value = mentorExpertise, isEditing = isEditing, icon = TablerIcons.Certificate) { mentorExpertise = it }
@@ -507,8 +681,10 @@ fun ProfileScreen(
                                             "organization" to startupOrg,
                                             "supportNeeded" to startupSupportNeeded,
                                             "website" to startupWebsite,
+                                            "demoVideoUrl" to startupDemoVideoUrl,
+                                            "uploadedVideoFileName" to if (isVideoUploadMode) startupUploadedFileName else "",
                                             "socialLinks" to startupSocial
-                                        ))
+                                        ) as Map<String, Any>)
                                         "investor" -> firestoreRepository.updateInvestor(user.uid, mapOf(
                                             "name" to userName,
                                             "firmName" to investorFirm,

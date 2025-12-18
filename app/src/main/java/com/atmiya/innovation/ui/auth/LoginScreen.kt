@@ -205,6 +205,7 @@ fun LoginScreen(
                     
                     if (authStep == AuthStep.PHONE_INPUT) {
                          authStep = AuthStep.OTP_VERIFICATION
+                         passwordError = null // Clear any previous errors
                     }
                     
                     ticks = 60L
@@ -261,6 +262,7 @@ fun LoginScreen(
                         
                         if (authStep == AuthStep.FORGOT_PASSWORD_OTP) {
                             authStep = AuthStep.RESET_PASSWORD
+                            passwordError = null // Clear errors before showing reset screen
                         } else {
                             onLoginSuccess()
                         }
@@ -463,32 +465,34 @@ fun LoginScreen(
                     // We can't check password validity if user doesn't exist.
                     // BUT, if the user enters the magic password, we check Firestore.
                     
-                     if (password == "AIF@2025" || password == "AIF@123") {
-                          // Attempt Lazy Claim
+                if (password == "AIF@2025" || password == "AIF@123") {
+                          // Attempt Lazy Claim / Activation
                           val firestoreRepo = com.atmiya.innovation.repository.FirestoreRepository()
                           scope.launch(kotlinx.coroutines.Dispatchers.IO) {
                               try {
-                                  // Ensure network is enabled (fixes potential offline state issues)
+                                  // Network check
                                   try {
                                       com.google.firebase.firestore.FirebaseFirestore.getInstance().enableNetwork().await()
-                                  } catch (e: Exception) {
-                                      // Ignore network enable errors
-                                  }
+                                  } catch (e: Exception) {}
 
-                                  // Look up by Phone Number (Original Input) - PUBLIC READ, no auth needed
+                                  // 1. Look up by Phone in Bulk Invites
                                   val existingUid = if (isPhone) firestoreRepo.getBulkInviteUid(phoneNumber) else null
                                   
+                                  // 2. If Auth account ALREADY exists (Conflict/Collision case),
+                                  // We should try to link IF we can, but we can't create.
+                                  // If creation failed with collision, it means account is there.
+                                  // But we can't sign in without correct password.
+                                  
                                   if (existingUid != null) {
-                                     // Found a pending bulk user!
-                                     // Create Auth Account FIRST (before reading protected user data)
+                                     // Found a pending bulk user invite!
                                      try {
+                                         // Create Auth Account
                                          val authResult = auth.createUserWithEmailAndPassword(loginIdentifier, password).await()
                                          val newUid = authResult.user?.uid
                                          
                                          if (newUid != null) {
-                                             // Migrate Firestore Data (now authenticated)
+                                             // Migrate Firestore Data
                                              firestoreRepo.linkBulkUserToAuth(existingUid, newUid)
-                                             
                                              withContext(kotlinx.coroutines.Dispatchers.Main) {
                                                  isLoading = false
                                                  Toast.makeText(context, "Account Activated!", Toast.LENGTH_SHORT).show()
@@ -496,39 +500,56 @@ fun LoginScreen(
                                              }
                                          }
                                      } catch (e: Exception) {
-                                          android.util.Log.e("LoginScreen", "Activation failed during linkBulkUserToAuth", e)
-                                          val detailedError = "[DEBUG] Link Failed:\n${e::class.simpleName}: ${e.message}"
-                                          withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                             isLoading = false
-                                             passwordError = detailedError
-                                         }
+                                          if (e is com.google.firebase.auth.FirebaseAuthUserCollisionException) {
+                                              // USER ALREADY EXISTS in Auth.
+                                              // This means they likely already claimed it or it was created.
+                                              // We cannot force "claim" again.
+                                              // We should check if the Firestore document exists for the bulk UID.
+                                              // If so, maybe the link failed previously?
+                                              // For now, prompt them to login.
+                                              withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                                  isLoading = false
+                                                  passwordError = "Account already linked! Please use your active password."
+                                                  Toast.makeText(context, "User already active. Please login normally.", Toast.LENGTH_LONG).show()
+                                              }
+                                          } else {
+                                              android.util.Log.e("LoginScreen", "Activation failed", e)
+                                              withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                                 isLoading = false
+                                                 passwordError = "Activation Error: ${e.message}"
+                                             }
+                                          }
                                      }
                                  } else {
+                                     // Bulk Invite NOT found.
+                                     // This could mean:
+                                     // 1. Not a bulk user.
+                                     // 2. Already claimed (invite deleted).
                                      withContext(kotlinx.coroutines.Dispatchers.Main) {
                                          isLoading = false
-                                         passwordError = "Login failed: User record not found" 
+                                         // User requested standard error for consistency
+                                         passwordError = "Invalid password or credentials." 
                                      }
                                  }
                              } catch (e: Exception) {
-                                 android.util.Log.e("LoginScreen", "Error during bulk user lookup or claim", e)
-                                 
-                                 val isOffline = e.message?.contains("offline", ignoreCase = true) == true || 
-                                                 (e is com.google.firebase.firestore.FirebaseFirestoreException && e.code == com.google.firebase.firestore.FirebaseFirestoreException.Code.UNAVAILABLE)
-                                 
+                                 android.util.Log.e("LoginScreen", "Error during bulk user lookup", e)
                                  withContext(kotlinx.coroutines.Dispatchers.Main) {
                                      isLoading = false
-                                     if (isOffline) {
-                                         passwordError = "Network Unavailable. Please check your internet connection."
-                                         Toast.makeText(context, "Please check your internet connection and try again.", Toast.LENGTH_LONG).show()
-                                     } else {
-                                         passwordError = "Login Error: ${e.localizedMessage}"
-                                     }
+                                     passwordError = "Login Error: ${e.localizedMessage}"
                                  }
                              }
                          }
                     } else {
                         isLoading = false
-                        passwordError = "Login failed: ${task.exception?.message}"
+                        val exception = task.exception
+                        val friendlyMessage = when (exception) {
+                            is com.google.firebase.auth.FirebaseAuthInvalidUserException -> "Account not found. Please sign up."
+                            is com.google.firebase.auth.FirebaseAuthInvalidCredentialsException -> "Invalid password or credentials."
+                            is com.google.firebase.FirebaseNetworkException -> "Network error. Check your connection."
+                            else -> "Login failed. Please check your credentials."
+                        }
+                        passwordError = friendlyMessage
+                        android.util.Log.e("Login", "Auth Error: ${exception?.message}", exception)
                     }
                 }
             }
@@ -590,7 +611,7 @@ fun LoginScreen(
             // Logo Card
             // Logo
             // Logo
-            val logoRes = if (androidx.compose.foundation.isSystemInDarkTheme()) R.drawable.netfund_logo_dark else R.drawable.netfund_logo
+            val logoRes = if (androidx.compose.foundation.isSystemInDarkTheme()) R.drawable.netfund_logo_white else R.drawable.netfund_logo
             Image(
                 painter = painterResource(id = logoRes),
                 contentDescription = "Netfund Logo",
