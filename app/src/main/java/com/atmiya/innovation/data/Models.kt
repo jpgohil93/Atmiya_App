@@ -222,11 +222,23 @@ data class AIFEvent(
     val venue: String = "",
     val city: String = "",
     val bannerUrl: String? = null,
-    val status: String = "upcoming", // "upcoming", "ongoing", "completed"
+    val status: String = "upcoming", // "upcoming", "ongoing", "completed" (Persisted fallback)
     val agenda: String = "",
     val registrationUrl: String? = null,
     val createdAt: Timestamp? = null
-)
+) {
+    // Dynamic status based on current date
+    val dynamicStatus: String
+        get() {
+            val now = Timestamp.now()
+            return when {
+                startDate == null -> "upcoming" // Default if no date
+                now.seconds < startDate.seconds -> "upcoming"
+                endDate != null && now.seconds > endDate.seconds -> "completed"
+                else -> "ongoing" // Between start and end (or after start if no end date)
+            }
+        }
+}
 
 
 data class ImportRecord(

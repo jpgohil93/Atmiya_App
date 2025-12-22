@@ -49,6 +49,9 @@ fun WallPostDetailScreen(
             post = snapshot.toObject(WallPost::class.java)?.copy(id = snapshot.id)
         } catch (e: Exception) {
             android.util.Log.e("WallPostDetailScreen", "Error fetching post", e)
+            launch {
+                android.widget.Toast.makeText(context, "Error: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+            }
         } finally  {
             isLoading = false
         }

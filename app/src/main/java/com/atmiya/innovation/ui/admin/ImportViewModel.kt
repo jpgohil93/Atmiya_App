@@ -98,27 +98,61 @@ class ImportViewModel : ViewModel() {
                 val lines = content.lines().filter { it.isNotBlank() }
                 val rows = mutableListOf<CsvRow>()
                 
-                // Prefetch existing phones (for uniqueness check)
-                val existingPhones = firestoreRepository.getAllUserPhones().toSet()
+                // Uniqueness within CSV only (DB check happens at upload)
                 val seenPhonesInCsv = mutableSetOf<String>()
 
-                // Skip header if present
-                val dataLines = if (lines.firstOrNull()?.contains("email", true) == true) lines.drop(1) else lines
+                if (lines.isEmpty()) throw Exception("File is empty")
 
-                dataLines.forEachIndexed { index, line ->
-                    val lineNum = index + 2 // 1-indexed + header
+                // Header Detection & Column Mapping
+                val headerRow = lines.first()
+                val isHeaderPresent = headerRow.contains("email", true) || headerRow.contains("phone", true)
+                
+                val colMap = mutableMapOf<String, Int>()
+                var dataStartIndex = 0
+
+                if (isHeaderPresent) {
+                    dataStartIndex = 1
+                    val headers = headerRow.split(",").map { it.trim().lowercase() }
+                    headers.forEachIndexed { index, h ->
+                        when {
+                            h.contains("startup") -> colMap["startup_name"] = index // Check startup first!
+                            h.contains("name") -> colMap["name"] = index
+                            h.contains("phone") -> colMap["phone"] = index
+                            h.contains("email") -> colMap["email"] = index
+                            h.contains("city") -> colMap["city"] = index
+                            h.contains("region") -> colMap["region"] = index
+                            h.contains("org") -> colMap["organization"] = index
+                        }
+                    }
+                } else {
+                    // Fallback Default Mapping (Legacy Support)
+                    colMap["name"] = 0
+                    colMap["phone"] = 1
+                    colMap["email"] = 2
+                    colMap["city"] = 3
+                    colMap["region"] = 4
+                    colMap["organization"] = 5
+                    colMap["startup_name"] = 6 // Assumption if users add it at end without headers
+                }
+                
+                // Process Data Lines
+                for (i in dataStartIndex until lines.size) {
+                    val line = lines[i]
+                    val lineNum = i + 1
+                    // Basic CSV splitting (does not handle quoted commas, assuming simple CSV)
                     val parts = line.split(",").map { it.trim() }
                     
                     val errors = mutableListOf<String>()
                     val data = mutableMapOf<String, String>()
 
-                    // Parse Columns: Full Name, Phone, Email, City, Region, Organization
-                    val name = parts.getOrNull(0)?.trim() ?: ""
-                    var rawPhone = parts.getOrNull(1)?.trim() ?: ""
-                    val email = parts.getOrNull(2)?.trim() ?: ""
-                    val city = parts.getOrNull(3)?.trim() ?: ""
-                    val region = parts.getOrNull(4)?.trim() ?: ""
-                    val org = parts.getOrNull(5)?.trim() ?: ""
+                    // Extract using map
+                    val name = parts.getOrNull(colMap["name"] ?: -1)?.trim() ?: ""
+                    val rawPhone = parts.getOrNull(colMap["phone"] ?: -1)?.trim() ?: ""
+                    val email = parts.getOrNull(colMap["email"] ?: -1)?.trim() ?: ""
+                    val city = parts.getOrNull(colMap["city"] ?: -1)?.trim() ?: ""
+                    val region = parts.getOrNull(colMap["region"] ?: -1)?.trim() ?: ""
+                    val org = parts.getOrNull(colMap["organization"] ?: -1)?.trim() ?: ""
+                    val startupName = parts.getOrNull(colMap["startup_name"] ?: -1)?.trim() ?: ""
 
                     // Phone Cleaning
                     // 1. Remove spaces and common separators
@@ -137,12 +171,14 @@ class ImportViewModel : ViewModel() {
                     data["city"] = city
                     data["region"] = region
                     data["organization"] = org
+                    // Use startupName if available, else fallback to user name
+                    data["startup_name"] = if (startupName.isNotBlank()) startupName else name
 
                     // Validations
                     if (name.isBlank()) errors.add("Missing Full Name")
+                    if (org.isBlank()) errors.add("Missing Organization") // Enforce Org if critical for prefill? Maybe optional.
                     
                     // Phone Validation
-                    // Ensure it contains only digits now
                     if (phone.isBlank()) {
                         errors.add("Missing Phone Number")
                     } else if (!phone.all { it.isDigit() }) {
@@ -157,11 +193,9 @@ class ImportViewModel : ViewModel() {
                         errors.add("Invalid Email Format")
                     }
 
-                    // Strict Phone Uniqueness Check
+                    // Strict Phone Uniqueness Check (CSV Only)
                     if (phone.isNotBlank()) {
-                         if (existingPhones.contains(phone)) {
-                            errors.add("Phone already exists (DB)")
-                        } else if (seenPhonesInCsv.contains(phone)) {
+                         if (seenPhonesInCsv.contains(phone)) {
                             errors.add("Duplicate Phone in CSV")
                         } else {
                             seenPhonesInCsv.add(phone)
@@ -228,7 +262,7 @@ class ImportViewModel : ViewModel() {
 
                     val startup = com.atmiya.innovation.data.Startup(
                         uid = uid,
-                        startupName = data["name"] ?: "", // Default to User Name until updated
+                        startupName = data["startup_name"] ?: data["name"] ?: "", // Use Parsed Startup Name
                         organization = data["organization"] ?: "",
                         isDeleted = false
                     )
@@ -355,6 +389,93 @@ class ImportViewModel : ViewModel() {
                     successCount = 0,
                     failureCount = 1,
                     errors = listOf("Cloud Function error: ${e.message}")
+                )
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+
+    /**
+     * Upload filtered VALID rows via Cloud Function.
+     * Regenerates CSV content from successful validations.
+     */
+    fun uploadFilteredRowsViaCloud(context: Context) {
+        val summary = _validationSummary.value
+        val validRows = summary.rows.filter { it.isValid }
+        
+        if (validRows.isEmpty()) return
+
+        viewModelScope.launch {
+            _isLoading.value = true
+            _uploadProgress.value = -1f
+            _uploadStatusText.value = "Preparing filtered upload..."
+
+            try {
+                // 1. Reconstruct CSV Content
+                val sb = StringBuilder()
+                // Header (Standardized)
+                sb.append("name,phone,email,city,region,organization,startup_name\n")
+                
+                validRows.forEach { row ->
+                    val d = row.data
+                    // CSV Escape if needed (basic)
+                    val line = listOf(
+                        d["name"] ?: "",
+                        d["phone"] ?: "",
+                        d["email"] ?: "",
+                        d["city"] ?: "",
+                        d["region"] ?: "",
+                        d["organization"] ?: "",
+                        d["startup_name"] ?: ""
+                    ).joinToString(",") { 
+                        // Simple escape for commas
+                        if (it.contains(",")) "\"$it\"" else it 
+                    }
+                    sb.append(line).append("\n")
+                }
+                
+                val content = sb.toString()
+                val lineCount = validRows.size
+
+                _uploadStatusText.value = "⚡ Processing $lineCount filtered records..."
+                
+                // 2. Call Cloud Function
+                val functions = FirebaseFunctions.getInstance()
+                val data = hashMapOf("csvContent" to content)
+                
+                val result = functions.getHttpsCallable("processBulkUpload").call(data).await()
+                
+                _uploadProgress.value = 1f
+                
+                // 3. Parse result
+                @Suppress("UNCHECKED_CAST")
+                val resultData = result.data as? Map<String, Any> ?: emptyMap()
+                val successCount = (resultData["success"] as? Number)?.toInt() ?: 0
+                val failedCount = (resultData["failed"] as? Number)?.toInt() ?: 0
+                @Suppress("UNCHECKED_CAST")
+                val errors = (resultData["errors"] as? List<String>) ?: emptyList()
+                
+                _uploadResult.value = UploadResult(
+                    isComplete = true,
+                    successCount = successCount,
+                    failureCount = failedCount, // Cloud failures
+                    totalCount = successCount + failedCount,
+                    errors = errors
+                )
+                
+                _uploadStatusText.value = "Cloud upload complete!"
+                _validationSummary.value = ValidationSummary()
+
+            } catch (e: Exception) {
+                android.util.Log.e("ImportViewModel", "Filtered Cloud Upload Failed", e)
+                _uploadStatusText.value = "Upload failed: ${e.message}"
+                _uploadResult.value = UploadResult(
+                    isComplete = true,
+                    successCount = 0,
+                    failureCount = 1,
+                    errors = listOf("Error: ${e.message}")
                 )
             } finally {
                 _isLoading.value = false

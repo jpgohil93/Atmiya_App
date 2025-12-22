@@ -75,8 +75,10 @@ exports.notifyOnNewWallPost = functions.firestore
         const notificationData = {
             title: title,
             body: body,
+            message: body, // For Android Data Model
             type: 'wall_post', // could be specific like 'wall_video' if needed by UI
             targetId: postId,
+            referenceId: postId, // For Android Data Model
             createdAt: timestamp,
             imageUrl: imageUrl // Save image to history too
         };
@@ -89,6 +91,11 @@ exports.notifyOnNewWallPost = functions.firestore
             notification: {
                 title: title,
                 body: body,
+            },
+            android: {
+                notification: {
+                    channelId: 'channel_wall_posts_v2'
+                }
             },
             data: {
                 type: 'wall_post',
@@ -114,6 +121,28 @@ exports.notifyOnNewWallPost = functions.firestore
             return null;
         }
     });
+
+/**
+ * Helper to save notification to user's history
+ */
+async function saveUserNotification(userId, title, message, type, referenceId, senderId, senderPhotoUrl) {
+    try {
+        await admin.firestore().collection('users').doc(userId).collection('notifications').add({
+            userId: userId,
+            title: title,
+            message: message,
+            type: type, // "connection_request", "funding_application", "wall_post"
+            referenceId: referenceId,
+            senderId: senderId || null,
+            senderPhotoUrl: senderPhotoUrl || null,
+            isRead: false,
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        console.log(`Saved notification for ${userId}: ${type}`);
+    } catch (e) {
+        console.error(`Failed to save notification for ${userId}:`, e);
+    }
+}
 
 /**
  * Triggered when a Funding Call is updated.
@@ -157,6 +186,11 @@ exports.notifyOnFundingCallUpdate = functions.firestore
                 title: notificationTitle,
                 body: notificationBody,
             },
+            android: {
+                notification: {
+                    channelId: 'channel_funding_updates_v2'
+                }
+            },
             data: {
                 type: 'funding_call_update',
                 callId: callId,
@@ -174,8 +208,10 @@ exports.notifyOnFundingCallUpdate = functions.firestore
             const historyData = {
                 title: notificationTitle,
                 body: notificationBody,
+                message: notificationBody, // For Android Data Model
                 type: 'funding_call_update',
                 targetId: callId,
+                referenceId: callId, // For Android Data Model
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
                 imageUrl: null
             };
@@ -216,17 +252,35 @@ exports.notifyOnNewConnectionRequest = functions.firestore
         const payload = {
             notification: {
                 title: title,
-                body: body,
+                body: body
+            },
+            android: {
+                notification: {
+                    channelId: 'channel_connections_v2'
+                }
             },
             data: {
                 type: 'connection_request',
                 senderRole: senderRole || 'unknown',
+                senderId: newData.senderId,
+                senderPhotoUrl: newData.senderPhotoUrl || "",
                 click_action: 'FLUTTER_NOTIFICATION_CLICK'
             },
             token: fcmToken
         };
 
         try {
+            // Save to Notification Center
+            await saveUserNotification(
+                receiverId,
+                title,
+                body,
+                'connection_request',
+                context.params.requestId,
+                newData.senderId,
+                newData.senderPhotoUrl
+            );
+
             const response = await admin.messaging().send(payload);
             console.log('Sent connection request notification:', response);
             return response;
@@ -270,6 +324,11 @@ exports.notifyOnConnectionAccepted = functions.firestore
                     title: title,
                     body: body,
                 },
+                android: {
+                    notification: {
+                        channelId: 'channel_connections_v2'
+                    }
+                },
                 data: {
                     type: 'connection_accepted',
                     senderRole: newData.receiverRole || 'unknown',
@@ -280,8 +339,91 @@ exports.notifyOnConnectionAccepted = functions.firestore
             };
 
             try {
+                // Save to Notification Center
+                const receiverPhotoUrl = newData.receiverPhotoUrl || null;
+                await saveUserNotification(
+                    senderId,
+                    title,
+                    body,
+                    'connection_accepted',
+                    context.params.requestId,
+                    receiverId,
+                    receiverPhotoUrl
+                );
+
                 const response = await admin.messaging().send(payload);
                 console.log('Sent connection accepted notification:', response);
+                return response;
+            } catch (error) {
+                console.log('Error sending notification:', error);
+                return null;
+            }
+        }
+        return null;
+    });
+
+/**
+ * Triggered when a Connection Request is declined.
+ * Notifies the sender.
+ */
+exports.notifyOnConnectionDeclined = functions.firestore
+    .document('connectionRequests/{requestId}')
+    .onUpdate(async (change, context) => {
+        const newData = change.after.data();
+        const oldData = change.before.data();
+
+        // Only trigger if status changed to 'declined'
+        if (newData.status === 'declined' && oldData.status !== 'declined') {
+            const senderId = newData.senderId;
+            const receiverName = newData.receiverName;
+
+            // Get Sender's FCM Token
+            const senderDoc = await admin.firestore().collection('users').doc(senderId).get();
+            const senderData = senderDoc.data();
+            const fcmToken = senderData ? senderData.fcmToken : null;
+
+            if (!fcmToken) {
+                console.log('No FCM token for sender (declined):', senderId);
+                return null;
+            }
+
+            const title = "Connection Declined";
+            const body = `${receiverName} declined your connection request.`;
+
+            const payload = {
+                notification: {
+                    title: title,
+                    body: body,
+                },
+                android: {
+                    notification: {
+                        channelId: 'channel_connections_v2'
+                    }
+                },
+                data: {
+                    type: 'connection_declined',
+                    senderRole: newData.receiverRole || 'unknown',
+                    authorId: newData.receiverId,
+                    click_action: 'FLUTTER_NOTIFICATION_CLICK'
+                },
+                token: fcmToken
+            };
+
+            try {
+                // Save to Notification Center
+                const receiverPhotoUrl = newData.receiverPhotoUrl || null;
+                await saveUserNotification(
+                    senderId,
+                    title,
+                    body,
+                    'connection_declined',
+                    context.params.requestId,
+                    newData.receiverId,
+                    receiverPhotoUrl
+                );
+
+                const response = await admin.messaging().send(payload);
+                console.log('Sent connection declined notification:', response);
                 return response;
             } catch (error) {
                 console.log('Error sending notification:', error);
@@ -449,7 +591,8 @@ exports.processBulkUpload = functions
 
                 // Bulk invite document (keyed by phone)
                 const inviteRef = db.collection('bulk_invites').doc(record.phone);
-                batch.set(inviteRef, {
+                // Use create() to fail if document already exists (prevent duplicates)
+                batch.create(inviteRef, {
                     uid: uid,
                     email: record.email,
                     createdAt: timestamp
@@ -672,3 +815,14 @@ exports.verifyOtp = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError('internal', `Token generation failed: ${error.message}`);
     }
 });
+
+/**
+ * Temporary function to reset the Test User (1111111111) with the correct UID.
+ */
+exports.resetTestUser = functions.https.onRequest(async (req, res) => {
+    res.status(200).send({
+        success: true,
+        message: "Endpoint disabled."
+    });
+});
+

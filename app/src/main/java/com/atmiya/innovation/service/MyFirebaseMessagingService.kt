@@ -37,7 +37,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             "wall_post" -> "wall_post" to data["postId"]
             "mentor_video" -> "mentor_video" to data["videoId"]
             "connection_request" -> "connection_requests" to null
-            "connection_accepted" -> {
+            "connection_accepted", "connection_declined" -> {
                 val roleDetail = when(senderRole) {
                     "investor" -> "investor_detail"
                     "mentor" -> "mentor_detail"
@@ -82,7 +82,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             "funding_call" -> "channel_funding_calls_v2"
             "wall_post" -> "channel_wall_posts_v2"
             "mentor_video" -> "channel_mentor_videos_v2"
-            "connection_request", "connection_accepted" -> "channel_connections_v2"
+            "connection_request", "connection_accepted", "connection_declined" -> "channel_connections_v2"
             else -> "fcm_default_channel_v2"
         }
         
@@ -105,7 +105,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 "funding_call" -> "Funding Calls"
                 "wall_post" -> "Wall Posts"
                 "mentor_video" -> "Mentor Videos"
-                "connection_request", "connection_accepted" -> "Connections"
+                "connection_request", "connection_accepted", "connection_declined" -> "Connections"
                 else -> "General Notifications"
             }
             val channel = NotificationChannel(

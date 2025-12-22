@@ -524,6 +524,7 @@ fun SignupScreen(
                     profilePhotoUrl = photoUrl,
                     participantId = participantId,
                     isOnboardingComplete = true,
+                    hasCompletedRoleDetails = true, // Explicitly set to true for standard signup
                     createdAt = Timestamp.now(),
                     updatedAt = Timestamp.now()
                 )

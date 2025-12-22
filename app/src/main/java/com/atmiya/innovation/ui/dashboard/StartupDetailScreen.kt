@@ -71,14 +71,18 @@ fun StartupDetailScreen(
     var showSmartQuestions by remember { mutableStateOf(false) }
     var showDiagnosis by remember { mutableStateOf(false) }
     var viewerRole by remember { mutableStateOf("") }
-
-    // Connection Status State
-    var connectionStatus by remember { mutableStateOf("none") }
+    
     var hasAppliedToMe by remember { mutableStateOf(false) }
     
     // Auth
     val auth = FirebaseAuth.getInstance()
     val currentUserId = auth.currentUser?.uid ?: ""
+
+    // Connection Status State (Real-time)
+    val connectionStatus by remember(currentUserId, startupId) {
+        if (currentUserId.isNotBlank()) repository.getConnectionStatusFlow(currentUserId, startupId)
+        else kotlinx.coroutines.flow.flowOf("none")
+    }.collectAsState(initial = "none")
 
     LaunchedEffect(startupId) {
         try {
@@ -88,14 +92,12 @@ fun StartupDetailScreen(
             startup = s
             user = u
             
-            // Fetch Viewer Role & Connection Status
+            // Fetch Viewer Role
             if (currentUserId.isNotBlank()) {
                 val viewer = repository.getUser(currentUserId)
                 if (viewer != null) {
                     viewerRole = viewer.role
                 }
-                // Check connection
-                connectionStatus = repository.checkConnectionStatus(currentUserId, startupId)
                 
                 // Check if applied to me (for Investors)
                 if (viewerRole == "investor") {
@@ -430,25 +432,37 @@ fun StartupDetailScreen(
                                 val context = androidx.compose.ui.platform.LocalContext.current
                                 val scope = rememberCoroutineScope()
                                 
-                                val (btnText, btnEnabled) = when(connectionStatus) {
-                                     "pending", "pending_sent" -> "Pending" to false
-                                     "pending_received" -> "Accept" to true 
-                                     else -> "Connect Now" to true
+                                val (btnText, btnEnabled, isWithdraw) = when(connectionStatus) {
+                                     "pending_sent" -> Triple("Withdraw", true, true)
+                                     "pending_received" -> Triple("Accept", true, false)
+                                     "declined" -> Triple("Declined (Wait 24h)", false, false)
+                                     else -> Triple("Connect Now", true, false)
                                  }
 
                                 Button(
                                     onClick = { 
-                                         if (connectionStatus == "none") {
+                                         if (isWithdraw) {
+                                              scope.launch {
+                                                  val sortedIds = listOf(currentUserId, startupId).sorted()
+                                                  val requestId = "${sortedIds[0]}_${sortedIds[1]}"
+                                                  try {
+                                                      repository.cancelConnectionRequest(requestId)
+                                                      android.widget.Toast.makeText(context, "Request Withdrawn", android.widget.Toast.LENGTH_SHORT).show()
+                                                  } catch(e: Exception) {
+                                                      android.widget.Toast.makeText(context, "Error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                                                  }
+                                              }
+                                         } else if (connectionStatus == "none") {
                                              scope.launch {
                                                  try {
                                                       repository.sendConnectionRequest(
-                                                          sender = repository.getUser(currentUserId)!!, // Unsafe? Handled in catch
+                                                          sender = repository.getUser(currentUserId)!!, 
                                                           receiverId = startupId,
                                                           receiverName = s.startupName,
                                                           receiverRole = "startup",
                                                           receiverPhotoUrl = s.logoUrl
                                                       )
-                                                      connectionStatus = "pending"
+                                                      // connectionStatus update handled by Flow
                                                       android.widget.Toast.makeText(context, "Request Sent!", android.widget.Toast.LENGTH_SHORT).show()
                                                  } catch(e: Exception) {
                                                      android.widget.Toast.makeText(context, "Error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
@@ -459,9 +473,10 @@ fun StartupDetailScreen(
                                     enabled = btnEnabled,
                                     shape = RoundedCornerShape(50),
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = if (btnEnabled) AtmiyaPrimary else Color.Gray,
-                                        contentColor = Color.White
+                                        containerColor = if (isWithdraw) Color.Transparent else if (btnEnabled) AtmiyaPrimary else Color.Gray,
+                                        contentColor = if (isWithdraw) Color.Red else Color.White
                                     ),
+                                    border = if (isWithdraw) androidx.compose.foundation.BorderStroke(1.dp, Color.Red) else null,
                                     modifier = Modifier.height(50.dp)
                                 ) {
                                     Text(btnText, fontSize = 16.sp)

@@ -71,6 +71,7 @@ fun InvestorListingScreen(
                 // Instead of querying for each card.
                 val sentRequests = repository.getSentConnectionRequests(currentUserId)
                 val connections = repository.getAcceptedConnections(currentUserId)
+                val declinedRequests = repository.getDeclinedConnectionRequests(currentUserId)
                 
                 val newMap = mutableMapOf<String, String>()
                 sentRequests.forEach { newMap[it.receiverId] = "pending" }
@@ -78,6 +79,7 @@ fun InvestorListingScreen(
                     val partnerId = if(it.senderId == currentUserId) it.receiverId else it.senderId
                     newMap[partnerId] = "connected"
                 }
+                declinedRequests.forEach { newMap[it.receiverId] = "declined" }
                 connectionStatusMap = newMap
             } catch (e: Exception) {
                 // Prevent crash if Firestore fails (e.g. offline, permissions, indexes)
@@ -168,6 +170,7 @@ fun InvestorCard(
     val (btnText, isBtnEnabled, isPrimary) = when(status) {
         "connected" -> Triple("Connected", false, false) // Or true and open profile
         "pending" -> Triple("Pending", false, false)
+        "declined" -> Triple("Declined (Wait 24h)", false, false)
         else -> Triple("Connect Now", true, false)
     }
 

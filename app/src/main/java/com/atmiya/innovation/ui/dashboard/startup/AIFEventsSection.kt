@@ -97,13 +97,15 @@ fun EventCard(
                 )
                 
                 // Status Badge
-                if (event.status.isNotEmpty()) {
+                // Use dynamic status instead of persisted status
+                val displayStatus = event.dynamicStatus
+                if (displayStatus.isNotEmpty()) {
                     Surface(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .padding(8.dp),
                         shape = RoundedCornerShape(8.dp),
-                        color = when (event.status.lowercase()) {
+                        color = when (displayStatus.lowercase()) {
                             "upcoming" -> AtmiyaPrimary
                             "ongoing" -> AtmiyaAccent
                             "completed" -> Color.Gray
@@ -111,7 +113,7 @@ fun EventCard(
                         }
                     ) {
                         Text(
-                            text = event.status.uppercase(),
+                            text = displayStatus.uppercase(),
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                             style = MaterialTheme.typography.labelSmall,
                             color = Color.White,

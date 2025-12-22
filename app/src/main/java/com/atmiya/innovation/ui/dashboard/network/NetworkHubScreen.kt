@@ -112,8 +112,8 @@ fun NetworkHubScreen(
         val isInvestorViewer = currentUserRole == "investor"
 
         startups.forEach { 
-            val displayName = if (isInvestorViewer && it.founderNames.isNotBlank()) it.founderNames else it.startupName
-            val displayDesc = if (isInvestorViewer && it.founderNames.isNotBlank()) it.startupName else it.sector
+            val displayName = if (it.founderNames.isNotBlank()) it.founderNames else it.startupName
+            val displayDesc = if (it.founderNames.isNotBlank()) it.startupName else it.sector
             list.add(NetworkUserItem(it.uid, displayName, "startup", it.logoUrl, displayDesc, it.stage)) 
         }
         investors.forEach { 
@@ -339,7 +339,23 @@ fun NetworkHubScreen(
                                 NetworkUserCard(
                                     user = user, 
                                     onPrimaryAction = { 
-                                        if (!isSent) {
+                                        if (isSent) {
+                                            // Withdraw Logic
+                                            if (user.requestId != null) {
+                                                scope.launch {
+                                                    try {
+                                                        repository.cancelConnectionRequest(user.requestId)
+                                                        Toast.makeText(context, "Request withdrawn", Toast.LENGTH_SHORT).show()
+                                                    } catch(e: Exception) {
+                                                        Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                }
+                                            } else {
+                                                // If it was optimistic (in pendingRequestIds but not yet confirmed with ID), just remove from local state
+                                                 pendingRequestIds = pendingRequestIds - user.uid
+                                            }
+                                        } else {
+                                            // Connect Logic
                                             // Optimistic Update
                                             pendingRequestIds = pendingRequestIds + user.uid
                                             
@@ -364,8 +380,8 @@ fun NetworkHubScreen(
                                             }
                                         }
                                     },
-                                    primaryLabel = if (isSent) "Request Pending" else "Connect Now",
-                                    isPrimaryEnabled = !isSent,
+                                    primaryLabel = if (isSent) "Withdraw Request" else "Connect Now",
+                                    isPrimaryEnabled = true, // Always enabled so user can withdraw
                                     onSecondaryAction = { onNavigateToProfile(user.uid, user.role) },
                                     secondaryLabel = "View Profile",
                                     isInvestorViewer = currentUserRole == "investor"

@@ -61,6 +61,43 @@ class MainActivity : ComponentActivity() {
             }
         }
         
+        // Scenario 3: Raw FCM Payload (Background Click)
+        // System tray notifications put 'data' payload into intent extras directly
+        if (startDest == null) {
+             val type = intent.getStringExtra("type")
+             if (type != null) {
+                  when(type) {
+                      "connection_request" -> {
+                          startDest = "connection_requests"
+                      }
+                      "wall_post" -> {
+                           startDest = "wall_post"
+                           navId = intent.getStringExtra("postId")
+                      }
+                      "mentor_video" -> {
+                           startDest = "mentor_video"
+                           navId = intent.getStringExtra("videoId")
+                      }
+                      "funding_call_update" -> {
+                           startDest = "funding_call"
+                           navId = intent.getStringExtra("callId")
+                      }
+                      "connection_accepted", "connection_declined" -> {
+                           val role = intent.getStringExtra("senderRole")
+                           val authId = intent.getStringExtra("authorId")
+                           val roleDetail = when(role) {
+                                "investor" -> "investor_detail"
+                                "mentor" -> "mentor_detail"
+                                "startup" -> "startup_detail"
+                                else -> "profile_screen"
+                            }
+                            startDest = roleDetail
+                            navId = authId
+                      }
+                  }
+             }
+        }
+        
         if (startDest != null) {
             android.util.Log.d("MainActivity", "Handling Intent: dest=$startDest id=$navId")
             navigationState.value = startDest to navId
@@ -72,7 +109,11 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         
         // Handle initial intent
+        // Handle initial intent
         handleNavigationIntent(intent)
+        
+        // Ensure channels exist immediately
+        createNotificationChannels()
         
         val themeManager = com.atmiya.innovation.ui.theme.ThemeManager(this)
         
@@ -90,16 +131,16 @@ class MainActivity : ComponentActivity() {
 
         // Ask for permission on Valid Session
         fun askNotificationPermission() {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) !=
-                    android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                    requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                } else {
-                     com.google.firebase.messaging.FirebaseMessaging.getInstance().subscribeToTopic("all_posts")
-                }
-            } else {
-                 com.google.firebase.messaging.FirebaseMessaging.getInstance().subscribeToTopic("all_posts")
-            }
+             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                 if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) !=
+                     android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                     requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                 } else {
+                      com.google.firebase.messaging.FirebaseMessaging.getInstance().subscribeToTopic("all_posts")
+                 }
+             } else {
+                  com.google.firebase.messaging.FirebaseMessaging.getInstance().subscribeToTopic("all_posts")
+             }
         }
         
         setContent {
@@ -371,6 +412,54 @@ class MainActivity : ComponentActivity() {
                 }
                 }
             }
+        }
+    }
+
+    private fun createNotificationChannels() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            val notificationManager = getSystemService(android.content.Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+            
+            val channels = listOf(
+                android.app.NotificationChannel(
+                    "channel_connections_v2",
+                    "Connections",
+                    android.app.NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "Connection requests and updates"
+                    enableVibration(true)
+                },
+                android.app.NotificationChannel(
+                    "channel_wall_posts_v2",
+                    "Wall Posts",
+                    android.app.NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "New wall posts"
+                    enableVibration(true)
+                },
+                android.app.NotificationChannel(
+                    "channel_funding_calls_v2",
+                    "Funding Calls",
+                    android.app.NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "Funding call updates"
+                    enableVibration(true)
+                },
+                 android.app.NotificationChannel(
+                    "channel_mentor_videos_v2",
+                    "Mentor Videos",
+                    android.app.NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "New mentor videos"
+                    enableVibration(true)
+                },
+                android.app.NotificationChannel(
+                    "fcm_default_channel_v2",
+                    "General Notifications",
+                    android.app.NotificationManager.IMPORTANCE_DEFAULT
+                )
+            )
+            
+            notificationManager.createNotificationChannels(channels)
         }
     }
 }

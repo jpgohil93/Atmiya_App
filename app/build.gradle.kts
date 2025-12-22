@@ -19,7 +19,7 @@ android {
         targetSdk = 35
         
         // Dynamic Versioning for CI
-        val buildNumber = System.getenv("APPCIRCLE_BUILD_NUMBER")?.toIntOrNull() ?: 20
+        val buildNumber = System.getenv("APPCIRCLE_BUILD_NUMBER")?.toIntOrNull() ?: 26
         versionCode = buildNumber
         versionName = "1.2.$buildNumber"
 
@@ -37,8 +37,6 @@ android {
         val geminiKey = localProperties.getProperty("GEMINI_API_KEY") ?: ""
         buildConfigField("String", "GEMINI_API_KEY", "\"$geminiKey\"")
     }
-
-
 
     // Bundle configuration for Universal APK from AAB
     bundle {
@@ -90,7 +88,7 @@ android {
             excludes += "META-INF/*.kotlin_module"
         }
         jniLibs {
-            useLegacyPackaging = true
+            useLegacyPackaging = true // Enabled to ensure compatibility with 16KB page sizes (Forces extraction)
         }
     }
 

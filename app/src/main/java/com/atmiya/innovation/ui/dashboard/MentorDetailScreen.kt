@@ -39,6 +39,7 @@ import compose.icons.tablericons.Mail
 import compose.icons.tablericons.Phone
 import compose.icons.tablericons.World
 import compose.icons.tablericons.BrandLinkedin
+import compose.icons.tablericons.Lock
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,7 +55,12 @@ fun MentorDetailScreen(
     val auth = remember { com.google.firebase.auth.FirebaseAuth.getInstance() }
     val currentUserId = auth.currentUser?.uid ?: ""
     var currentUser by remember { mutableStateOf<com.atmiya.innovation.data.User?>(null) }
-    var connectionStatus by remember { mutableStateOf("none") } 
+    
+    // Connection Status State (Real-time)
+    val connectionStatus by remember(currentUserId, mentorId) {
+        if (currentUserId.isNotBlank()) repository.getConnectionStatusFlow(currentUserId, mentorId)
+        else kotlinx.coroutines.flow.flowOf("none")
+    }.collectAsState(initial = "none") 
 
     var mentor by remember { mutableStateOf<Mentor?>(null) }
     var targetUser by remember { mutableStateOf<com.atmiya.innovation.data.User?>(null) }
@@ -68,7 +74,7 @@ fun MentorDetailScreen(
             
             if (currentUserId.isNotBlank()) {
                 currentUser = repository.getUser(currentUserId)
-                connectionStatus = repository.checkConnectionStatus(currentUserId, mentorId)
+                // connectionStatus handled by Flow
             }
         } catch (e: Exception) {
             // Log error
@@ -254,9 +260,15 @@ fun MentorDetailScreen(
                                     if (user.email.isNotBlank()) DetailRow("Email", user.email, TablerIcons.Mail)
                                     if (user.phoneNumber.isNotBlank()) DetailRow("Phone", com.atmiya.innovation.utils.StringUtils.formatPhoneNumber(user.phoneNumber), TablerIcons.Phone)
                                 }
-                                // Mentors might not have website in model directly in Models.kt?
-                                // Checking Models.kt, Mentor does NOT have website. It has city, bio, organization.
-                                // So relying on User email/phone is correct.
+                            } else {
+                                Spacer(modifier = Modifier.height(24.dp))
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                                Spacer(modifier = Modifier.height(24.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(TablerIcons.Lock, contentDescription = null, tint = Color.Gray)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Connect to view private details", color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
+                                }
                             }
                         }
                     }
@@ -281,15 +293,29 @@ fun MentorDetailScreen(
                                  Text("Request Mentorship", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                              }
 
-                             val (btnText, btnEnabled) = when(connectionStatus) {
-                                 "pending", "pending_sent" -> "Pending" to false
-                                 "pending_received" -> "Accept" to true 
-                                 else -> "Connect Now" to true
-                             }
+                              Spacer(modifier = Modifier.width(16.dp))
+                              
+                              val (btnText, btnEnabled, isWithdraw) = when(connectionStatus) {
+                                  "pending_sent" -> Triple("Withdraw", true, true)
+                                  "pending_received" -> Triple("Accept", true, false)
+                                  "declined" -> Triple("Declined (Wait 24h)", false, false)
+                                  else -> Triple("Connect Now", true, false)
+                              }
 
                              Button(
                                  onClick = { 
-                                     if (connectionStatus == "none" && currentUser != null) {
+                                     if (isWithdraw) {
+                                          scope.launch {
+                                              val sortedIds = listOf(currentUserId, mentorId).sorted()
+                                              val requestId = "${sortedIds[0]}_${sortedIds[1]}"
+                                              try {
+                                                  repository.cancelConnectionRequest(requestId)
+                                                  android.widget.Toast.makeText(context, "Request Withdrawn", android.widget.Toast.LENGTH_SHORT).show()
+                                              } catch(e: Exception) {
+                                                  android.widget.Toast.makeText(context, "Error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                                              }
+                                          }
+                                     } else if (connectionStatus == "none" && currentUser != null) {
                                          scope.launch {
                                              try {
                                                  repository.sendConnectionRequest(
@@ -299,7 +325,7 @@ fun MentorDetailScreen(
                                                      receiverRole = "mentor",
                                                      receiverPhotoUrl = m.profilePhotoUrl
                                                  )
-                                                 connectionStatus = "pending_sent"
+                                                 // Status update handled by Flow
                                                  android.widget.Toast.makeText(context, "Request sent!", android.widget.Toast.LENGTH_SHORT).show()
                                              } catch(e: Exception) {
                                                  android.widget.Toast.makeText(context, "Error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
@@ -312,9 +338,10 @@ fun MentorDetailScreen(
                                  enabled = btnEnabled,
                                  shape = RoundedCornerShape(50),
                                  colors = ButtonDefaults.buttonColors(
-                                     containerColor = if (btnEnabled) AtmiyaPrimary else Color.Gray,
-                                     contentColor = Color.White
+                                     containerColor = if (isWithdraw) Color.Transparent else if (btnEnabled) AtmiyaPrimary else Color.Gray,
+                                     contentColor = if (isWithdraw) Color.Red else Color.White
                                  ),
+                                 border = if (isWithdraw) androidx.compose.foundation.BorderStroke(1.dp, Color.Red) else null,
                                  modifier = Modifier.height(50.dp)
                              ) {
                                  Text(btnText, fontSize = 16.sp)

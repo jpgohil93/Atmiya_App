@@ -66,6 +66,7 @@ fun MentorListingScreen(
             currentUser = repository.getUser(currentUserId)
             val sentRequests = repository.getSentConnectionRequests(currentUserId)
             val connections = repository.getAcceptedConnections(currentUserId)
+            val declinedRequests = repository.getDeclinedConnectionRequests(currentUserId)
             
             val newMap = mutableMapOf<String, String>()
             sentRequests.forEach { newMap[it.receiverId] = "pending" }
@@ -73,6 +74,7 @@ fun MentorListingScreen(
                 val partnerId = if(it.senderId == currentUserId) it.receiverId else it.senderId
                 newMap[partnerId] = "connected"
             }
+            declinedRequests.forEach { newMap[it.receiverId] = "declined" }
             connectionStatusMap = newMap
         }
     }
@@ -161,6 +163,7 @@ fun MentorCard(
     val (btnText, isBtnEnabled) = when(status) {
         "connected" -> "Connected" to false // Or true to view profile
         "pending" -> "Pending" to false
+        "declined" -> "Declined (Wait 24h)" to false
         else -> "Connect Now" to true
     }
 

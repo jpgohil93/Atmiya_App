@@ -364,9 +364,16 @@ fun PendingStartupDetailsScreen(
             Spacer(modifier = Modifier.height(8.dp))
             ValidatedTextField(
                 value = fundingAsk,
-                onValueChange = { fundingAsk = it }, 
+                onValueChange = { 
+                    val filtered = it.filter { char -> char.isDigit() }
+                    val num = filtered.toLongOrNull()
+                    if (filtered.isEmpty() || (num != null && num <= 1000000000L)) {
+                        fundingAsk = filtered
+                    }
+                  }, 
                 label = "Funding Requirement (Amount)",
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                visualTransformation = IndianRupeeVisualTransformation()
             )
             Spacer(modifier = Modifier.height(16.dp))
             ValidatedTextField(supportNeeded, { supportNeeded = it }, "Type of Support Needed")

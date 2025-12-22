@@ -237,32 +237,28 @@ fun ModernStartupCard(
                 }
 
                 Column(modifier = Modifier.weight(1f)) {
-                    val titleText = if (isInvestor && founderName.isNotBlank()) founderName else startup.startupName
+                    // Logic: User wants "Full Name" (Founder Name) to be prominent.
+                    // If Founder Name is available, show it as Title.
+                    // Show Startup Name as subtitle.
+                    
+                    val titleText = if (founderName.isNotBlank()) founderName else startup.startupName
+                    val subtitleText = if (founderName.isNotBlank()) startup.startupName else ""
+
                     Text(
                         text = titleText,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
                     
-                    if (isInvestor) {
-                        if (founderName.isNotBlank()) {
-                             Text(
-                                text = startup.startupName,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    } else {
-                        if (founderName.isNotBlank()) {
-                             Text(
-                                text = founderName,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
+                    if (subtitleText.isNotBlank()) {
+                         Text(
+                            text = subtitleText,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
+                    
                     Row(verticalAlignment = Alignment.CenterVertically) {
                          if (startup.sector.isNotBlank()) {
                              Text(

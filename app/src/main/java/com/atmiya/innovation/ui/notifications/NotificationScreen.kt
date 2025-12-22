@@ -37,6 +37,7 @@ fun NotificationScreen(
     val currentUserId = auth.currentUser?.uid ?: ""
     
     var notifications by remember { mutableStateOf<List<Notification>>(emptyList()) }
+    var globalNotifications by remember { mutableStateOf<List<Notification>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
     // Local Preferences for "Clearing" notifications
@@ -57,19 +58,37 @@ fun NotificationScreen(
             .limit(50)
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
-                    isLoading = false
+                    // Only stop loading if global is also done or errored, but for simplicity we rely on combined result
                     return@addSnapshotListener
                 }
                 
                 if (snapshot != null) {
                     notifications = snapshot.documents.mapNotNull { it.toObject(Notification::class.java) }
-                    isLoading = false
                 }
+            }
+            
+        // Listener 2: Global Notifications
+        db.collection("global_notifications")
+            .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .limit(20) // Keep it light
+            .addSnapshotListener { snapshot, e ->
+                if (e == null && snapshot != null) {
+                    globalNotifications = snapshot.documents.mapNotNull { it.toObject(Notification::class.java) }
+                }
+                // Once we have attempted to fetch both (or at least started), we can stop loading state
+                // Ideally we wait for both, but real-time updates make 'loading' state tricky. 
+                // We'll set isLoading false after a short delay or successfully getting data.
+                isLoading = false
             }
     }
     
     // Filter locally based on cleared timestamp
-    val filteredNotifications = notifications.filter { 
+    // Merge personal and global notifications
+    val allNotifications = remember(notifications, globalNotifications) {
+        (notifications + globalNotifications).sortedByDescending { it.createdAt }
+    }
+    
+    val filteredNotifications = allNotifications.filter { 
         (it.createdAt?.toDate()?.time ?: 0L) > clearedTimestamp 
     }
 

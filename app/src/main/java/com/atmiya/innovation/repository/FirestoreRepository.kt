@@ -784,10 +784,27 @@ class FirestoreRepository {
         // Each user creation is an atomic batch (User + Startup + BulkInvite)
         data.forEachIndexed { index, (user, startup) ->
             try {
+                // Check if user already exists
+                val inviteRef = db.collection("bulk_invites").document(user.phoneNumber)
+                val inviteSnap = inviteRef.get().await()
+                if (inviteSnap.exists()) {
+                     throw Exception("User already exists")
+                }
+
+                // Critical: Also check 'users' collection for normal signups or orphans
+                val existingUserQuery = db.collection("users")
+                    .whereEqualTo("phoneNumber", user.phoneNumber)
+                    .limit(1)
+                    .get()
+                    .await()
+                    
+                if (!existingUserQuery.isEmpty) {
+                     throw Exception("User already exists (Registered)")
+                }
+
                 val batch = db.batch()
                 val userRef = db.collection("users").document(user.uid)
                 val startupRef = db.collection("startups").document(startup.uid)
-                val inviteRef = db.collection("bulk_invites").document(user.phoneNumber)
                 
                 batch.set(userRef, user)
                 batch.set(startupRef, startup)
@@ -1437,6 +1454,21 @@ class FirestoreRepository {
             .get().await().toObjects(ConnectionRequest::class.java)
     }
 
+    suspend fun getDeclinedConnectionRequests(userId: String): List<ConnectionRequest> {
+        val requests = db.collection("connectionRequests")
+            .whereEqualTo("senderId", userId)
+            .whereEqualTo("status", "declined")
+            .get().await().toObjects(ConnectionRequest::class.java)
+        
+        val oneDayInMillis = 24 * 60 * 60 * 1000
+        val now = System.currentTimeMillis()
+        
+        return requests.filter { 
+            val declinedAt = it.updatedAt?.seconds?.times(1000) ?: 0L
+            (now - declinedAt) < oneDayInMillis
+        }
+    }
+
     // Get all accepted connections (where user is either sender or receiver)
     suspend fun getAcceptedConnections(userId: String): List<ConnectionRequest> {
         // Query 1: Where I am sender
@@ -1499,7 +1531,46 @@ class FirestoreRepository {
         }
     }
     
+
+    // Real-time connection status check
+    fun getConnectionStatusFlow(currentUserId: String, targetUserId: String): Flow<String> = callbackFlow {
+        val sortedIds = listOf(currentUserId, targetUserId).sorted()
+        val requestId = "${sortedIds[0]}_${sortedIds[1]}"
+        
+        val listener = db.collection("connectionRequests").document(requestId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend("none")
+                    return@addSnapshotListener
+                }
+                
+                if (snapshot != null && snapshot.exists()) {
+                     val status = snapshot.getString("status") ?: "none"
+                     val senderId = snapshot.getString("senderId")
+                     
+                     val derivedStatus = when(status) {
+                         "accepted" -> "connected"
+                         "pending" -> {
+                             if (senderId == currentUserId) "pending_sent" else "pending_received"
+                         }
+                         "declined" -> {
+                             val updatedAt = snapshot.getTimestamp("updatedAt") ?: Timestamp.now()
+                             val diffMillis = System.currentTimeMillis() - (updatedAt.seconds * 1000)
+                             val hours = diffMillis / (1000 * 60 * 60)
+                             if (hours < 24) "declined" else "none"
+                         }
+                         else -> "none"
+                     }
+                     trySend(derivedStatus)
+                } else {
+                    trySend("none")
+                }
+            }
+        awaitClose { listener.remove() }
+    }
+
     // Check status between two users (One-shot)
+// Check status between two users (One-shot)
     suspend fun checkConnectionStatus(currentUserId: String, targetUserId: String): String {
         // Since we use deterministic IDs (sorted UIDs), we only need to check ONE document!
         val sortedIds = listOf(currentUserId, targetUserId).sorted()
@@ -1518,8 +1589,8 @@ class FirestoreRepository {
                  "declined" -> {
                      val updatedAt = snapshot.getTimestamp("updatedAt") ?: Timestamp.now()
                      val diffMillis = System.currentTimeMillis() - (updatedAt.seconds * 1000)
-                     val days = diffMillis / (1000 * 60 * 60 * 24)
-                     if (days < 7) "declined" else "none"
+                     val hours = diffMillis / (1000 * 60 * 60)
+                     if (hours < 24) "declined" else "none"
                  }
                  else -> "none"
              }

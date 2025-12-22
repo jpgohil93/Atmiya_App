@@ -188,6 +188,21 @@ fun FundingCallCard(
         }
     }
 
+    // Connection Status Logic
+    val connectionStatus by remember(currentUser, call.investorId) {
+        if (currentUser != null && call.investorId.isNotEmpty()) 
+            repository.getConnectionStatusFlow(currentUser.uid, call.investorId)
+        else kotlinx.coroutines.flow.flowOf("none")
+    }.collectAsState(initial = "none")
+
+    val (btnText, btnEnabled) = when(connectionStatus) {
+         "connected", "connected_auto" -> "Connected" to false
+         "pending_sent" -> "Request Sent" to false 
+         "pending_received" -> "Check Requests" to false 
+         "declined" -> "Declined" to false
+         else -> "Connect Now" to true
+    }
+
     NetworkCard(
         imageModel = investorProfilePhoto ?: "",
         name = call.investorName,
@@ -204,9 +219,9 @@ fun FundingCallCard(
             }
             if (call.stages.isNotEmpty()) {
                 PillBadge(
-                     text = call.stages.first(),
-                     backgroundColor = Color(0xFFE3F2FD), // Light Blue
-                     contentColor = Color(0xFF1976D2)
+                    text = call.stages.first(),
+                    backgroundColor = Color(0xFFE3F2FD), // Light Blue
+                    contentColor = Color(0xFF1976D2)
                 )
             }
             if (isApplied) {
@@ -257,8 +272,9 @@ fun FundingCallCard(
         },
         primaryButtonText = if (isOwner) "Review Opportunity" else "View Opportunity",
         onPrimaryClick = onClick,
-        secondaryButtonText = if (isOwner) null else "Connect Now", 
-        onSecondaryClick = if (isOwner) { {} } else { onConnectClick }
+        secondaryButtonText = if (isOwner) null else btnText, 
+        onSecondaryClick = if (isOwner) { {} } else { onConnectClick },
+        isSecondaryButtonEnabled = btnEnabled
     )
 }
 

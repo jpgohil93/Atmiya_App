@@ -59,7 +59,7 @@ fun CsvImportScreen(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     OutlinedButton(
                         onClick = { 
-                            val csvContent = "Full Name,Email,City,Region,Organization\nJohn Doe,john@example.com,Mumbai,Maharashtra,IIT Bombay"
+                            val csvContent = "Full Name,Phone,Email,City,Region,Organization,Startup Name\nJohn Doe,9876543210,john@example.com,Mumbai,Maharashtra,IIT Bombay,My Startup"
                             val sendIntent = android.content.Intent().apply {
                                 action = android.content.Intent.ACTION_SEND
                                 putExtra(android.content.Intent.EXTRA_TEXT, csvContent)
@@ -272,6 +272,46 @@ fun CsvImportScreen(
                                 Text("Line ${row.line}: ${row.data["phone"] ?: "Unknown Phone"}", fontWeight = FontWeight.Bold)
                                 row.errors.forEach { error ->
                                     Text("• $error", style = MaterialTheme.typography.bodySmall)
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Skip & Proceed Options
+                if (validationSummary.validRows > 0) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text("Recover Valid Records", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                            Text("You can ignore the errors above and proceed with the ${validationSummary.validRows} valid rows.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(modifier = Modifier.height(12.dp))
+                            
+                            if (validationSummary.validRows > 500) {
+                                Button(
+                                    onClick = { viewModel.uploadFilteredRowsViaCloud(context) },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("⚡ Skip & Fast Upload (${validationSummary.validRows})")
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                OutlinedButton(
+                                    onClick = { viewModel.uploadValidRows() },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("Skip & Local Upload (Slow)")
+                                }
+                            } else {
+                                Button(
+                                    onClick = { viewModel.uploadValidRows() },
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("Skip Errors & Upload (${validationSummary.validRows})")
                                 }
                             }
                         }

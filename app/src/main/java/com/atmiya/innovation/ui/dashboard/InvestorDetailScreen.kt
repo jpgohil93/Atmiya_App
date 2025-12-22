@@ -41,6 +41,7 @@ import compose.icons.tablericons.Mail
 import compose.icons.tablericons.Phone
 import compose.icons.tablericons.World
 import compose.icons.tablericons.BrandLinkedin
+import compose.icons.tablericons.Lock
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,7 +57,12 @@ fun InvestorDetailScreen(
     val auth = remember { com.google.firebase.auth.FirebaseAuth.getInstance() }
     val currentUserId = auth.currentUser?.uid ?: ""
     var currentUser by remember { mutableStateOf<com.atmiya.innovation.data.User?>(null) }
-    var connectionStatus by remember { mutableStateOf("none") } // "none", "pending", "connected"
+    
+    // Connection Status State (Real-time)
+    val connectionStatus by remember(currentUserId, investorId) {
+        if (currentUserId.isNotBlank()) repository.getConnectionStatusFlow(currentUserId, investorId)
+        else kotlinx.coroutines.flow.flowOf("none")
+    }.collectAsState(initial = "none")
 
     var investor by remember { mutableStateOf<Investor?>(null) }
     var targetUser by remember { mutableStateOf<com.atmiya.innovation.data.User?>(null) } // To get email/phone
@@ -97,7 +103,7 @@ fun InvestorDetailScreen(
             
             if (currentUserId.isNotBlank()) {
                 currentUser = repository.getUser(currentUserId)
-                connectionStatus = repository.checkConnectionStatus(currentUserId, investorId)
+                // connectionStatus handled by Flow
             }
             android.util.Log.d("InvestorDetail", "Loaded investor: ${investor?.name}, ID: $investorId")
         } catch (e: Exception) {
@@ -286,8 +292,15 @@ fun InvestorDetailScreen(
                                     if (user.phoneNumber.isNotBlank()) DetailRow("Phone", com.atmiya.innovation.utils.StringUtils.formatPhoneNumber(user.phoneNumber), TablerIcons.Phone)
                                 }
                                 if (i.website.isNotBlank()) DetailRow("Website", i.website, TablerIcons.World)
-                                // LinkedIn not in Investor model, checking User model isn't standard for linkedin but maybe i.website covers it? 
-                                // Model says "website: String // LinkedIn or Website". So we use i.website.
+                            } else {
+                                Spacer(modifier = Modifier.height(24.dp))
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                                Spacer(modifier = Modifier.height(24.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(TablerIcons.Lock, contentDescription = null, tint = Color.Gray)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Connect to view private details", color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
+                                }
                             }
                         }
                     }
@@ -315,15 +328,29 @@ fun InvestorDetailScreen(
                              
                              Spacer(modifier = Modifier.width(16.dp))
 
-                             val (btnText, btnEnabled) = when(connectionStatus) {
-                                 "pending", "pending_sent" -> "Pending" to false
-                                 "pending_received" -> "Accept" to true 
-                                 else -> "Connect Now" to true
-                             }
+                             Spacer(modifier = Modifier.width(16.dp))
+
+                             val (btnText, btnEnabled, isWithdraw) = when(connectionStatus) {
+                                  "pending_sent" -> Triple("Withdraw", true, true)
+                                  "pending_received" -> Triple("Accept", true, false)
+                                  "declined" -> Triple("Declined (Wait 24h)", false, false)
+                                  else -> Triple("Connect Now", true, false)
+                              }
 
                              Button(
                                  onClick = { 
-                                     if (connectionStatus == "none" && currentUser != null) {
+                                     if (isWithdraw) {
+                                          scope.launch {
+                                              val sortedIds = listOf(currentUserId, investorId).sorted()
+                                              val requestId = "${sortedIds[0]}_${sortedIds[1]}"
+                                              try {
+                                                  repository.cancelConnectionRequest(requestId)
+                                                  android.widget.Toast.makeText(context, "Request Withdrawn", android.widget.Toast.LENGTH_SHORT).show()
+                                              } catch(e: Exception) {
+                                                  android.widget.Toast.makeText(context, "Error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                                              }
+                                          }
+                                     } else if (connectionStatus == "none" && currentUser != null) {
                                          scope.launch {
                                              try {
                                                  repository.sendConnectionRequest(
@@ -333,8 +360,7 @@ fun InvestorDetailScreen(
                                                      receiverRole = "investor",
                                                      receiverPhotoUrl = i.profilePhotoUrl
                                                  )
-                                                 // Refresh status after sending
-                                                 connectionStatus = repository.checkConnectionStatus(currentUserId, investorId)
+                                                 // Status update handled by Flow
                                                  android.widget.Toast.makeText(context, "Request sent!", android.widget.Toast.LENGTH_SHORT).show()
                                                  
                                               } catch (e: Exception) {
@@ -345,12 +371,11 @@ fun InvestorDetailScreen(
                                      }
                                  },
                                  enabled = btnEnabled && currentUser != null,
-                                 // Removed fillMaxWidth, let it wrap content or set fixed width if needed
-                                 // But since it's in a Row with weight(1f) text, it should be fine.
                                  colors = ButtonDefaults.buttonColors(
-                                     containerColor = if (btnText == "Connect Now") AtmiyaSecondary else Color.Gray,
-                                     contentColor = Color.White
+                                     containerColor = if (isWithdraw) Color.Transparent else if (btnEnabled) AtmiyaSecondary else Color.Gray,
+                                     contentColor = if (isWithdraw) Color.Red else Color.White
                                  ),
+                                 border = if (isWithdraw) androidx.compose.foundation.BorderStroke(1.dp, Color.Red) else null,
                                  shape = RoundedCornerShape(12.dp)
                              ) {
                                  Text(btnText, fontWeight = FontWeight.Bold)
